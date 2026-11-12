@@ -310,9 +310,11 @@ function textoAPartir(toks, i) {
   // para aspas simples — `bash -c 'gh issue \\<quebra>close 12'` virava
   // `gh issue close 12`, que o bash nao executa (achado da revisao).
   // Token sem aspas com espaco so nasce da opcao `contrabarra` (`gh\ pr\ merge`
-  // e UMA palavra): sai entre aspas simples para continuar uma palavra so
-  // (D8 de gate-segmentador). Sem a opcao, nada muda.
-  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? `'${t.v.replace(/'/g, "'\\''")}'` : t.v))).join(" ");
+  // e UMA palavra): sai entre aspas DUPLAS com `\ " $ crase` escapados, que o
+  // `desempacota` reduz de volta ao valor exato (D8 de gate-segmentador). Aspas
+  // simples com `'\''` nao voltavam: `bash -c echo\ \'x\'\;\ gh ...` escondia o
+  // `gh` (revisao 5). Sem a opcao, nada muda.
+  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? '"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"' : t.v))).join(" ");
 }
 
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------

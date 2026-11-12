@@ -1432,6 +1432,78 @@ COMANDO_CW_7=$'eval gh\\ issue\\ view\\ 12'
 EXIT_CW_7=$?
 [ $EXIT_CW_7 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_7)"
 
+# Caso (cw-8): eval com palavra escapada que junta ; e gh pr merge → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-8) eval com palavra escapada que junta ; e gh pr merge → exit 2 =="
+COMANDO_CW_8=$'eval echo\\ x\\;gh pr merge 5'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_8")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-8"
+EXIT_CW_8=$?
+[ $EXIT_CW_8 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_8)"
+
+# Caso (cw-9): eval com ; escapado na palavra seguinte e gh issue close → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-9) eval com ; escapado na palavra seguinte e gh issue close → exit 2 =="
+COMANDO_CW_9=$'eval x \\;\\ gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_9")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-9"
+EXIT_CW_9=$?
+[ $EXIT_CW_9 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_9)"
+
+# Caso (cw-10): eval com apostrofo escapado e gh issue close na mesma palavra → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-10) eval com apostrofo escapado e gh issue close na mesma palavra → exit 2 =="
+COMANDO_CW_10=$'eval echo\\ \\\'x\\\'\\;\\ gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_10")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-10"
+EXIT_CW_10=$?
+[ $EXIT_CW_10 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_10)"
+
+# Caso (cw-11): bash -c com apostrofo escapado e gh issue close na mesma palavra → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-11) bash -c com apostrofo escapado e gh issue close na mesma palavra → exit 2 =="
+COMANDO_CW_11=$'bash -c echo\\ \\\'x\\\'\\;\\ gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_11")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-11"
+EXIT_CW_11=$?
+[ $EXIT_CW_11 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_11)"
+
+# Caso (cw-12): eval com apostrofo escapado e gh de leitura → exit 0 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-12) eval com apostrofo escapado e gh de leitura → exit 0 =="
+COMANDO_CW_12=$'eval echo\\ \\\'oi\\\'\\;\\ gh\\ issue\\ view\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_12")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-12"
+EXIT_CW_12=$?
+[ $EXIT_CW_12 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_12)"
+
+# Caso (cw-13): bash -c com apostrofo escapado sem gh → exit 0 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-13) bash -c com apostrofo escapado sem gh → exit 0 =="
+COMANDO_CW_13=$'bash -c echo\\ \\\'oi\\\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_13")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-13"
+EXIT_CW_13=$?
+[ $EXIT_CW_13 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_13)"
+
 # Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
 echo
 echo "== (cm-5) espaco escapado antes do # nao abre comentario → exit 2 =="

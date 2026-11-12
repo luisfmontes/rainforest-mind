@@ -37,7 +37,7 @@ const { caminhoExecutavel, executar } = require("./lib/resolver-executavel.cjs")
 const {
   tokensComAspas, posicaoDeComando, textoAPartir, WRAPPERS_QUE_REPASSAM,
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
-  colapsaContinuacaoDeLinhaNoTopo, semContrabarra,
+  colapsaContinuacaoDeLinhaNoTopo, semContrabarra, reduzEscapeAspasDuplas, contemConstrucaoIlegivel,
 } = require("./lib/tokens-comando.cjs");
 const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
@@ -1626,9 +1626,19 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // desempacotador de STRING. Usa `textoAPartir(toksComAspas, pos)` quando
   // `pos` existe (o texto dali pra frente, sem o prefixo ja consumido);
   // sem posicao de comando (`pos === null`), nao ha o que desempacotar.
+  // `eval` do bash junta os VALORES das palavras com espaco e reinterpreta o
+  // resultado: `eval echo\ x\;gh pr merge 5` roda `echo x;gh pr merge 5`. Remontar
+  // as palavras com aspas e desempacotar deixava o `;` dentro de aspa (revisao 5
+  // de gate-segmentador, D8).
+  const ehEvalDoBash = pos !== null && FERRAMENTA !== "PowerShell" && toksComAspas[pos].v === "eval" && pos + 1 < toksComAspas.length;
+  const internoDoEval = ehEvalDoBash
+    ? toksComAspas.slice(pos + 1).map((t) => (t.q && t.aspa === '"' ? reduzEscapeAspasDuplas(t.v) : t.v)).join(" ")
+    : null;
   const { interno, ilegivel } = pos === null
     ? { interno: null, ilegivel: false }
-    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, scriptComVariavel: 'desconhecido' });
+    : ehEvalDoBash
+      ? { interno: internoDoEval, ilegivel: contemConstrucaoIlegivel(internoDoEval) }
+      : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, scriptComVariavel: 'desconhecido' });
   if (ilegivel) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).

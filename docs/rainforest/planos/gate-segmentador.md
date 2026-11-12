@@ -645,6 +645,44 @@ Forma prescrita: função `abreAnsiC(s, i)` conta os `$` colados antes da aspa, 
 
 Casos novos: (ad-6) `echo $$'\'; bash -c 'gh issue close 12'; echo '\'` → 2; (ad-7) `echo $$$'\''; gh issue close 12` → 2.
 
+### 19. `eval` do bash junta os valores das palavras (revisão 5) [tipo: implementar]
+atende: D8
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 18
+busca:
+- repo | grep -n "desempacotarWrapperDeString(textoAPartir" hooks/gate-fechar-issue.cjs | o eval passava pelo desempacotador de string, que remonta as palavras com aspas e não junta os valores
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const ehEvalDoBash = pos !== null && FERRAMENTA !== "PowerShell" && toksComAspas[pos].v === "eval" && pos + 1 < toksComAspas.length;`
+  para: `const ehEvalDoBash = false;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (cw-8) e (cw-9)`
+prova-na-base: verde — regressão aberta pelo próprio diff (tarefa 9, D8); a base já barrava os casos com exit 2
+pronto quando: com o payload real de PreToolUse (Bash), `eval echo\ x\;gh pr merge 5`, `eval x \;\ gh\ issue\ close\ 12` e `eval echo\ \'x\'\;\ gh\ issue\ close\ 12` saem 2 (saíam 0 no HEAD da revisão 5, 2 na base), e `eval echo\ \'oi\'\;\ gh\ issue\ view\ 12` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 492 ok, 0 falha(s) ==` com exit 0, pela mutação acima deixando (cw-8) e (cw-9) vermelhos ((cw-10) também é coberto pela tarefa 20), e pelo fuzz do revisor (`node fuzz.cjs 800 <seed> ran g3`, sementes 1 a 3) sem nenhum caso "HEAD 0 / base 2".
+
+Forma prescrita: em `processarSegmento`, quando o token na posição de comando é `eval` e o dialeto corrente (`FERRAMENTA`) não é PowerShell, o `interno` é a junção com espaço dos valores das palavras seguintes (valor de token entre aspas duplas com o escape reduzido por `reduzEscapeAspasDuplas`), e `ilegivel` sai de `contemConstrucaoIlegivel` sobre ele; os outros wrappers seguem por `desempacotarWrapperDeString`.
+
+### 20. Palavra com espaço volta entre aspas duplas escapadas (revisão 5) [tipo: implementar]
+atende: D8
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 19
+busca:
+- repo | grep -n "function textoAPartir" hooks/lib/tokens-comando.cjs | a remontagem com aspas simples e '\\'' não era revertida pelo desempacota
+desfecho: estender
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `'"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"'`
+  para: `"'" + t.v.replace(/'/g, "'\\''") + "'"`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, caso (cw-11)`
+prova-na-base: verde — regressão aberta pelo próprio diff (tarefa 9, D8); a base já barrava o caso com exit 2
+pronto quando: com o payload real de PreToolUse (Bash), `bash -c echo\ \'x\'\;\ gh\ issue\ close\ 12` sai 2 e `bash -c echo\ \'oi\'` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 492 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (cw-11) vermelho.
+
+Forma prescrita: em `textoAPartir`, token sem aspas com espaço (só nasce da opção `contrabarra`) sai entre aspas duplas com contrabarra antes de contrabarra, aspa dupla, cifrão e crase (crase escrita como `\x60` na classe), que o `desempacota` reduz ao valor exato.
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`

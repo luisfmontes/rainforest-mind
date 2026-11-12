@@ -13,8 +13,2070 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 ## 2.12.3 — 2026-11-11
 
 - **O gate de fechamento de Issue não se deixa esconder por here-string, contrabarra nem `"$(...)"`.** Estes casos passavam com `gh issue close` ou `gh pr merge` executado pelo bash e o gate em silêncio (Issue #689): `` cat <<< `gh issue close 12` `` e `cat <<< $(gh issue close 12)`; contrabarra antes de aspa no Bash, como `echo \"; gh issue close 12` e `echo "\""; gh issue close 12`; e `"$(...)"` com aspa, crase, comentário, heredoc ou `case` dentro, como `echo "$(echo ')' ; gh issue close 12)"`. Here-string mandado a um interpretador (`bash <<< "..."`, `bash <<< 'echo x'"; ..."`) é lido com as aspas e contrabarras do bash. Agora todos barram. Um comentário de shell com apóstrofo seguido de `gh` na linha de baixo continua escapando, como antes (Issue #692). Texto comum com essas formas continua passando.
-- **Falso positivo aceito.** Um `"$(...)"` com interior complexo que não está na forma canônica do item seguinte, seguido de `gh` de escrita em qualquer ponto do comando, é barrado. Contorno: rode o `gh` em comando separado e passe o corpo por `--body-file` ou `git commit -F <arquivo>`.
-- **Wrapper segue as próprias regras de aspas.** O texto de dentro de `bash -c` (e `eval`, `sh`, `zsh`) é lido com as regras do Bash mesmo quando o comando veio pela ferramenta PowerShell, e o de `pwsh -Command` (e `cmd`, `iex`) com as do PowerShell mesmo quando veio pelo Bash. Dentro de `bash -c "..."`, `eval "..."` e `sh -c "..."`, a contrabarra antes de aspa escapa a aspa como no bash, e o `gh` que vem depois dela é lido.
+- **Falso positivo aceito.** Um `"$(...)"` com interior complexo que não está na forma canônica do item seguinte, seguido de `gh` de escrita em qualquer ponto do comando, é barrado. Contorno: rode o `gh` em comando separado e passe o corpo por `--body-file` ou `git commit -F <arquivo>`. Também é barrado `gh ... --body-file` com caminho relativo depois de um trecho com contrabarra fora de aspas ou `
+- **Wrapper segue as próprias regras de aspas.** O texto de dentro de `bash -c` (e `eval`, `sh`, `zsh`) é lido com as regras do Bash mesmo quando o comando veio pela ferramenta PowerShell, e o de `pwsh -Command` (e `cmd`, `iex`) com as do PowerShell mesmo quando veio pelo Bash. Dentro de `bash -c "..."`, `eval "..."` e `sh -c "..."`, a contrabarra antes de aspa escapa a aspa como no bash, e o `gh` que vem depois dela é lido. `eval` junta as palavras como o bash antes de ler (`eval echo\ x\;gh pr merge 5` é lido como `echo x;gh pr merge 5`), e palavra com contrabarra e espaço em `bash -c` é lida pelo valor.
+- **Commit por heredoc canônico volta a passar.** `git commit -m "$(cat <<'EOF' ... EOF)"` que cita `gh issue close` entre crases no corpo sai 0 de novo, porque o bash não executa o corpo de heredoc citado. Se o mesmo commit vier seguido de `gh` de escrita, o `gh` é checado. A forma só conta como canônica quando o delimitador que fecha o heredoc é a última linha antes do `)`: uma linha igual ao delimitador no meio do corpo fecha o heredoc no bash, o que vem depois é lido como comando, e o `gh` é checado.
+
+## 2.12.2 — 2026-11-11
+
+- **O gate de fechamento de Issue confere o comando dentro de crases.** `` echo "`gh issue close 12`" `` e `` echo `gh pr merge 5 --squash` `` passavam sem checagem de evidência, embora o bash execute o que está entre crases. Agora o comando de dentro é conferido como já era dentro de `$(...)`, com ou sem aspas duplas; uma aspa dentro da crase também não esconde mais o que vem depois dela. Crase entre aspas simples e a crase de escape do PowerShell continuam passando. Mensagem de commit escrita por heredoc que cite um `gh issue close` ou `gh pr merge` entre crases passa a ser barrada, como já acontecia com `$(...)`; use `git commit -F <arquivo>`.
+
+## 2.12.1 — 2026-11-11
+
+- **Fechar Issue no formato comum do repositório.** O `scripts/fechar-issue.cjs` aceitava só o cabeçalho `## Critério de pronto (falsificável)` e recusava as Issues escritas com `## Pronto quando`, `**Pronto quando:**` ou `Pronto quando:` no início da linha, que são a maioria. Agora aceita as quatro formas, e a recusa diz quais são. Quem fechava Issue comentando o marcador de evidência à mão volta a usar o script.
+- **A ajuda do `gh` passa pelo gate.** `gh pr create --help`, `gh pr create -h` e `gh help pr create` eram barrados como se criassem PR. Agora passam quando a ajuda é o único argumento depois do verbo. Ajuda misturada com outras flags, `-h` agrupado e qualquer token com `$` ou crase continuam barrados, porque nessas formas o `gh` pode criar o PR ou executar outro comando.
+
+## 2.12.0 — 2026-11-11
+
+- **A varredura de baterias acusa a caixa que esquece uma lib.** Muitas baterias montam uma caixa de areia copiando alguns scripts do repositório; quando um desses scripts ganha um `require` novo e a caixa não copia o alvo, a bateria cai no CI com `Cannot find module`, ou pior, degrada para "pulada" e fica verde. Isso derrubou o CI quatro vezes entre setembro e novembro. O `scripts/conferir-caixas.cjs` lê o texto das baterias e dos scripts copiados e aponta cada lib que falta, em segundos. O `varrer-baterias.sh` (local e CI) o roda antes das baterias e só reprova a falta **nova** em relação à `origin/main`: o repositório tem hoje 128 faltas que já existiam (72 delas são `require` tardio do `estado.cjs`), e elas não reprovam. Ausência intencional se declara na bateria com `# caixa-sem: <caminho> — <motivo>`. Fica fora: `require` com caminho em variável, `cp` com glob ou com origem montada fora do laço de uma linha.
+
+## 2.11.1 — 2026-11-11
+
+- **O gate de fechamento de Issue lê o corpo do PR em toda grafia que o `gh` aceita.** `-F` passa a valer como `--body-file` (antes caía na recusa "editor interativo", razão errada, e no `gh pr edit` passava sem checagem), o valor colado à flag curta (`-F<arquivo>`, `-F=<arquivo>`, `-b"<texto>"`) é lido, e flag curta compara com a caixa exata: `-B` é `--base` e `-f` é `--fill`, não corpo. Antes, `-B main` antes do `--body-file` virava corpo "main" e deixava `Closes #N` sem evidência passar, e `gh pr create -B main --fill` passava sem que o gate lesse corpo nenhum. No PR, quando o comando traz mais de um corpo, todos são checados, e o valor de outra flag (`--title "-bar"`) não é mais lido como flag. `gh issue create` e `gh issue comment` herdam o `-F` na checagem de palavra-chave falsa. Fica fora: alias do `gh`, `gh api`, variável de ambiente do `gh`, `--template` e flag curta agrupada (`-dF`), que no `create` cai na recusa "editor interativo" (#664).
+
+## 2.11.0 — 2026-11-09
+
+- **O `exigir` avisa quando o contexto da sessão está alto.** Na abertura de cada estágio, a última chamada ao modelo registrada no transcript é somada em tokens (a resposta que consulta o advisor conta só a última iteração `message`, não a soma de todas) e, a partir de 310 mil, sai uma linha em stderr sugerindo registrar o estado e considerar `/compact` ou uma sessão nova. O limiar é a chave `contexto-alto-tokens` (`0` desliga). O padrão é 70% de onde o autocompact entra na prática: em 54 sessões ele disparou entre 211 mil e 447 mil, mesmo com janela de 1 M. Só existe dentro do fluxo, e nunca muda o resultado do `exigir`.
+- **A trava de arquivo espera o `EPERM` passageiro do Windows.** No CI, o gate do teto de despachos negou um de 12 despachos simultâneos como falha interna, com `EPERM` ao abrir um arquivo da pasta do fluxo. A hipótese mais forte é a criação da trava no instante em que outro processo acaba de apagá-la, e nesse caso a trava propagava o erro. Agora ela espera e tenta de novo até o limite, e só então propaga o erro original. A bateria passa a mostrar o stderr inteiro, para o caminho do arquivo aparecer se a falha voltar.
+
+## 2.10.1 — 2026-11-09
+
+- **O gate-worktree fecha para subagente quando o git não responde num repositório.** Antes, git ausente ou quebrado era lido como "fora de repositório" e a escrita do subagente no checkout principal passava. Agora, com `.git` acima, o subagente é barrado fora de worktree linkado, com aviso em stderr; onde `.git` é arquivo (como worktree linkado e submódulo) e fora de repositório ele segue livre, e a janela principal nunca é barrada por isso. Também deixa de ler como worktree um checkout principal clonado sob uma pasta chamada `worktrees` (#671).
+
+## 2.10.0 — 2026-11-09
+
+- **O verificar recusa teste apagado ou pulado sem declarar.** O `marcar verificar ok` confere o diff que o `revisar` aprovou. Arquivo de teste apagado, renomeado para um nome que não é de teste, ou com `.skip(`, `.only(`, `xit(` e afins novos, recusa com exit 2, porque a suíte continua verde quando o teste deixa de rodar. Tarefa que faz isso de propósito declara `afrouxa: <por que>` no plano. Renome de teste para teste não conta, e contar asserção ficou de fora: no histórico daqui, tirar asserção foi legítimo nas 16 vezes medidas.
+
+## 2.9.1 — 2026-11-08
+
+- **A catraca recusa a mutação que quebra a sintaxe do fonte.** Antes de rodar a bateria pós-mutação, o `conferir-mutacao.cjs` confere o fonte mutado com `node --check` (`.js`, `.cjs`, `.mjs`) ou `bash -n` (`.sh`, `.bash`). Se o original carregava e o mutado não, sai 6 sem rodar a bateria, citando a linha do erro. Motivo: uma mutação deixou o fonte com `SyntaxError`, todos os casos da bateria saíram 1 e a catraca aprovou como "bateria VERMELHA, a bateria sabe falhar". Fonte que já não passava na conferência antes da mutação, ou de outra extensão, segue como antes. A tabela de saídas da catraca (`skills/executar/references/catraca-de-mutacao.md`) ganha a linha do exit 6, que faltava.
+
+## 2.9.0 — 2026-11-08
+
+- **Decisão de API de framework cita a documentação oficial no plano.** O `busca:` da tarefa ganha o canal `doc`: `- doc | <URL da página oficial> | <o que a página diz>`. O `conferir-busca.cjs` recusa a linha `doc` cuja consulta não é URL `http(s)`, em qualquer tarefa que a declara, de qualquer tipo, inclusive fora de git (onde o checador sai 69 se alguma tarefa `implementar` ou sem tipo declara arquivo de código, e imprime a recusa do `doc` antes), porque decisão de API costuma editar arquivo que já existe. A referência do campo (`skills/plano/references/campo-busca.md`) diz quando usar, a ordem das fontes (doc oficial, changelog oficial, padrões web, tabela de compatibilidade; nunca Stack Overflow, tutorial ou memória de treino) e a marca `não verificado:` para o que a doc não cobre. O checador confere só a forma e não abre a URL. Método enxertado do `source-driven-development` do `addyosmani/agent-skills` (MIT).
+
+## 2.8.2 — 2026-11-07
+
+- **As recusas do corpo do PR terminam na mesma receita.** O `gate-fechar-issue` tinha cinco recusas sobre o corpo de `gh pr create`/`gh pr edit` (variável no `--body-file`, caminho relativo com diretório incerto, arquivo ilegível, `--body` com crase, editor interativo), cada uma com uma sugestão própria, e algumas sugeriam o que a recusa seguinte barrava. Agora todas dizem a razão e terminam em "Receita que passa": gravar o corpo com o Write num caminho absoluto literal e rodar `gh pr create --body-file "<caminho>"` num comando só com o `gh`. A recusa do arquivo ilegível diz também o caminho que tentou e o motivo: arquivo que não existe, `/tmp` do Git Bash (que o node do gate não enxerga) ou o código do erro; heredoc ilegível ganha razão própria. Medido em 300 transcritos: esse gate era a maior fonte de turnos com a mesma falha repetida 3 vezes ou mais (13 de 48).
+
+## 2.8.1 — 2026-11-07
+
+- **A trava diária da manutenção não acumula mais.** A sessão que cria `manutencao-<AAAA-MM-DD>.lock` apaga, logo depois de disparar a manutenção, as travas de datas anteriores na raiz de dados. A trava do dia, uma de data futura, o `manutencao.log` e qualquer arquivo com outro nome ficam; a sessão que perde a corrida do dia não apaga nada. As travas antigas que já existem somem na primeira abertura com esta versão.
+
+## 2.8.0 — 2026-11-07
+
+- **Deriva entre design e código.** O `conferir-fluxo.cjs deriva` relê os designs já mergeados contra o código atual. A âncora de cada decisão é o `de:` da mutação das tarefas que a atendem, e cada uma sai intacta, sumiu ou arquivo sumiu, as duas últimas com o commit que tirou o trecho (inclusive quando ele saiu por um merge). Com `--arquivo`, responde que decisões moram num arquivo, e o `brainstorm` passa a rodar isso nos arquivos que a demanda vai tocar, antes da primeira rodada. É relatório: sai 0 e não barra nada.
+
+## 2.7.0 — 2026-11-07
+
+- **O `enxugar --diff` abre pela variação de complexidade.** O subcomando novo `catalogo-funcoes.cjs variacao` mede, antes e depois, só as funções JS/TS e Dart que o diff tocou, incluindo o que ainda não foi commitado, e põe a maior subida primeiro (`8 → 19 cognitiva (+11)`), com as três contribuições que mais pesam. Função nova, removida e tocada sem variação aparecem como tais. A base padrão é a mesma do revisor (`merge-base` com a `origin`), e `--base` troca. É contexto para saber onde ler primeiro: não vira achado nem barra nada.
+
+## 2.6.0 — 2026-11-07
+
+- **O `plano` passa por um leitor cego antes do `ok`.** Quando o plano tem tarefa de implementar, configurar ou teste (ou sem tipo), um agente sonnet que nunca viu a conversa lê o design e o plano como o executor haiku vai ler e aponta onde o texto deixa uma decisão para quem implementa, com passo vago ou critério que não roda. Achado bloqueante ou maior se corrige no plano antes do `ok`, e achado que muda uma decisão do design para o fluxo e sobe ao usuário. O briefing está em `skills/plano/references/leitor-cego.md`.
+- **O `depurar` ganha um diagnóstico cego na Fase 3.** No começo da fase, um agente recebe só o sintoma e o repro, nunca a hipótese da sessão, e devolve de 1 a 3 causas com `arquivo:linha` e uma checagem para cada. A sessão escreve as próprias hipóteses enquanto ele roda. Se os dois discordam, decide uma checagem cujo resultado muda conforme a causa real, e não a releitura do código. Os dois briefings começam pela linha `Contexto: cego`, e com ela o hook que anexa memória de outras sessões e glossário ao prompt de subagente fica calado. O subagente `depurador` não tem a ferramenta Agent, então quem o despacha roda esse diagnóstico em paralelo, só com o sintoma e o repro que o usuário descreveu.
+
+## 2.5.2 — 2026-11-07
+
+- **README em inglês.** O `README.en.md` é uma tradução fiel do README desta versão, congelada: ela não acompanha as entregas, e a versão canônica continua sendo a em português. O `README.md` ganhou o link para ela logo depois dos badges.
+
+## 2.5.1 — 2026-11-07
+
+- **A branch `fluxo/<slug>` com o slug datado passa pela portaria (#645).** Seguir a receita da regra 11 com o slug do `brainstorm` (`2026-11-03-tema`) criava a branch `fluxo/2026-11-03-tema`, e a portaria recusava todo despacho por não reconhecer o fluxo. Agora as duas formas valem, com e sem a data, também para tarefa paralela (`-t<n>`) e para o caminho leve.
+- **`/saude` volta a dizer de quem é a branch em `fluxo/<slug>`.** O aviso "ESTA branch tem dono" só disparava em branch sem o prefixo `fluxo/`, que não é a convenção. O casamento slug × branch agora é uma função só, a mesma da portaria.
+- **`enxugar` mede os componentes React (#648).** `const Foo: React.FC<P> = (...) => {`, `React.memo(function ...)` e `forwardRef<T>((...) => ...)` entram no catálogo de funções, então aparecem no `complexas` e na duplicata semântica; o aviso de duplicata na edição também os vê.
+- **Leitura da complexidade mais certa.** Regex logo depois do `if (...)`, `{page}/{pages}` em texto JSX e `if` sem chave nem `;` deixam de distorcer a nota; método que engole o vizinho sai como "não medido" em vez de nota errada; e `const total = (a + b) * c` e sobrecarga TS sem `;` não aparecem mais como "leitura errada".
+
+## 2.5.0 — 2026-11-06
+
+- **`enxugar` diz quais funções são as mais confusas.** No modo repo inteiro, depois dos maiores arquivos, o subcomando novo `catalogo-funcoes.cjs complexas` lista as funções JS/TS e Dart de maior complexidade cognitiva (aninhamento pesa mais que ramos em fila), com a ciclomática ao lado e as três linhas que mais pesaram na nota. A medida é aproximada, feita por leitura de texto e sem parser, e a saída diz o que não mediu (Python e ADVPL, ou corpo que não fechou). É contexto para escolher o que ler primeiro, não achado.
+
+## 2.4.0 — 2026-11-06
+
+- **`auditor-de-seguranca` ganha a Régua 4 — LGPD.** Quando o código trata dado pessoal, o auditor procura, por função e em qualquer stack, nove tipos de problema que se veem no código: dado pessoal em log, coleta além do necessário, falta de exportar/corrigir/excluir/revogar, exclusão incompleta, retenção sem prazo, envio a terceiro, dado sensível sem proteção, consentimento pré-marcado ou genérico, e menores. Cada achado cita o artigo de uma tabela fixa dentro do agente (LGPD, ANPD, Marco Civil, ECA Digital); o que não está na tabela sai "sem citação", nunca com artigo de memória. Documento jurídico não é avaliado.
+- **`enxugar` acha duplicata de nome diferente.** No modo repo inteiro, a passada de duplicata semântica cataloga as funções com o script novo `scripts/catalogo-funcoes.cjs` (JS/TS, Dart, Python, ADVPL, métodos inclusive), agrupa por domínio com um agente haiku, compara cada grupo com um sonnet e só aceita o grupo cujas funções existem no catálogo naquele `arquivo:linha`. O modo abre listando os maiores arquivos do repo.
+
+## 2.3.2 — 2026-11-03
+
+- **`/conta`: login guardado que sobrou não trava mais a troca.** Com a pasta em casa, um `estacionado-<pasta>.json` que ficou para trás fazia toda troca falhar com `saida_ocupada`, até alguém renomear o arquivo à mão. Agora ele é arquivado na rodada seguinte do vigia ou na própria troca, seja qual for o caminho que o deixou lá.
+- **Revisor de fluxo em outro repositório grava o veredito.** Com a sessão num repositório e o fluxo em outro, o briefing do revisor leva `Repo: <caminho absoluto>` ao lado de `Slug:`, e o veredito cai no estado certo, sem comando manual. A marca `[preexistente]` é conferida no diff desse fluxo. Sem a linha, nada muda, e a recusa do `marcar revisar` agora ensina a usá-la.
+- **`/saude` não chama mais de vivo o vigia desabilitado.** Tarefa desabilitada tem próxima execução preenchida no Agendador do Windows, então o checador dizia "todas com próxima execução" com as quatro paradas. Agora sai um aviso com os nomes e o remédio, lembrando que o backup externo depende do `sentinela-foco`.
+
+## 2.3.1 — 2026-10-30
+
+- **Workflows sem o aviso de Node 20.** `actions/checkout@v7`, `actions/setup-node@v7` e `actions/setup-python@v7` no `baterias.yml` e no `release.yml`. As versões anteriores (`@v4`, e `@v5` no setup-python) miravam Node 20, e todo run terminava avisando que o GitHub as forçava a rodar em Node 24. Nada muda para quem usa o plugin.
+
+Desenho em `docs/rainforest/design/2026-10-30-actions-node24.md`.
+
+## 2.3.0 — 2026-10-30
+
+- **Release do GitHub sai sozinha a cada versão nova.** O push do bump do `plugin.json` à `main` dispara `.github/workflows/release.yml`, que chama `scripts/release-da-versao.cjs` e publica `v<versão>` com a seção daquela versão no `CHANGELOG.md` como notas. Release que já existe não é tocada; versão sem seção no CHANGELOG deixa o run vermelho sem criar nada. Até a 2.2.1 o GitHub ficou em `v1.0.0`, porque a release dependia de alguém lembrar; a `v2.2.2` foi publicada à mão com as notas da linha 2.x, e as versões 1.x seguem só no `CHANGELOG.md`.
+- **Bateria `testa-release-da-versao.sh`.** Roda o script contra um `gh` de mentira: cria a release que falta, não toca a que existe, recusa versão sem seção e não deixa a seção seguinte vazar para as notas.
+- `CONTRIBUTING.md`, `skills/fechar/SKILL.md` e o README (em "Instalação") passam a dizer que tag e release não são passo de ninguém.
+
+Desenho em `docs/rainforest/design/2026-10-30-release-automatica.md`.
+
+## 2.2.2 — 2026-10-30
+
+- **Folga no teto de 16 KB de quatro skills.** `regua`, `executar`, `fechar` e `plano` estavam a 2–14 bytes do limite que `testa-teto-skills.sh` impõe, e qualquer correção nelas reprovava. Cada uma moveu um bloco autocontido, sem reescrever, para `references/` da própria skill, deixando uma linha de ponteiro no lugar; a instrução que a skill dá não muda. Folga agora: `regua` 2.756 B, `executar` 1.641 B, `fechar` 1.502 B, `plano` 1.019 B.
+  - `skills/regua/references/o-que-falsificaria.md` — a seção "O que falsificaria esta skill".
+  - `skills/executar/references/catraca-de-mutacao.md` — a tabela de saídas da catraca e o que fazer com cada exit.
+  - `skills/fechar/references/concluido.md` — como conferir de fora, depois do fluxo, se um trabalho terminou.
+  - `skills/plano/references/incidente-pronto-quando.md` — o incidente de 2026-08-19 que originou a seção sobre `pronto quando:`.
+
+Desenho em `docs/rainforest/design/2026-10-30-folga-no-teto-das-skills.md`.
+
+## 2.2.1 — 2026-10-29
+
+- **`testa-rodar-longo.sh` deixa de ficar vermelha por reuso de PID (#632).** A checagem final achava vivo um PID registrado que, na verdade, tinha sido herdado por outro processo de vida curta, e ainda chamava `process.kill` nele. A hipótese da Issue (o filho do vigia morto sobrevivendo) não se confirmou: medido sob carga, 3 de 36 execuções acusaram vivo o vigia ou o comando de casos que tinham terminado havia mais de 10 s, e o processo já não existia um segundo depois. A bateria agora põe uma marca única em todo comando que sobe e só mata o processo vivo cuja linha de comando traz essa marca. PID vivo sem a marca é ignorado; se a consulta da linha de comando não responder, o PID conta como vivo (vermelho) mas não é morto. Três casos de controle provam que a checagem reconhece o processo da bateria, ignora o alheio e que o laço final usa essa checagem. Desenho em `docs/rainforest/design/2026-10-29-rodar-longo-flaky.md`.
+
+## 2.2.0 — 2026-10-29
+
+- **Carimbo de tarefa com hash que não existe é recusado.** O `estado.cjs marcar --json {"carimbos":…}` passa a conferir, dentro de um repositório git, que o `hash_base` é um commit dele, e sai 2 quando não é. Um carimbo gravado com hash digitado (`d0000000`) passava, e o carimbo existe justamente para retomar de uma base real. Fora de repositório git nada muda.
+- **Bateria `testa-exemplos-prescritos.cjs`.** Roda cada `gh issue`/`gh pr` de escrita que uma skill, comando ou agente manda usar pelo `gate-fechar-issue`, e falha se o gate barrar uma prescrição. Na primeira execução achou o passo 1 do `fechar` mandando `gh pr create` sem `--body-file`, que o gate barra; o texto passou a `gh pr create --title "<título>" --body-file <arquivo>`.
+- **Regra 6: repo alheio com sessão dona viva.** Achado em repo de outro dono vai como pedido por `SendMessage` só à sessão dona, quando ela está viva; Issue fica para quando não há dona viva ou ela pede. Dúvida sobre qual sessão é a dona sobe ao coordenador, sem mensagem a várias nem de cortesia, e aviso que cita design se responde depois de ler a seção de responsabilidades dele.
+- **Skill `plano`: critério sobre arquivo que outras sessões escrevem** (`ideias.jsonl`, `sessoes.json`, banco de memória) entra pelos ids que a tarefa toca, nunca por contagem global.
+
+Desenho em `docs/rainforest/design/2026-10-29-colheita-coordenacao-e-gates.md`.
+
+## 2.1.3 — 2026-10-29
+
+- **`aviso-fluxo` deixa passar o arquivo que o git ignora (#623).** Na branch padrão sem fluxo, o Edit de um launcher local listado no `.gitignore` era barrado, e a edição acabava indo pelo shell, que o hook não vê. Arquivo ignorado não entra em commit nem em PR, então agora passa. Arquivo rastreado continua barrado mesmo quando casa com um padrão do `.gitignore`, e erro do `git check-ignore` também barra. Desenho em `docs/rainforest/design/2026-10-29-aviso-fluxo-gitignored.md`.
+
+## 2.1.2 — 2026-10-29
+
+- **`gate-pergunta-memoria` deixa de consultar o banco de observações.** Medido nos transcritos das duas contas desde a 2.1.0: os 11 bloqueios distintos do canal do banco eram falso positivo. Um termo raro em comum (o código de uma rotina, o nome de um cliente) bastava para casar um resumo de sessão que não respondia a pergunta. Exigir 3 termos em comum, como nos arquivos, ainda deixava 4 de 11, todos falsos. O gate agora confere só os arquivos de memória do repositório principal, que têm nome e descrição escritos à mão. A opção `soProjeto` da 2.1.1, que só o banco usava, saiu junto. Desenho em `docs/rainforest/design/2026-10-29-gate-memoria-sem-banco.md`.
+
+## 2.1.1 — 2026-10-29
+
+Correções nas travas da 2.1.0 e na catraca, colhidas do que a revisão e o uso deixaram plantado. Nenhuma trava nova. Desenho em `docs/rainforest/design/2026-10-29-colheita-pos-2-1-0.md`.
+
+- **`gate-pergunta-memoria` reconhece mais formas de `Q<n>` (D2).** Cabeçalho (`## Q1 —`), item numerado (`1. **Q1**`) e os bullets `•` e `+` agora são conferidos; antes a pergunta nessas formas subia sem conferência. `Q<n>` no meio da linha continua fora.
+- **`gate-pergunta-memoria` não perde a observação do projeto atual (D3).** O filtro de projeto entrou na consulta ao banco, antes do corte de 50 linhas; antes, observações de outros projetos mais parecidas com a pergunta escondiam a do projeto atual. O hook de prompt, que mostra outros projetos de propósito, não muda.
+- **`executar ok` roda a cobertura do plano (D4).** Emenda de plano feita durante o executar que deixa um bloco ilegível agora recusa o `ok`, em vez de aparecer só no `verificar`.
+- **Catraca: pasta temporária não gravável é ambiente (D5).** `conferir-mutacao.cjs` confere a pasta temporária antes do baseline e sai `nao-verificavel` (exit 69), em vez de quebrar no meio e parecer vermelho.
+
+## 2.1.0 — 2026-10-28
+
+Três travas saídas das 120 observações de outubro, que se concentravam em três erros repetidos apesar da regra escrita. Desenho em `docs/rainforest/design/2026-10-28-colheita-observacoes.md`.
+
+- **Portaria barra quem escreve sem fluxo (D3).** Todo despacho com `isolation: "worktree"` (o `general-purpose` incluído, que está declarado como leitor) e todo agente fora do manifesto com tool de escrita ou sem linha `tools:` são barrados em repo com fluxo quando a branch da sessão não tem estágio aberto nem `leve`. Sem `isolation` e com o arquivo do agente ilegível, segue passando. O revisor e o planejador, despachados sem `isolation`, não mudam. Agente sem linha `tools:` só fica dispensado do `isolation` (regra 11) em repositório sem trilho de fluxo; com trilho a regra 11 o barra, e `name` é barrado sempre.
+- **`gate-turno-prometido` pega o pedido de licença (D4).** Com `executar-autonomo` ligada e o fluxo entre design aprovado e `fechar`, o turno que termina em "sigo?" sem `Q<n>` é barrado uma vez, também com fecho em negrito, emoji ou parêntese.
+- **`gate-pergunta-memoria`, novo (D6).** Turno com `Q<n>` no começo da linha (emoji e negrito antes valem, recap em prosa não) que a memória do repositório principal (nome e descrição dos arquivos) ou o banco do `memoria.cjs` (só o projeto atual) já responde é barrado uma vez, sem contar o vocabulário comum do projeto, com o arquivo e a descrição, e com as sessões vivas de outros repositórios. Vale também em sessão aberta num worktree. Chave `gate-pergunta-memoria`.
+
+## 2.0.7 — 2026-10-28
+
+Limpeza miúda.
+
+- **`ideias.cjs` recusa acentuação corrompida.** Texto UTF-8 lido como ANSI no caminho (`Get-Content` do PowerShell) virava acento quebrado no livro e só aparecia ao listar. `plantar` e `editar` agora recusam a entrada com o campo e o trecho, e dizem para mandar o arquivo por `< arquivo.json` no Bash. `NÃO` e `AÇÃO` legítimos passam.
+- **`skill-observations/` e `.claude/tmp-portoes-codex-*/` fora do git.** São saída do task-observer e das provas de portão do Codex, de outro dono; não aparecem mais no `git status`.
+
+## 2.0.6 — 2026-10-28
+
+Seis defeitos do próprio fluxo, em sete Issues (a #610 duplica a #613), vistos em uso real entre 26 e 28/10 (#613, #610, #616, #614, #612, #606, #609). Desenho em `docs/rainforest/design/2026-10-28-lote-b.md`.
+
+- **Tarefa paralela fora de repo (#613, #610, D2).** A branch `fluxo/<slug>-t<n>` (só dígitos depois do `-t`) casa com o fluxo `<slug>`, então cada tarefa paralela pode ter o seu worktree criado à mão. O casamento exato vence, e `fluxo/outro-t1` continua recusado.
+- **`esperar-ci` espera o run do PR existir (#616, D3).** Logo depois do `gh pr create`, o GitHub ainda não registrou o CI, e o `esperar-ci` saía 5 (vermelho que não existe). Agora sonda até 300 s (`RFM_CI_PRAZO_REGISTRO_S`) antes do `--watch`. O repo sem CI de PR (exit 8) não espera.
+- **Gate de fechamento de Issue consulta a Issue no repo dela (#614, D4).** `Closes owner/repo#N` e `Closes https://github.com/owner/repo/issues/N` são conferidos no repo citado, não no do comando. A palavra-chave falsa em português também é pega na forma `owner/repo#N`.
+- **Teto de despachos proporcional ao plano (#612, D5).** Sem `teto-despachos:`, o teto é `max(40, 1,5 × tarefas)`, e 65 num plano de 43 tarefas. A negação diz que a conta é cumulativa por fluxo e quantas tarefas o plano tem. A `cobertura` avisa quando o teto declarado é menor que o número de tarefas.
+- **Catraca mede o baseline uma vez por bateria (#606, D6).** No `conferir-fluxo mutacoes`, tarefas com a mesma bateria, `raiz:` e `timeout:` repassam o baseline em vez de medi-lo de novo. `no-lugar: sim` mede a cada tarefa, como antes.
+- **Catraca sobe monorepo com `raiz:` (#609, D7).** A cópia temporária é do repositório inteiro, e a bateria roda na pasta da `raiz:`. Import para pasta irmã (`../lib/x.js`) passa a resolver sem `no-lugar: sim`.
+- **Três asserções do `testa-publicar-branch.sh` deixam de ser tautológicas.** O `$(...)` na mensagem do `afirma` zerava o `$?` do teste.
+
+## 2.0.5 — 2026-10-27
+
+Fim dos falsos alarmes de três ferramentas do fluxo (#608, #592, #594, #587, #591). Desenho em `docs/rainforest/design/2026-10-27-ferramentas-do-fluxo.md`.
+
+- **`/saude` com repositório raso (#608, D2).** Clone raso do marketplace, ou checkout raso de onde o `/saude` roda, não acusa mais "sem parentesco" nem manda `reset --hard`: em dia ou atrás, conta o atraso; com commit que o outro lado não tem, dá aviso. Skill faltando continua ALERTA.
+- **`/saude` ignora config dirs que não são conta (#608, D3).** `*bench*` e `*.aposentada` saem da comparação de plugin instalado, versões, skills e autocompact. A chave `saude-ignorar-config-dirs` troca os padrões; `[]` não ignora nenhuma.
+- **`esperar-ci` não lê queda de rede como CI vermelho (#587, D4).** Quando o `--watch` cai, os checks são relidos: vermelho sai 5; releitura que falha sai 69 com `nao-verificavel:`; só pendente sai 69.
+- **"Sem CI de PR" pelos workflows do checkout (#591, D5).** O exit 8 só sai se nenhum workflow da branch alcança o PR. `push` com `branches-ignore` ou glob de branch conta como CI de PR.
+- **Gate de fechamento de Issue consulta o repo certo (#594, D6).** A evidência é lida no repo do `--repo`/`-R` ou da URL do `gh pr merge`; erro de leitura bloqueia com mensagem própria, distinta de "sem evidência".
+- **`/feedback` prescreve `Segue #<n>:` (#592, D7)**, que o gate aceita, no lugar do `CORRIGE #<n>:` que ele barrava.
+
+## 2.0.4 — 2026-10-26
+
+Conserto do `hooks/gate-worktree.cjs` para subagente despachado em worktree (#573, #580, #582, #583). A janela principal e o PowerShell não mudam. Desenho em `docs/rainforest/design/2026-10-24-gate-worktree.md`.
+
+- **Caminho que começa com expansão barra em todo ramo da rede (#580, D1).** Antes, só o destino de redirecionamento de um comando de leitura barrava por começar com variável; `touch "$CLAUDE_PROJECT_DIR/f"`, `true | true; echo x > "$X/f"` e `echo "$(date)" > "$X/f"` passavam. Agora barram, em qualquer ramo: o destino de redirecionamento e o alvo dos escritores `touch`, `cp`, `mv`, `tee`, `mkdir`, `rm`, `ln`, `install`, `sed -i` e o `of=` do `dd`, inclusive dentro de `$(...)`, crase e `bash -c`, num agrupamento `( … )`/`{ …; }` e com o alvo na linha de baixo de uma continuação (`cp -r \` + quebra). No `mv` contam também as origens, que ele remove, e no `cp`/`mv`/`ln`/`install` o `-t` colado (`-t"$X"`) ou combinado (`-vt "$X"`). Conta a palavra que **começa** com `$NOME`, `${...}`, `$(...)` ou crase; expansão depois de prefixo literal (`out-$(date).json`, `./dist/$NOME.js`) não conta, e `$HOME/...` segue como a casa. O gate não resolve o valor de nenhuma variável: a saída é escrever o caminho literal ou gravar com a ferramenta Write.
+- **Vizinhos que mudam de veredito (D2).** `D=<fora>; touch "$D/f"` e `D=<fora>; cp a.txt "$D/f"` passam a barrar, como já barrava `echo x > "$D/f"`. Argumento de comando fora da lista de escritores (`node x.cjs --raiz "$(git rev-parse --show-toplevel)"`) segue sem julgamento.
+- **#582 fechada por regressão, sem mudar veredito (D3).** Os três comandos da Issue entram na bateria; `node <principal>/scripts/x.cjs` continua barrado, porque roda código do checkout principal.
+- **Comando dinâmico com o cwd no worktree diz o worktree (#583, D4).** `source`, `.` e `eval` seguem barrando, mas a mensagem nomeia o comando dinâmico e não diz mais "diretorio de trabalho principal" quando o agente está no worktree.
+- **A mensagem do `cd -` nomeia a causa que está na linha (#573, D5).** No lugar da lista fixa (`$(`, `bash -c`, `source`), ela lista só o que a linha tem; e o bloqueio da camada de git numa linha com `cd -` (`cd - && git commit -m "$(date)"`) acrescenta a mesma saída: trocar o `cd -` pelo caminho absoluto. `cd -` citado na mensagem do commit, entre aspas ou num heredoc de delimitador entre aspas (`<<'EOF'`), não conta; no heredoc sem aspas (`<<EOF`) o corpo pode expandir, e a dica segue aparecendo.
+
+## 2.0.3 — 2026-10-26
+
+- **A catraca de mutação lê o placar do vitest** (#602). Bateria vitest com baseline frio (~40 s de transform e jsdom) e pós-mutação com cache quente (~3 s) caía na razão de tempo do corte de shell e saía `pulada (suspeita de corte de shell)`, travando o `marcar verificar ok`, mesmo com o vermelho legítimo impresso. Agora `Tests  1 failed | 14 passed (15)` é placar: o vermelho do vitest prova que a bateria mediu e sai `vermelho`.
+- **A linha `Tests` é lida por segmento.** `Tests  1 failed (1)`, impresso quando a mutação derruba todos os testes, conta como placar; com uma regex que exigisse `passed`, ele viraria colapso (exit 6). Várias linhas `Tests` (mais de um comando vitest na bateria) se somam; `Test Files` conta arquivos e fica de fora; `Tests  no tests` (import quebrado) continua sendo colapso. Só o vitest entrou: Jest e pytest ficam para quando aparecer um caso medido.
+- **Aquecimento antes do baseline ficou de fora.** Uma rodada descartada antes do baseline cronometrado custaria uma bateria a mais em toda mutação; ficou plantada como ideia, para a próxima bateria sem placar reconhecido que caia em corte de shell por cache frio. Desenho em `docs/rainforest/design/2026-10-26-placar-vitest.md`.
+
+## 2.0.1 — 2026-10-26
+
+- **A skill `rainforest-mind` diz o papel novo.** O parágrafo de abertura do `SKILL.md` dizia que o papel do assistente é ser memória de trabalho externa e radar de escopo; agora diz apoio ao desenvolvimento e, com `foco: true`, também memória de trabalho externa e radar de escopo (`skills/rainforest-mind/SKILL.md:11` na 2.0.0). A abertura da sessão e o núcleo das regras não mudam.
+- **Ponte gerada com a 2.0.0 continua valendo.** O hash no marcador muda, porque é do `SKILL.md` inteiro, mas o `conferir-ponte` compara o conteúdo antes do hash e a ponte não carrega o parágrafo que mudou: o CLAUDE.md, o AGENTS.md e o GEMINI.md gerados com a 2.0.0 seguem `CONFERIDO`, sem regenerar. Desenho em `docs/rainforest/design/2026-10-26-papel-da-skill.md`.
+
+## 2.0.0 — 2026-10-25
+
+### O que quebra
+
+- **O foco nasce desligado.** A abertura da sessão deixa de trazer o foco declarado, o radar de escopo, o guarda-corpo de jornada e o radar multi-janela (regras 3, 8 e 17). Quem usa o foco liga uma vez: `node scripts/setup.cjs --ligar foco` (ou `--escopo projeto` para um repo só), o grupo "foco" do `/setup`, ou `"foco": true` no `config.json` da pasta de dados. Com a chave ligada, a abertura, o mod e a statusline saem como na 1.80.1; a ponte não: ela sai sempre sem as regras de foco (D7).
+
+O plugin passa a se apresentar como apoio ao desenvolvimento: o README abre pelo fluxo, pela revisão com veredito e pela memória de código, e o foco ganha a seção "Foco e memória de trabalho (opcional)". Desenho e decisões D1 a D11 em `docs/rainforest/design/2026-10-25-versao-2-0-0.md`.
+
+- **Chave `foco`, padrão `false` (D2).** Entra no catálogo junto de `vigias` (`hooks/lib/config.cjs:175` na 1.80.1) e é lida por `focoLigado()`, não por `ligado()`, que devolve `true` em erro: config ilegível conta como desligado. Linha nova na tabela de chaves do `/setup`.
+- **Abertura sem foco (D3).** Com a chave desligada saem a seção `## Foco declarado`, os compromissos com prazo, o ponteiro da estratégia, o bloco das outras sessões, o veredito de tempo pessoal e a linha "Arquivos de apoio"; o cabeçalho troca "memória de trabalho externa e radar de escopo" por "apoio ao desenvolvimento" e a legenda diz "apoio ao desenvolvimento" (`hooks/lib/contexto-sessao.cjs:1138` e `:1639` na 1.80.1). O orçamento que sobra não é redistribuído.
+- **Núcleo sem as regras 3, 8 e 17, sem renumerar (D4).** `semRegrasDeFoco` filtra as três antes de `extrairNucleo` (`hooks/lib/contexto-sessao.cjs:228` na 1.80.1), e uma linha diz como ligá-las; no destino mod, a 17 sai das elaborações inteiras (`hooks/foco-session-start.cjs:49` na 1.80.1).
+- **O que segue rodando (D5).** O heartbeat e o `sessoes.json`, de que a trava de checkout co-locado depende, a semeadura do `FOCO.md`, que marca a pasta de dados, e as CLIs `foco.cjs` e `jornada.cjs` à mão. Nada disso mudou.
+- **Relógio do mod e statusline seguem a chave (D6).** Sem o foco, o mod não arma o relógio da jornada nem o das janelas e não injeta a nota da regra 8 (`hooks/mod.tsx:620` na 1.80.1), e a statusline não mostra prazo nem jornada (`statusline/statusline.py:6` na 1.80.1). A statusline lê a chave com a mesma cadeia do `config.cjs`: o config do projeto, no checkout principal, vence o da pasta de dados.
+- **Ponte sem as regras de foco (D7).** O CLAUDE.md, o AGENTS.md e o GEMINI.md gerados para outro repositório saem sempre sem as regras 3, 8 e 17 e sem citar o `foco.cjs` (`scripts/ponte.cjs:110` e `scripts/conferir-ponte.cjs:189` na 1.80.1); uma ponte gerada antes sai como desatualizada no `conferir-ponte`.
+- **`/foco`, `/ideia`, setup e vigia (D8).** O `/foco` grava o foco como antes e, com a chave desligada, avisa em uma linha como ligá-la (verbo novo `node scripts/foco.cjs aviso`). O `/ideia` avalia contra o repositório e o fluxo aberto quando o foco está desligado (`commands/ideia.md:46-49` na 1.80.1). O grupo "foco" do `/setup` pergunta primeiro se liga o foco (`skills/setup/SKILL.md:90` na 1.80.1), e a ronda `sentinela-foco` só roda com `vigias` e `foco` ligados (`vigias/run-vigia.ps1:36-53` na 1.80.1).
+
+## 1.80.1 — 2026-10-25
+
+- **Editar pela junction com o cwd dentro dela não se acusa mais.** O conserto do 8.3 na 1.80.0 resolvia o cwd para achar o nome da junction rastreada. Com o cwd dentro da própria junction (`<repo>/jn`), resolver o cwd caía no alvo, e o `aviso-duplicata` acusava o arquivo editado como duplicata de `jn/x.cjs`; com o cwd em 8.3 e dentro da junction ao mesmo tempo, nem o nome sem resolver da 1.79.0 casava. O nome da junction agora sai subindo do arquivo até o ancestral cujo caminho real é o do toplevel do git, e o que fica abaixo dele não se resolve (`relativoAoTopo` em `hooks/aviso-duplicata.cjs`). `testa-caminho-real.sh` ganha os casos do cwd dentro da junction, com e sem 8.3.
+
+## 1.80.0 — 2026-10-25
+
+Sexto e último lote da rodada apoio ao dev, tema ferramentas do fluxo. Desenho e decisões D1 a D11 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-6.md`.
+
+- **Achado preexistente não reprova a entrega (D3).** O revisor pode marcar `[preexistente]` junto da severidade num defeito que já estava na base do diff. Esse achado não conta para o bloqueio: `VEREDITO: ok` com `[alta] [preexistente]` é coerente, e o `critica-do-revisor` o tira da crítica do executor e o lista à parte, no stderr, sob `## Preexistentes`. A marca é conferida por máquina. Se a linha citada está num trecho que o diff alterou (`git diff <merge-base>..HEAD`), a marca é recusada e o achado volta a contar. Antes, um `[alta]` numa linha que a entrega não tocou obrigava a reprovar (`hooks/veredito-revisor.cjs:242` na 1.79.0), e a crítica mandava o executor corrigir fora do `arquivos:`.
+- **Comparação de voltas só para o revisor (D10).** O bloco `## Comparação com a volta anterior` sai do stdout padrão do `critica-do-revisor`, que vai para o briefing do executor, e passa a sair com `--comparacao`, para o briefing do revisor da volta seguinte (`scripts/critica-do-revisor.cjs:167-169` na 1.79.0).
+- **O relato do executor tem fim declarado (D4).** O executor despachado dentro de fluxo (briefing com `Slug:`) termina com `ENTREGA: completa` ou `ENTREGA: parcial`. Sem essa linha, o hook novo `hooks/relato-executor.cjs`, no `SubagentStop`, devolve a vez uma vez. Ele não grava nada e desliga pela chave `contrato-relato-executor`. Antes, o `SubagentStop` só olhava o revisor (`hooks/veredito-revisor.cjs:198-199` na 1.79.0), e um relato cortado antes dos itens NÃO FEITO entrava como completo.
+- **A âncora "testada" confere o teste (D5).** No `conferir-ancoras`, `Teste:` cujo arquivo não existe sai `teste-ausente`, e arquivo que não cita `R<n>` como palavra inteira sai `teste-sem-id`. `Verificada em:` com sha que não resolve no repo mapeado ganha a linha `sha-desconhecido`. Os três são aviso. Antes, qualquer `Teste:` não vazio saía `testada` (`scripts/conferir-ancoras.cjs:305-307` na 1.79.0). Um parágrafo em negrito entre o marcador da regra e os campos dela volta a ser corpo da regra: a 1.79.0 mudava o exit desse caso.
+- **A cobertura avisa acoplamento por `require` (D6).** Quando, na mesma camada, um arquivo de uma tarefa faz `require` ou `import` de um arquivo de outra, a cobertura avisa e manda declarar `depende de:` se o export muda. Contam as formas relativas e `require(path.join(__dirname, ...))` com todos os argumentos literais. O comando `camadas` devolve o par em `acoplamentos`. Antes, só arquivos em comum eram vistos (`scripts/lib/camadas.cjs:100-116` na 1.79.0).
+- **A consolidação não pula calada (D7).** O pedaço em que o LLM falha é contado: a manutenção grava `consolidar: fim (N pedaço(s) pulado(s))` e termina em `completa com falhas`, que a abertura já mostra. O pedaço de observações longas é cortado por observação antes do LLM, em vez de falhar toda rodada. Antes, o pulo era só um `console.log` de um processo com saída descartada (`scripts/memoria.cjs:1802-1805` e `:2472-2479` na 1.79.0). O `observar` passa a contar só as fatias processadas quando o orçamento corta (`scripts/observar.cjs:650-652` na 1.79.0).
+- **O Write tem linha de base no gate de publicação (D8).** Ao reescrever um arquivo que já existe, o gate compara com o conteúdo atual do disco e só barra a linha sensível nova, como o Edit já fazia. Antes, reescrever por Write um arquivo que já tinha a linha na main barrava (`hooks/gate-publicacao-destino.cjs:749-751` na 1.79.0).
+- **O caso da junction roda de verdade (D10).** O caso da junction de `testa-caminho-real.sh` nunca tinha rodado. A bateria exporta `MSYS_NO_PATHCONV=1`, e o `cmd //c mklink` recebia `//c` literal e abria o cmd interativo, que saía sem criar a junction ou travava esperando a entrada. Com `cmd /c ... </dev/null`, a junction é criada e o caso passa a provar o segundo nome do `aviso-duplicata`. Rodando, ele achou um defeito no CI: com o cwd em nome curto 8.3 (`RUNNER~1`) e o toplevel longo do git, o segundo nome saía errado e o arquivo editado pela junction se acusava como duplicata. O segundo nome agora resolve só o cwd (`hooks/aviso-duplicata.cjs`), e a bateria ganha o caso da junction com cwd 8.3. O resumo da bateria também conta os pulados.
+
+## 1.79.0 — 2026-10-25
+
+Quinto lote da rodada apoio ao dev, tema harness. Desenho e decisões D1 a D8 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-5.md`.
+
+- **Placar legível na catraca de mutação (D3, fecha #589).** `extrairPlacar` lê `falha(s)`, `falhas` e `falha` em qualquer caixa, com ou sem vírgula, a forma `ok=N falhou=M` e o placar do `cargo test` (`test result: ... N passed; M failed`, somado entre os binários); com mais de um placar, vale o último por posição. Antes, só `ok: N falhou: M` e `N ok, M falhou` eram lidos (`scripts/conferir-mutacao.cjs:753` na 1.78.0): nas 88 baterias que terminam em `falha(s)` a guarda do colapso não valia, e num projeto Rust a mutação legítima saía `pulada (suspeita de corte de shell)` e travava o `verificar`. O `conferir-prova` deixa de ter leitor próprio. Efeito: bateria que imprime placar nessas formas e morre antes dele na pós-mutação passa a sair colapso (exit 6); as mutações dos lotes 2 a 4 seguem vermelhas.
+- **Voltas de revisão guardadas e comparadas (D4).** O `exigir revisar` guarda a janela anterior em `revisar.voltas` antes de zerar, e o `critica-do-revisor` acrescenta à crítica `## Comparação com a volta anterior`, com cada achado marcado `novo`, `persiste (mesmo arquivo)` ou `sumiu — confirmar se foi corrigido`. A chave é o arquivo, sem a linha. Antes, a crítica da volta anterior sumia do estado (`scripts/estado.cjs:2953` na 1.78.0).
+- **Orçamento medido sem o radar da máquina (D5).** O caso 11 de `testa-auditor-de-seguranca` roda o `orcamento.cjs` com `RFM_ROOT` numa caixa vazia. Antes, ele media a abertura real com as sessões abertas e oscilava acima do teto na varredura local (`scripts/testa-auditor-de-seguranca.sh:285` na 1.78.0).
+- **Caminho real único nos hooks de aviso (D6).** `hooks/lib/caminho-real.cjs` substitui as duas cópias (`hooks/aviso-duplicata.cjs:133` e `hooks/aviso-fluxo.cjs:62` na 1.78.0), e o `aviso-duplicata` reconhece o próprio arquivo também pelo caminho sem resolver. A bateria `testa-caminho-real.sh` força o nome curto 8.3 do Windows, que só tinha aparecido no CI.
+- **Travas que faltaram (D7).** Parágrafo em negrito sem id depois de uma regra `R<n>` sai `sem-id` em vez de virar corpo dela (`scripts/conferir-ancoras.cjs:270` na 1.78.0); e ganham caso a renomeação no `baterias-do-diff`, o payload sem definição que não sobe `git` no `aviso-duplicata` e o `--limite -1` com mais de 50 casamentos no `buscar --texto`. A guarda da raiz real em `testa-backup-gravar`, `testa-memoria-degradacao` e `testa-memoria-migracao-atomica` deixa fora da comparação o `-shm`, o `-wal` e o `-journal` do SQLite. Esses arquivos somem quando outra sessão fecha o banco real, e a guarda acusava a bateria de tê-los apagado.
+
+## 1.78.0 — 2026-10-25
+
+Quarto lote da rodada apoio ao dev, tema memória. Desenho e decisões D1 a D6 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-4.md`.
+
+- **Busca com trecho e proximidade (D3).** `memoria.cjs buscar --texto` mostra o trecho do conteúdo com o termo entre `[` e `]` (`--json` ganha o campo `trecho` e mantém `conteudo`), e reordena os 50 melhores do bm25 pela proximidade dos termos: duas palavras juntas vêm antes das mesmas palavras espalhadas. Com um termo só, a ordem é a do bm25, e `--limite` negativo segue devolvendo todos os casamentos. Antes, a ordem era bm25 puro e a saída cortava os 100 primeiros caracteres, que quase nunca traziam o termo (`scripts/memoria.cjs:961` e `:1127` na 1.77.0).
+- **Resumo invalidado em cascata (D4).** Quando o `reconciliar` supera uma observação já consolidada e a fração de superadas do resumo dela chega a 1/4, o resumo ganha `invalidado_em` e sai da abertura; vale para o `update` e para o `merge`, do lado da sondada e do alvo. O limiar vem do banco real: 38 de 310 resumos têm alguma observação superada, quase sempre 1 de 30. Antes, o resumo continuava servido com o fato velho (`hooks/memoria-session-start.cjs:383-389` na 1.77.0).
+- **Posição servida no uso (D5).** `uso_memoria` grava a posição em que cada memória apareceu no bloco, e o `utilidade --relatorio` ganha a nota média por faixa de posição (1–3, 4–7, 8+), sem mudar a seleção. Antes, a ordem se perdia na pontuação (`scripts/lib/utilidade.cjs:643` na 1.77.0) e o relatório não separava "foi útil" de "estava no topo".
+
+## 1.77.0 — 2026-10-25
+
+Terceiro lote da rodada apoio ao dev, tema entendimento de código. Desenho e decisões D1 a D8 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-3.md`.
+
+- **Baterias pelo diff (D3).** `scripts/baterias-do-diff.cjs --base <ref>` lista as `testa-*` afetadas: a bateria alterada e toda bateria que cita o nome-base de um arquivo alterado. Arquivo que nenhuma bateria cita, ou biblioteca compartilhada, faz a saída terminar com `rodar tudo: <arquivo> — <motivo>` e exit 3; `.md` e arquivo sob `docs/` não geram dúvida, mas listam a bateria que os cita. A leitura do D25 saiu de `conferir-entrega.cjs` para `scripts/lib/baterias-vizinhas.cjs`, e os dois a usam. Antes, a escolha das baterias locais era "cada bateria que a tarefa toca", sem método (`skills/executar/SKILL.md:185`). Em `scripts/baterias-do-diff.cjs`, `scripts/lib/baterias-vizinhas.cjs`, `scripts/conferir-entrega.cjs`, `skills/executar/SKILL.md` e `skills/verificar/SKILL.md`.
+- **Duplicata de definição avisada na edição (D4, D7).** Hook novo `hooks/aviso-duplicata.cjs`, em `PostToolUse` de Write/Edit/MultiEdit: nome de definição de topo (JS/TS, Python, ADVPL/TLPP) que já existe em outro arquivo rastreado vira um aviso com `caminho:linha`, no máximo três. Nunca bloqueia; o nome só vai ao `git grep` depois de casar como identificador, sem shell; orçamento de 3 s e falha aberta. Chave `aviso-duplicata` desliga. A guarda de `hooks/testa-config.sh` passa a aceitar exatamente dois blocos em `PostToolUse`. Antes, nome repetido só aparecia sob demanda e só dentro do plugin (`scripts/conferir-duplicacao.cjs:236`). Em `hooks/aviso-duplicata.cjs`, `hooks/hooks.json`, `hooks/lib/config.cjs` e `skills/setup/SKILL.md`.
+- **Regras implícitas com id, verificação e teste (D5).** Cada regra do mapa da arqueologia abre com `**R<n> — título**` e traz `Verificada em: <sha>` e `Teste: <bateria> | nenhum`. `conferir-ancoras.cjs` imprime `regra R<n> testada|sem-teste|sem-campos` e conta no resumo; `sem-campos` sai 1, `sem-teste` é aviso, e regra no formato antigo sai `sem-id` como aviso. Antes, a regra era parágrafo sem id, sem commit e sem teste (`skills/arqueologia/SKILL.md:193`). Em `scripts/conferir-ancoras.cjs`, `skills/arqueologia/SKILL.md` e `agents/arqueologo.md`.
+- **Co-mudança pelo histórico (D6).** `scripts/co-mudanca.cjs <arquivo>` lista os arquivos que mudaram junto com o alvo nos últimos meses (pelo menos `--min` vezes, score ≥ 0,3), ignorando commit com mais de 20 arquivos, e diz "histórico insuficiente" em vez de lista vazia. A `arqueologia` roda por arquivo da fatia e o `plano` confere o `arquivos:` contra ele. Antes, nada lia pares de arquivos no histórico (`scripts/varrer.cjs:190`). Em `scripts/co-mudanca.cjs`, `skills/arqueologia/SKILL.md` e `skills/plano/SKILL.md`.
+
+## 1.76.0 — 2026-10-24
+
+Segundo lote da rodada apoio ao dev, tema verificação e evidência. Desenho e decisões D1 a D9 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-2.md`.
+
+- **O veredito do revisor tem de casar com os achados (D3).** Cada achado abre com a severidade, `[alta]`, `[media]` ou `[baixa]`, no início do item; `[design]` pode vir junto (na mesma marcação ou em negrito separado, `**[design]** **[alta]**`) e, sozinho, também conta como achado. `VEREDITO: ok` com algum `[alta]` ou `VEREDITO: reprovado` sem achado marcado devolve a vez ao revisor na primeira parada, dizendo a regra e a contagem e pedindo o relato completo de novo (só a última mensagem é avaliada); na segunda, grava `invalido`. O `critica-do-revisor.cjs` usa a mesma contagem para o "reprovado sem achado" (exit 4). Antes, só a última linha era validada (`hooks/veredito-revisor.cjs:56`), e qualquer texto valia como achado (`scripts/critica-do-revisor.cjs:94`). Em `hooks/lib/achados-revisor.cjs`, `hooks/veredito-revisor.cjs`, `scripts/critica-do-revisor.cjs`, `scripts/estado.cjs`, `agents/revisor.md` e `skills/revisar/SKILL.md`.
+- **Prova que não rodou caso nenhum é recusada (D4).** No `marcar --estagio plano`, a prova que sai ≠ 0 na base com placar zerado (`ok: 0 falhou: 0`, `0 ok, 0 falha(s)` e as variantes `falhas`/`falha`) é recusada: o vermelho veio da infraestrutura, não do comportamento ausente. Saída sem placar reconhecível segue aceita. Antes, todo exit ≠ 0 valia e o stdout nunca era lido (`scripts/conferir-prova.cjs:221`). Em `scripts/conferir-prova.cjs`.
+- **`limpar-worktrees` só remove com prova afirmativa (D5).** Antes de remover worktree `limpo` ou `fantasma-travado`, confere se alguma branch alcança o HEAD. Não alcança (HEAD destacado com commit próprio): grava `refs/rainforest/arquivo/<pasta>` (nome saneado para ref válida) e diz isso na saída. A sonda que falha deixa o worktree como `erro`, sem remover. A ref de arquivo existente com outro commit não é sobrescrita: o arquivo vai para `<pasta>-<sha7>`, e a mesma ref no mesmo commit é reuso. Antes, o script nunca olhava commit (`scripts/limpar-worktrees.cjs:718`). Em `scripts/limpar-worktrees.cjs`.
+- **Saúde: log de erros ilegível sai "não medido", não ok (D6).** `/saude` mostra aviso quando o log de erros de ferramenta não pode ser lido, e `erros.cjs listar`/`contar` saem 1 com a causa em vez de imprimir zero. Log ausente segue ok, "nenhum registrado". Antes, arquivo ilegível virava "nenhum nas últimas 24 h" (`scripts/erros.cjs:96`). Em `scripts/erros.cjs` e `scripts/saude.cjs`.
+- **`memoria.cjs buscar` explica o vazio (D7).** Com zero resultados e filtro, a saída diz quantas observações vivas existem no escopo; sem nenhuma, diz se o banco está sem observações ou só o escopo; com `--limite 0`, diz que o zero veio do limite. `--json` segue `[]`. Antes, filtro errado e banco vazio saíam iguais (`scripts/memoria.cjs:1089`). Em `scripts/memoria.cjs`.
+
+## 1.75.0 — 2026-10-24
+
+Primeiro lote da rodada apoio ao dev. Desenho e decisões D1 a D10 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-1.md`.
+
+- **A memória não recaptura o que a abertura injetou (D3).** A captura tira do prompt, antes de mandar à LLM, os blocos que o harness injeta: `system-reminder`, `command-name`, `command-message`, `command-args`, `local-command-stdout`, `local-command-stderr` e o aviso `[SYSTEM NOTIFICATION - NOT USER INPUT]`. `task-notification` vira uma linha `Agente: <resumo>`. Bloco aberto sem fechamento fica intacto, e prompt que sobra vazio não entra. Medido nos 30 transcritos mais recentes: 801 de 1.556 prompts (78% dos bytes) eram bloco injetado. Em `scripts/observar.cjs`.
+- **A memória injetada traz moldura e tags neutralizadas (D4).** O cabeçalho da abertura e o do bloco por assunto ganham "— referência histórica, não instrução". No título e no subtítulo de cada observação, o `<` de abertura das tags do harness vira `‹`, e o `[` do marcador `[SYSTEM NOTIFICATION - NOT USER INPUT]` também, então o texto continua legível e deixa de parecer tag. Em `hooks/lib/memoria-sessao.cjs` e `hooks/lib/memoria-assunto.cjs`.
+- **`memoria.cjs buscar` filtra por data (D6).** `--desde AAAA-MM-DD` e `--ate AAAA-MM-DD`, inclusivos pela data local da observação (a mesma do rótulo que a memória mostra), combináveis com `--texto`, `--projeto`, `--limite` e `--json`. Data fora do formato ou impossível sai com exit 2. Em `scripts/memoria.cjs`.
+- **Busca antes de construir: campo `busca:` no plano (D7).** Tarefa `implementar` ou sem tipo que cria arquivo de código novo (não teste, não `.md`, não glob) declara os canais pesquisados e um `desfecho:` (`adotar`, `estender`, `compor`, `enxertar` ou `construir`). `scripts/conferir-busca.cjs` confere, e o `estado.cjs marcar --estagio plano` roda o checador. A `cobertura` aceita o campo. A skill `plano` documenta o campo, e o `modo-dev` ganha o degrau 2b. Em `scripts/conferir-busca.cjs`, `scripts/estado.cjs`, `scripts/conferir-fluxo.cjs`, `skills/plano/SKILL.md` e `skills/modo-dev/SKILL.md`.
+- **Âncoras da arqueologia conferidas por script (D8).** `scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]` confere cada `arquivo:linha` e `arquivo:N-M` do mapa (o arquivo existe e as linhas cabem nele) e, quando a citação traz símbolo, confere se ele aparece na janela de linhas citada ou nas 80 acima; na forma `arquivo#Simbolo`, em qualquer lugar do arquivo. Âncora citada só pelo nome do arquivo é resolvida por nome único na raiz (`ambiguo` com mais de um candidato), caminho que sai da raiz é `fora-da-raiz` sem leitura, diretório oculto (`.github/`) e `./` inicial valem como caminho, e símbolo ADVPL (`.prw`, `.prx`, `.tlpp`, `.ch`) casa sem diferenciar caixa. A skill `arqueologia` manda rodar o script antes da releitura dos `CONFIRMADO`.
+- **Releitura do livro fica no repo (D9).** `relatorios/2026-10-24-releitura-do-livro.md` traz o consolidado dos 10 grupos, e `vigias/livro-de-repos.md` ganha a linha que aponta para ele.
+
+## 1.74.0 — 2026-10-23
+
+- **A ronda de teste dos vigias só libera leitura (#581).** O `run-vigia.ps1 -Teste` negava 8 tools de envio do
+  WhatsApp por lista negra, e toda tool nova do bridge (sair de grupo, arquivar, marcar como lida, parear) entrava
+  liberada. Agora o `-Teste` roda com `--permission-mode dontAsk` e uma lista de permitidas: as nativas que a ronda
+  usa, o `gmail-leitura` e as de leitura do WhatsApp. O resto é negado na chamada. Fica fora da trava o `Bash`
+  falando direto com o bridge HTTP, e a ronda normal, que segue com bypass e a lista negra do gmail.
+- **Pasta em troca manual avisa quando a conta em uso chega ao limite (#584).** A pasta trocada na mão era pulada
+  pelo vigia sem olhar o uso, e ficou 4 dias com a conta pessoal a 100% da semana sem aviso. Ela continua sem
+  nenhuma ação automática, mas quando a conta em uso passa de 97% o vigia registra `manual_no_limite` e o aviso diz
+  a pasta, a conta, o percentual e o `/conta` que a devolve. Sai uma vez por estouro (mesmo limite e mesmo reset),
+  não de hora em hora.
+- **O estado da conta segue o login da pasta (#585).** Um `/login` feito fora do `/conta` deixava o estado
+  dizendo uma conta e o login sendo de outra: o `/conta` mostrava "em casa · troca manual" e o `/conta trabalho`
+  moveria o login novo para a reserva errada. Agora o vigia, o `/conta` e a troca, quando pegam a trava, alinham o
+  estado à conta do login (evento `reconciliado`), nos dois sentidos e sem mover credencial. Login de conta não
+  registrada segue só com o aviso `identidade_divergente`. Quando a pasta volta para casa assim, o login guardado
+  antigo dela é arquivado como `estacionado-<pasta>.orfao-<data>.json`; no lugar, ele travaria a próxima troca. Se o
+  arquivamento falhar (antivírus segurando o arquivo), a rodada seguinte tenta de novo. Para isso o vigia passa a
+  consultar o dono do login de cada pasta em toda rodada, mesmo com a troca automática desligada.
+
+## 1.73.1 — 2026-10-22
+
+- **`cd -` com `$(`/`bash -c` segue barrado, mas a mensagem diz a saída (#573).** O gate lê `cd -` (volta ao
+  diretório anterior) como `cd` sem destino, e com execução indireta na linha barra o comando inteiro. Resolver o
+  `cd -` pelo `cd` anterior da linha foi tentado e recuado: o gate errava o destino quando aquele `cd` não rodava
+  (`false && cd`, `cd arquivo`, `&`, `popd -n`). Agora, quando o `cd -` é a causa, a mensagem o nomeia e manda
+  trocá-lo pelo caminho absoluto do diretório.
+- **O bloqueio da rede diz o que barrou (#573).** A rede de caminho do principal dizia "Este e o diretorio de trabalho
+  principal" para um agente que estava no próprio worktree, e o agente parava. Agora nomeia a palavra ou o caminho
+  que subiu (o ramo de `source`/`eval` ainda tem a mensagem antiga: #583). Destino de `>` que começa com variável
+  (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho literal no comando, ou a
+  ferramenta Write. Julgar o valor da variável foi tentado e recuado: cada revisão achava um
+  contorno novo (laço, glob, ramo que não roda). Os buracos anteriores de variável fora desse caso estão na #580.
+- **Trava pós-`verificar` com a raiz numa junction (#578).** `docDoEstagio` devolvia o caminho real do plano e do
+  design e passa a devolver o caminho lexical (a cerca continua pelo real). Com a raiz alcançada por junction ou
+  symlink, o plano do próprio fluxo contava como código e o `fechar` mandava reabrir o `executar`.
+
+## 1.73.0 — 2026-10-21
+
+- **Repositório sem CI não trava mais o `fechar` (#576).** `publicar-branch.cjs esperar-ci` saía 5 ("CI vermelho")
+  quando o repositório não tem nenhum workflow, e o merge nunca acontecia. Agora, com zero workflows
+  (`gh api .../actions/workflows`) e o PR sem check, sai **8**: a evidência é o `verificar`, e a linha diz se o merge
+  está autorizado (`fechar-mergear`). Repositório com workflow e PR sem check continua 5; API que falha também.
+- **Corpo do PR não reabre o `executar` (#575).** `<plano>.pr.md`, ao lado do plano, é isento de creep e da trava de
+  código depois do `verificar`.
+- **`creep` e `mutacoes` avulsos acham o plano com outro nome (#571).** Sem `--plano`/`--design`, leem `plano.doc` e
+  `design.doc` do estado do slug (confinados à raiz). A recusa "plano não existe" passa a citar `--plano <caminho>`.
+- **CI deste repositório em três shards (#541).** 262 baterias, ~59 min em série; com dois shards cada um ficava a
+  3–7 min do teto de 35. Pesos remedidos, e `scripts/testa-ci-shards.sh` confere matriz, nome, passo e a carga do
+  shard mais pesado contra o teto.
+
+## 1.72.0 — 2026-10-21
+
+- **Catraca de mutação mede projeto com runtime vivo (#527, #569).** O `conferir-mutacao.cjs` copia a raiz para o
+  temporário e mede lá, e um projeto Unity com o editor aberto não deixa: o editor trava `Temp/` (cópia com `EBUSY`,
+  exit 69) e a bateria barata (`unity command run_tests`) só fala com o editor da pasta original. Toda tarefa saía
+  `pulada` e o `verificar` nunca fechava. Agora `--no-lugar` não copia: muta o arquivo real, roda a bateria na
+  própria `--raiz` e restaura os bytes originais em toda saída (veredito, estouro de tempo, sinal), conferindo byte a
+  byte. Sem a flag, nada muda.
+- **O modo no lugar tem guarda-corpo.** Recusa (exit 4) o alvo sujo, não rastreado ou ignorado no git (o git precisa
+  poder desfazer), o `git` que falha dentro do repositório (ou não reconhece um `.git` corrompido), o arquivo editado durante o baseline, e outra
+  execução viva com o mesmo arquivo mutado. Antes de mutar, grava os bytes originais num backup no temporário, só do
+  usuário corrente: se o processo morrer sem restaurar, a próxima execução **sobre o mesmo arquivo** restaura o que
+  ainda está mutado e deixa intocado (com aviso) o que mudou depois. Arquivo editado durante a bateria pós-mutação
+  não é sobrescrito: sai 1 com o backup preservado. Durante a bateria, o stderr avisa que o fonte real está mutado.
+  Fora de repo git, mede e avisa que não há conferência pelo git.
+- **No plano, `no-lugar: sim` no bloco `mutacao:`.** O `conferir-fluxo.cjs mutacoes` passa `--no-lugar` à catraca, e a
+  `cobertura` recusa outro valor. O campo é por tarefa porque traz de volta o risco da #266: quem ler o arquivo
+  durante a bateria lê o mutante.
+
+## 1.71.0 — 2026-10-21
+
+- **Agente que escreve despacha com a sessão fora de repo git (#565).** Fora de repo, o harness recusa
+  `isolation: "worktree"` e a portaria recusava o agente sem ele: não sobrava caminho, e a janela principal fazia a
+  tarefa. Agora, com o cwd fora de repo, o briefing pode trazer a linha isolada `Worktree: <caminho absoluto>` de um
+  worktree linkado (`git worktree add` no repo alvo). A portaria confere que é linkado e que o caminho é o
+  toplevel dele, e passa a ler manifesto, estágio e `leve` de lá. Checkout principal, subdiretório, caminho relativo,
+  pasta que não existe ou a linha no meio da frase continuam negados. Com o cwd dentro de repo, nada muda. A
+  abertura da sessão avisa em uma linha, no bloco de dependências, quando o cwd não é repo git.
+- **Código escrito pelo shell sem fluxo aberto deixa de passar em silêncio (#564).** O hook novo
+  `aviso-fluxo-shell.cjs` roda depois de cada Bash/PowerShell da sessão principal. Se o comando deixou arquivo de
+  código novo no `git status` (fora de `docs/`) num repo com fluxo, sem fluxo aberto nem `leve`, ele avisa com
+  os arquivos e as mesmas saídas do `aviso-fluxo.cjs`. Não desfaz nada, porque o comando já rodou. Decide pelo
+  `git status` e pelos commits que a própria sessão fez, lidos no reflog do `HEAD` (código criado e commitado na
+  mesma chamada também avisa; o que chega por `pull`, `merge` ou `rebase` não), e não pela grafia do comando. Cada
+  caminho avisa uma vez por sessão, e só avisa o que difere do `HEAD` da última foto: merge, rebase ou
+  cherry-pick em conflito, `merge --squash` em andamento e o rearranjo de commits antigos (`reset`, squash, amend)
+  não avisam. Limites: `merge --squash` e commit na mesma chamada avisam o código da outra branch, e `git rm` com
+  commit na mesma chamada não avisa a remoção. Limite: código
+  criado e commitado já na primeira chamada de shell da sessão não avisa. Custo: um processo e um `git status` por chamada de shell. A chave
+  `aviso-fluxo` desliga os dois.
+
+## 1.70.1 — 2026-10-19
+
+- **`gate-worktree` não lê mais a casa real quando a própria linha redefine a casa (#561).** Com o cwd num
+  worktree linkado, `HOME=<W>; touch ~/../../../f` passava: o gate expandia `~` para a casa real, e o shell, para
+  o worktree, de onde `../../..` sobe para o checkout principal. A regra é ampla, não lista de grafias, e só age
+  quando a linha **usa a casa**: til em posição de expansão (`~/x`, `{~,x}`; `HEAD~1` não conta), referência a
+  `$HOME`/`$USERPROFILE`/`%USERPROFILE%`, ou `cd` sem destino (`cd`, `cd -P`, `cd >/dev/null`). Usando a casa, a
+  linha inteira cai, mesmo só lendo, quando: (a) tiradas aspas, escapes e as formas de leitura (`$HOME`,
+  `${HOME}`, `$env:HOME`, `%HOME%`, sem `=` depois), sobra menção a `HOME`, `USERPROFILE`, `HOMEDRIVE` ou
+  `HOMEPATH` (`HOME=`, `H""OME=`, `${HOME:-x}`, `export {HOME,X}=`, `$env:USERPROFILE=`); (b) há comando que
+  define variável pelo nome, que pode vir montado (`export`, `declare`, `read`, `mapfile`, `unset`, `eval`, `env`,
+  `printf -v`, `Set-Variable`, `Set-Item`, `iex`, `[Environment]::SetEnvironmentVariable`); ou (c) há execução
+  indireta (`$(`, crase, `<(`, interpretador com `-c`/`-e`/`-Command`, `source`/`.`, `[scriptblock]`, `& {`, `env:`
+  fora de leitura no PowerShell). Caixa exata no Bash, indiferente no PowerShell e no cmd. Efeito colateral aceito:
+  `export FOO=1; touch ~/x` dentro de um worktree também cai. No PowerShell, `+=`, atribuição em lista e
+  `foreach ($env:X in ...)` contam como escrita. Sem uso da casa na linha, nada muda: no Bash, til e `cd` entre
+  aspas ou em corpo de heredoc com delimitador entre aspas não contam (o commit por heredoc com `~30 tokens`
+  passa), desde que a linha não mexa na casa e todo comando dela não avalie argumento (`echo`, `cat`, `grep`,
+  `git commit`, `gh issue`...); com qualquer outro (`awk`, `find -exec`, `bash -c`), as aspas podem virar comando
+  e contam. Linha que mexe na casa nunca tem as aspas mascaradas (`printf -vHOME`, `>/dev/null HOME=x git push`).
+  `"cd"` entre aspas em posição de comando conta como `cd` sem destino, e o til fora de palavra (sem letra,
+  número, `_` ou contrabarra antes: `${U:-~}`, `${X/y/~}`) conta como uso da casa. A continuação de linha se
+  desfaz antes de todas as checagens (`HO\<quebra>ME=`, `c\<quebra>d`), e `source`/`.` como palavra em
+  qualquer posição (`>/dev/null source`, `if source`, `builtin .`) conta como execução indireta; custo aceito:
+  `git add . && cat ~/x.txt` dentro de worktree cai. `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export`
+  passam.
+
+## 1.70.0 — 2026-10-19
+
+- **Código que muda depois do `verificar` passa de novo por revisão e verificar (#567).** O `verificar ok` grava
+  o HEAD em que rodou, e o `exigir --estagio fechar` recusa com exit 2 quando há código mudado depois dele,
+  nomeando os arquivos: arquivo cujo conteúdo difere do verificado e cuja mudança da branch não é mais a mesma
+  (`git patch-id --verbatim` sobre diff sem contexto), ou edição rastreada ainda não commitada. Merge limpo da
+  `main`, squash e conflito resolvido para o valor da branch não acusam; conflito resolvido para outro conteúdo,
+  arquivo apagado, revertido, só reindentado ou com a mesma linha mudada de lugar (com a `main` parada) acusam.
+  Funciona também com o projeto numa subpasta do repositório. A mesma recusa vale no `marcar fechar ok`, depois do conserto de CI, e no
+  `marcar verificar ok` refeito sobre código que o `revisar` não viu. O rastro do fluxo (design, plano, portões e varredura do slug,
+  e o estado de qualquer slug) não conta. Estado gravado antes desta versão, ou `verificar` fechado com
+  `--raiz` (o código noutra árvore), não grava esse HEAD e só avisa.
+- **Verbo novo `estado.cjs reabrir` (#529, #567).** `reabrir --slug <s> --estagio executar --motivo "<texto>"`
+  volta o `executar` a `parcial` e põe `revisar`, `verificar` e `fechar` em `pendente` quando um deles já estava
+  `ok`, guardando o motivo em `reaberturas`. É o caminho para achado não bloqueante de revisão aprovada que
+  cabe no PR e para CI vermelho depois do `verificar`. Antes, a saída era o `leve`, que pulava a revisão nova.
+  `marcar executar parcial` com estágio posterior aberto continua recusado (#238).
+- **`marcar executar ok` recusa `de:` que não casa no fonte (#529).** Quando o conserto move o trecho que uma
+  `mutacao:` do plano declara, a recusa sai no `executar`, nomeando tarefa e arquivo, e não mais só no
+  `verificar`, depois da revisão. `mutacao: n/a` e arquivo ausente seguem sem recusa.
+- A trava protege contra a sessão que esquece de refazer revisão e verificar. Editar o JSON de estado à mão fica
+  fora dela.
+
+## 1.69.1 — 2026-10-19
+
+- **Gate de publicação aceita o `<redigido>` que ele mesmo manda usar (#523).** A regra `credencial` dizia "troque
+  por `<redigido>`" e recusava a linha corrigida. Agora um valor que é **inteiro** um placeholder entre `<>` com cara
+  de palavra passa: começa por letra, tem até 40 caracteres de palavra ou hífen, no máximo 4 dígitos, e cada pedaço
+  entre `-`/`_` tem até 16 caracteres e uma caixa só (`<redigido>`, `<sua-senha>`, `<API_KEY>`). Segredo embrulhado em `<>`
+  (também picado por hífen), valor que só começa ou só termina com placeholder, placeholder seguido de outro texto na
+  linha e `<>` vazio continuam barrados. Vale também em JSON compacto, com o fecha-chaves colado ao valor.
+- **Gate de publicação não trava mais em linha longa sem arroba (#531).** A regra `email` reescaneava cada corrida
+  de letras e pontos a partir de cada posição (O(n²)): 100 mil `a.` numa linha passavam de 60 s. A regex agora só
+  começa no início da corrida, e o mesmo caso sai em milissegundos. Não deixou de pegar nenhum e-mail que pegava;
+  passou a acusar também parte local só de pontuação colada ao arroba e as variantes do trailer `noreply` com
+  pontuação à frente, o que é mais estrito. O aparo do fim do valor na regra `credencial` tinha a mesma forma
+  quadrática numa corrida de vírgulas ou fechos e também virou linear.
+- **Sonda da bridge WhatsApp não passa mais pelo DNS (#553).** Com `WHATSAPP_API_BASE_URL` em `localhost`, a sonda
+  resolvia o nome dentro do timeout de 400 ms, e a hipótese da Issue é que isso explica o `FORA` com a bridge de pé
+  (o estouro não foi reproduzido). Ela testa `127.0.0.1` e `::1` direto, em paralelo, e vale o que conectar. A Issue
+  segue aberta até a contagem de `FORA` nas aberturas dos 3 dias seguintes ao release cair a zero.
+- **`setup` recusa `config.json` que não é objeto (#559).** Com `[]`, `null`, número ou string no arquivo, o
+  `--ligar`/`--desligar` e o `--aplicar` saem 2 nomeando o arquivo, sem gravar. Antes, `[]` dizia `gravado` e não
+  gravava nada, e `null` quebrava com `TypeError`. O `--aplicar --ensaio` também passa a dizer em que pasta o setup
+  vai criar, quando for a primeira vez, os arquivos que ainda faltam entre `FOCO.md`, `ideias.jsonl` e `projetos.json`.
+- **Bateria do teto de despachos mostra quem falhou (#543, passo 1).** No caso de 12 processos simultâneos, a
+  falha passa a trazer índice, exit e stderr de cada processo que saiu diferente de 0, para a próxima ocorrência na
+  CI mostrar a causa. O passo 2 (o conserto) espera essa ocorrência, e a Issue segue aberta.
+
+## 1.69.0 — 2026-10-18
+
+- **Gate de worktree: rede de caminho do checkout principal (#552).** Até aqui o gate só barrava a escrita que
+  reconhecia numa lista de formas conhecidas (`Set-Content`, `>`, `cp`...), e o que ficava fora dela passava. Agora,
+  em Bash e PowerShell de subagente que roda num worktree linkado, há uma segunda camada por cima da lista: **todo
+  comando que cita um caminho do checkout principal do mesmo repositório é barrado, salvo se for de leitura.**
+  Passam a ser barrados, por exemplo, `rm`/`Remove-Item`, `Clear-Content`, `Rename-Item`, `New-Object
+  IO.StreamWriter(...)`, `Expand-Archive -DestinationPath`, `robocopy`, `curl -o`, `tar -C` e
+  `Invoke-Command -ScriptBlock (...)` quando apontam para o principal.
+  - **Leitura que segue passando:** `cat`, `head`, `ls`, `grep`/`rg`, `find`, `diff`, `Get-Content`, `Get-ChildItem`,
+    `Test-Path`, `Select-String`, filtros de pipeline (`Select-Object`, `Sort-Object`, `jq`...), `cd`/`Set-Location`,
+    `git log`/`show`/`diff`/`status`/`blame`/`grep` (também com `-C <principal>`) e chamada .NET de leitura
+    (`[IO.File]::ReadAllText`). Na cópia (`cp`/`Copy-Item`), a origem no principal é leitura e o destino segue com a
+    lista.
+  - **Leitura que escreve deixa de ser leitura:** opção que grava ou roda comando (`git log --output`/`-O`, também
+    abreviada ou colada; `sort -o`, também em grupo como `-ro`, e `--compress-program`; `rg --pre`, `uniq a b`,
+    `find -delete`/`-exec`/`-fls`/`-fprint`), mesmo escrita entre aspas; `git` com `-c`, `--config-env`,
+    `--ext-diff`, `--textconv` ou `--exec-path` (também abreviadas), ou na mesma linha de um `export GIT_*=`,
+    `*PAGER=` ou `git config`; atribuição antes do comando (`GIT_EXTERNAL_DIFF=x git diff`); e
+    redirecionamento (`>`, `>>`, `>|`, `<>`, `*>`, `&>`), com o destino lido como o shell lê (aspas, escape e partes
+    coladas, como `>"<P>"/f`; aspa sem fechar barra). Num pipeline com algum comando que escreve (`Get-Content <P>/a | Out-File <P>/b`), os caminhos dos
+    segmentos de leitura também contam.
+  - **Linha que o gate não sabe cortar com confiança** (here-string, `$(` dentro de aspas, e no Bash `\` + quebra de linha) vira um segmento só, e o
+    caminho do principal citado nela barra.
+  - **Grafias reconhecidas:** barra `/` ou `\`, forma MSYS (`/c/...`, no Bash), qualquer caixa, `..` resolvido contra o
+    cwd (`rm ../../../f` a partir do worktree; um caminho de worktree perde a isenção quando a PALAVRA de shell
+    que o cita (aspas e escapes contam como parte dela) tem variável, substituição ou crase no meio (`<W>/$D/f`, `<W>/$HOME/f`; o atalho de home no início da palavra não
+    conta), quando ela, sem aspas, cai no principal (`"<W>"/../../f`, também depois de prefixo de opção, como
+    `of="<W>"/../../f`), ou, no Bash, quando tem chave que monta `..` sem o literal, como
+    `{<W>,y}/../f`, `<W>/.{.,}/f` e `.{x,}.`; se a palavra não é achada, basta `{`, `}`, `$` ou crase na linha; `{a,b}.txt`, `f{1..3}.txt` e expansão em outra palavra da linha seguem
+    isentos) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
+    `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `$USERPROFILE`, `${USERPROFILE}`, `$HOMEDRIVE$HOMEPATH`,
+    `%USERPROFILE%`, `%HOMEDRIVE%%HOMEPATH%`). No Bash, linha com `$'...'` vira um segmento só, como a here-string.
+  - **Não barra:** o próprio worktree e os outros worktrees do repositório (o principal e os worktrees saem de
+    `git worktree list --porcelain`), o scratchpad da sessão e o texto de mensagem de `git`/`gh` (`-m`, `--message`,
+    `--body`, `--title`, `-t`, também na forma `--message="..."`; `-m"..."` colado segue barrando, porque pode ser grupo de opções): `git commit -m "corrigido em
+    <P>/a"` passa.
+  - **Mudança de comportamento:** `git -C <principal> -C <worktree> commit` e `Set-Content <principal>/...` digitado
+    na ferramenta Bash passam a ser barrados, assim como `{c,}d <principal>; ...` (Bash) e o bloco `{cd,<principal>}`
+    (PowerShell), que citam o principal fora de leitura.
+- **Gate de worktree: alvo com pai inexistente (#552, D6).** `New-Item -Path n1/n2/f -Force`,
+  `[IO.Directory]::CreateDirectory('n1/n2/d')` e `echo x > n1/n2/f`, com `n1` ainda inexistente, passavam: o gate
+  procurava o repositório a partir do pai imediato, que não existe. Agora ele sobe até o primeiro diretório que
+  existe, e a escrita no principal é barrada.
+- **Gate de worktree: nome curto 8.3 do Windows (#552).** O git devolve o caminho com o nome longo e o
+  temp do runner do CI vem com o usuário em nome curto (`RUNNER~1`); comparado por texto, o cwd não caía em worktree
+  nenhum e a rede não agia, e citar o principal pelo nome curto escapava. Agora o caminho com `~` vira o longo antes
+  da comparação.
+- **Segue de fora (#552):** caminho montado por pedaços (`$a + "/f"`, `"$P"` sem o literal do principal na linha),
+  variável cujo valor não aparece no comando, `HOME`/`USERPROFILE` redefinidos na própria linha (`HOME=<W>; touch ~/../f`), `~usuario/`, config que o repositório já tem (`core.pager`, `diff.external`,
+  `.gitattributes` gravados antes: o `git` de leitura confia nela), nome curto 8.3 e caminho UNC, a janela principal (a rede só age em
+  subagente) e os outros gates.
+
+## 1.68.0 — 2026-10-18
+
+- **`/setup` vira entrevista guiada na primeira vez.** Em vez de despejar todas as chaves e esperar `--ligar`, ele
+  pergunta uma coisa por vez, na ordem pasta de dados → idioma → projetos → ferramentas → jeito de fechar → estratégia
+  (opcional) → primeiro foco. Só pergunta o que depende de programa instalado ou de preferência sua; o que não está na
+  máquina não vira pergunta, e os gates de segurança ficam ligados e aparecem no resumo. Nada é gravado até você ver o
+  diff e dizer "gravar". Quem já configurou continua no estado com "mudar uma parte".
+- **`setup.cjs` ganha dois modos.** `--plano-entrevista` devolve, em JSON e sem gravar nada, o que perguntar, o que foi
+  detectado e os projetos sugeridos (pastas onde você já usou o Claude Code e que são repositório git).
+  `--aplicar <arquivo.json> [--ensaio]` valida o payload inteiro antes de escrever (um erro e nada é gravado), mostra
+  cada chave com o valor de antes e de depois no `--ensaio`, grava no escopo usuário (projeto só com
+  `--escopo projeto`), cria o `ESTRATEGIA.md` só se ele não existir e nunca escreve o `FOCO.md`.
+- **Cada ronda dos vigias tem chave própria:** `vigia-batedor-repos`, `vigia-jardineiro-ideias`,
+  `vigia-revisao-bimestral`, `vigia-sentinela-foco`, `vigia-tickets`, todas **ligadas por padrão**. A chave `vigias`
+  continua sendo o interruptor geral: a ronda só roda com as duas ligadas, e quem já tinha `vigias` ligado não perde
+  nenhuma. Desligar uma cala só aquela ronda, com saída limpa e sem linha no `vigias/ERROS.md`.
+- **A tabela de chaves da skill do `/setup` é conferida contra o catálogo.** `scripts/conferir-setup.cjs` reprova chave
+  sem o campo `entrevista` e tabela que diverge do `hooks/lib/config.cjs`; a bateria roda contra a skill real, então
+  chave nova esquecida na doc reprova no CI. A tabela passou de 5 para as 45 chaves.
+
+## 1.67.12 — 2026-10-18
+
+- **A statusline mostra a conta logada, não a que o nome da pasta sugere.** Depois de `/conta pessoal`, a pasta
+  `~/.claude` passava a usar a conta pessoal, mas a barra continuava mostrando `trabalho`. Agora o segmento lê o
+  `oauthAccount` do `.claude.json` e o compara com as contas registradas pela troca de conta. Sem esse registro, a barra
+  volta ao palpite pelo nome da pasta.
+
+## 1.67.11 — 2026-10-16
+
+- **`gate-worktree` barra mais formas de escrever no checkout principal (#530).** Um subagente num worktree linkado
+  conseguia escrever no principal por formas que o gate deixava passar. Agora são barradas:
+  - nome do comando com aspas, escape ou `$'...'`: `'cd' P`, `c\d P`, `$'\x63d' P`;
+  - expansão de chaves em posição de comando: `{cd,P}`, `{"cd",P}`, `{git,-C,P,...}`, `{env,-C,P,...}`;
+  - escrita (redirecionamento, `tee`, `cp`) dentro de `bash -c` ou `eval`, como `bash -c 'echo x > P/f'`;
+  - escrita dentro de substituição de comando com crase, e dentro de aspas duplas: `` echo `echo x > P/f` `` e `echo "$(echo x > P/f)"`;
+  - `cd` com redirecionamento antes ou depois (`cd P > /dev/null`), e atribuição com escape (`A=a\ b cd P`).
+- **Dois motivos novos de barrar, com a mensagem no stderr:** `wrapper aninhado demais para conferir (mais de 4
+  niveis)` e `expansao de chaves grande demais para conferir`.
+- **Wrapper aninhado fundo não trava mais (rodada extra 2, #530):** o reconhecimento do git não recursa além de 4
+  níveis. Com `'eval' ` repetido 22 vezes antes do `git -C P commit`, o hook levava mais de 60 s; agora sai com o
+  motivo acima em menos de 0,5 s.
+- **Continua de fora (D1, #530 e #533):** `GIT_DIR` e `--git-dir`, `cd` por função, alias ou script, `cd $VAR`,
+  cmdlet de escrita do PowerShell e `cd` em ramo condicional. Esses casos seguem nas issues #530 e #533.
+- **Comandos legítimos seguem passando:** `echo a{b,c}` com chave em argumento, `bash -c 'echo x > f'` e
+  `cd hooks > /dev/null` dentro do worktree.
+- **Limite conhecido:** a leitura do bash é parcial. Ainda passam, por exemplo: `bash -c '...' _`, `env bash -c ...`,
+  `t\ee P/f`, `{cp,a,P/f}` e `tee {P/f,}`. Verbo de git com `cd` dentro do wrapper, como `bash -c 'cd P && git commit'`,
+  também passa e fica remetido ao item 4 da #530. A família inteira está na #530, e a abordagem por caminho do principal
+  fica para um fluxo próprio.
+- **Falsos positivos residuais, remetidos à #530:** `cd hooks; x=$(echo a; echo b > ../c)` barra por engano, porque o
+  corpo de `$(` sem aspas cruza `;` e é resolvido a partir do cwd inicial. E `bash -c '...'` dentro da ferramenta
+  PowerShell passa sem ser lido, pelo mesmo gap.
+- **O reconhecimento do git é a união da leitura crua com a do bash (rodada extra, #530):** `C:\Git\cmd\git.exe -C P ...` sem aspas no Bash continua barrado, como na base (conservador).
+- **Crédito:** a montagem da palavra e a expansão de chaves vêm de `hooks/lib/palavra-bash.cjs`, enxertada de
+  `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` do ruflo (`ruvnet/ruflo`, licença MIT).
+
+## 1.67.10 — 2026-10-16
+
+- **Gate de worktree: mais grafias de escrita no checkout principal passam a ser barradas (#530, #533).** O gate
+  reconhece a escrita por uma lista de formas conhecidas; o que ela não cobre segue passando e está na #552.
+  - `{cd,X}` e `{pushd,X}` no começo do comando (Bash), também depois de atribuição, palavra reservada ou `!`, e com
+    elemento citado (`{cd,"a b"}`): o bash expande as chaves e roda `cd X`, e o gate passa a ler assim. No
+    PowerShell, `{...}` segue sendo bloco de script.
+  - Cmdlets de escrita do PowerShell: `Set-Content`/`sc`, `Add-Content`/`ac`, `Out-File`, `New-Item`/`ni`,
+    `Tee-Object`/`tee`, `Copy-Item`/`copy`/`cpi`/`cp` e `Move-Item`/`move`/`mi`/`mv`. Valem com qualificador de
+    módulo, crase no nome, `&`, `.` ou atribuição antes (`$a=`, `$a +=`, `[string]$a =`, `$a, $b =`), parâmetro com
+    `:` ou travessão, aliases de parâmetro (`-PSPath`, `-LP`) e lista de caminhos, com ou sem espaço (`a, <P>/f`).
+    `New-Item <P> -Name f` junta caminho e nome. Na cópia sem destino, o alvo é o cwd. No `Move-Item`, a origem
+    também é alvo, porque sai do lugar.
+  - Incerto, e por isso barrado dentro de repositório, mesmo no worktree: alvo com variável, crase ou aspa
+    tipográfica, splat (`@a`), parâmetro desconhecido e comentário de bloco (`<#...#>`) fora de aspas.
+  - `iex`/`Invoke-Expression` com texto literal: o texto é analisado como comando. Com `$`, crase, outro parâmetro
+    além de `-Command`, ou sem argumento (texto pelo pipeline), é incerto.
+  - Chamada .NET sob `IO` (`[IO.File]::WriteAllText(...)`, `[IO.Directory]::CreateDirectory(...)`,
+    `[IO.StreamWriter]::new(...)`): só os métodos de leitura conhecidos passam. Em `Move` e `Replace`, origem e
+    backup também são alvo. Chamada dentro de aspas simples, ou de aspas duplas sem `$`, é texto e não conta. A
+    máscara não vale com crase fora de aspas, `#`, here-string, aspa tipográfica ou `iex`.
+  - Escrita na mesma linha de um verbo git (`echo x > <principal>/f && git commit`) também é checada.
+  - Uso legítimo no worktree continua passando: `Copy-Item <principal>/a.txt .`, `Set-Content a.txt $t` (o `-Value`
+    não é caminho), `Set-Content a.txt @('x','y')`, `New-Item -Type Directory sub` e `cp -r src dst`.
+  - Seguem passando, fora do escopo deste conserto:
+    - `cd $X` com variável seguido de escrita (alvo no cwd inicial) e PowerShell chamado do Bash (`pwsh -c "..."`).
+    - Registrados na #552: remoção (`rm`, `Remove-Item`, a origem do `mv` do bash), `New-Object` de tipo de IO,
+      redirecionamento com variável (`echo x > $P/f`), alvo entre parênteses (`-Path (Join-Path ...)`,
+      `('a','<P>/f')`), pipeline sem posicional, caminho com provedor (`FileSystem::`) e outros cmdlets de escrita
+      (`Clear-Content`, `Rename-Item`, `Export-Csv`...).
+    - Também na #552: indireção .NET e texto executado fora do `iex` (`[scriptblock]::Create`, `Invoke-Command`), e
+      chaves em outro comando (`{touch,<P>/f}`). E ainda `builtin`/`command`/`time`/`eval` antes das chaves,
+      redirecionamento antes do `cd`, e aspa escapada por crase na segmentação do PowerShell.
+
+## 1.67.9 — 2026-10-15
+
+- **Estado do fluxo: um escritor não apaga mais o que o outro gravou (#545).** O `veredito` do revisor, o
+  `registrar-flake` e o `decidir` usavam travas diferentes, e `marcar`, `destinar`, `pendencia`, `exigir` e
+  `liberar` regravavam o arquivo do fluxo sem trava nenhuma. Um veredito que chegava entre a leitura e a escrita de
+  um `marcar` sumia sem aviso.
+  - Toda gravação passa por uma trava só por fluxo (`.<slug>.lock`), que o `.gitignore` ignora.
+  - `veredito`, `registrar-flake`, `decidir`, `pendencia`, `destinar`, `liberar` e `liberar-teto` leem e gravam
+    dentro da trava: duas pendências, dois motivos ou dois vereditos ao mesmo tempo ficam os dois.
+  - `marcar` e `exigir` validam fora da trava (o `marcar` do plano roda a `prova:` por até 120 s) e, na gravação,
+    releem o arquivo e juntam campo a campo. O que o comando não mudou fica com o valor gravado por outro processo; o
+    que ele mudou, ou removeu, fica com o dele. Se o outro processo mudou o mesmo campo nesse meio-tempo (por exemplo, gravou
+    uma pendência enquanto o `marcar` fechava o estágio), o comando recusa com exit 2 sem gravar nada: rodar de novo lê
+    o estado atual, e a pendência nova passa a ser cobrada.
+  - No Windows, a troca do arquivo tenta de novo por até 2 s quando um leitor está com ele aberto.
+
+## 1.67.8 — 2026-10-15
+
+- **Painel de PR: quatro achados menores da revisão do PR #464 (#466).**
+  - Uma consulta que volta depois de você trocar de PR é descartada: não grava mais a URL velha, o resumo nem o erro do PR
+    antigo por cima do novo. A checagem se repete depois do `gh pr view`, ao rebaixar a origem, depois da leitura das
+    threads e ao gravar a URL; sobra só a janela entre a última leitura do store e a escrita seguinte.
+  - Falha do `gh api user` (saber quem é você) não rebaixa mais o PR para `manual` para sempre: naquela consulta o PR não
+    acorda a sessão (a virada entra na conversa como nota informativa, sem dizer que é desta sessão), e a consulta seguinte
+    tenta de novo. O custo: a virada que caiu na consulta adiada não acorda depois, e com o `gh api user` sempre falhando
+    o painel repete essa chamada a cada consulta.
+  - As decisões do despertar no merge, da ordem limpar-antes-de-enviar, da consulta velha e do dono passaram para funções
+    puras em `hooks/pr-puro.mjs`, testadas em `hooks/testa-mod-pr.cjs`, que roda no CI. A fiação no `hooks/pr.tsx`
+    (troca de PR no meio da consulta, `gh api user` falhando e voltando) tem casos em `hooks/mod-pr.test.tsx`, que roda
+    com `claude plugin test .` e fica fora do CI.
+  - A fixture de PR do `testa-mod-pr.cjs` ganhou `isCrossRepository` e `updatedAt`, como a do `mod-pr.test.tsx`.
+- A corrida da trava de 30 min do `plugins-em-dia` (duas janelas abertas no mesmo instante rodam o update juntas) ficou
+  aceita: o update repetido só repete trabalho.
+
+## 1.67.7 — 2026-10-15
+
+- **Item do painel "Deixado para depois" pode virar pendência do fluxo (#470).** Cada item aberto ganha um botão
+  **Vira pendência de <fluxo>**, um por fluxo aberto no repositório (sem fluxo aberto, o botão não aparece). Como o
+  "Faz agora", ele só preenche o prompt: quem envia é você, e o mod continua sem escrever em disco. O prompt leva o
+  comando `node scripts/estado.cjs pendencia --slug <slug> --texto '<item>'`, com o slug e o texto entre aspas simples; o comando leva `RFM_ESTADO_ROOT` apontando para o worktree do fluxo, e por isso acha o estado também quando o fluxo é de outro worktree. Texto que começa com `--` é aceito como texto.
+- **`estado.cjs pendencia --slug <s> --texto <t>`** (novo) acrescenta a pendência ao estágio aberto (o que `proximo`
+  devolve) sem mudar o status. Texto repetido não duplica, texto vazio sai 1, fluxo completo sai 2. A partir daí vale a
+  trava da #449: o estágio só fecha `ok` com destino para a pendência.
+- O ruído do painel não foi medido: os itens vivem só na memória da sessão, sem histórico. Por isso o item nunca trava o
+  fluxo sozinho, e só vira pendência com a sua confirmação.
+
+## 1.67.6 — 2026-10-15
+
+- **O flake da bateria passa a ser gravado sem depender da janela (#498).** A integração de cada tarefa
+  (`integrar-tarefa.cjs`) roda a catraca com `conferir-fluxo.cjs mutacoes --gravar-flake`, que repassa `--slug` e
+  `--tarefa` ao `conferir-mutacao.cjs`, com a raiz do estado do fluxo (`--raiz-estado`, também quando a tarefa declara
+  `raiz:`). Bateria que só passa na nova tentativa agora fica gravada no estado do fluxo, e o status `flaky` pode
+  disparar; o flake terminal aparece na recusa do `marcar --estagio executar --status ok`. Antes a catraca rodava sem os dois, e nenhum flake era gravado. O `verificar` continua
+  sem gravar: o laço do flaky é `executar` e `revisar`.
+- **`scripts/rodar-gate.cjs` saiu**, com a bateria dele. Nada o chamava: a nova tentativa dependia de a janela lembrar
+  de rodá-lo. A seção Flaky do `laco.md` aponta a integração.
+
+## 1.67.5 — 2026-10-15
+
+- **`publicar-branch.cjs esperar-ci` não dá mais CI verde com check cancelado.** O `gh pr checks --watch` (gh 2.96) sai 0
+  quando um check foi `CANCELLED` (por exemplo, um shard cortado pelo `timeout-minutes`), e o `esperar-ci` dizia
+  `CI verde: merge autorizado` em cima disso (PR #537). Agora ele lê o estado de cada check em JSON: só `pass` e
+  `skipping` contam como verde. Check cancelado, lista vazia ou resposta ilegível saem 5, nomeando o check.
+- **Baterias de memória mais rápidas no CI (#541).** Sete baterias inseriam centenas de linhas no SQLite fora de
+  transação, um fsync por linha. No runner Windows isso variava de 14 s a 140 s por bateria e fazia o shard 1 estourar o
+  `timeout-minutes` sem nenhum teste falhar. As inserções agora vão numa transação.
+
+## 1.67.4 — 2026-10-15
+
+- **`conta unificar` mais seguro para quem ainda vai migrar para a pasta única (#503).** Nada muda para quem já migrou.
+  - O relatório (sem `--aplicar`) passa a recusar com saída 2 quando a conta pessoal não tem registro nem
+    `oauthAccount` na pasta pessoal, como o `--aplicar` já fazia. Antes o relatório saía 0 e prometia uma migração que o
+    `--aplicar` recusava.
+  - A mensagem dessa recusa manda fazer login na pasta pessoal (`claude` com `CLAUDE_CONFIG_DIR` apontando para ela e
+    `/login`) e rodar `unificar` de novo: o login grava o `oauthAccount` que o `unificar` lê. Antes ela mandava rodar
+    `status`, que exige o mesmo `oauthAccount` e devolvia à mesma recusa.
+  - O registro da conta pessoal recusa, com saída 2 e antes de escrever qualquer coisa, o e-mail igual ao da conta de
+    trabalho já registrada. Sem a recusa, as duas contas ficavam com o mesmo e-mail e o CLI não tinha como desfazer.
+  - O progresso da cópia resiste a uma linha rasgada por um processo morto no meio da gravação: a retomada não perde mais
+    a cópia seguinte.
+  - Na mescla do `.claude.json`, o relatório do `--aplicar` conta só os servidores MCP que gravou e nomeia os que ficaram
+    com a definição já existente no destino (`mcp mantido do destino: ...`). Antes contava também os que não gravou.
+
+## 1.67.3 — 2026-10-15
+
+- **Agente que só lê no checkout principal não leva mais trava por `2>/dev/null` junto de `{a,b}`.** O `gate-worktree`
+  cortava a linha em `{` mesmo no meio de `a/{b,c}/d`. O pedaço `{` marcava a linha como incerta e, com qualquer
+  redirecionamento na linha, o cwd do principal virava alvo de escrita (#514). Agora a expansão de chaves só fica inteira
+  quando está em argumento de um comando simples, sem aspas, `\`, `$` ou redirecionamento antes dela na linha. Em posição
+  de comando (`{cd,X}`), depois de `A=1`, de palavra reservada ou de wrapper (`builtin`, `eval`, `env`…), ou com prefixo
+  que não dá para ler com segurança (`A="a b" {cd,X}`, `\builtin {cd,X}`), a chave continua barrando como antes. `/dev/null` deixou de ser alvo de escrita, e `$null` também, só na ferramenta PowerShell (no bash é
+  variável comum). `NUL` continua sendo alvo, porque no MSYS `> nul` pode criar um arquivo.
+- **`A=1 cd <principal>`, `then cd <principal>`, `if cd …` e `! cd …` passam a contar como mudança de pasta.** Antes
+  esses `cd` não eram vistos, e um subagente no worktree podia escrever no principal por eles (#530, parte 1). O `cd`
+  logo depois de `then`, `else`, `elif` ou `do` conta como incerto, porque o ramo pode não rodar. O `cd` em comando
+  seguinte dentro do bloco (`then true; cd X`) e depois de `&&`/`||` continua tratado como certo, como antes; isso fica na #530.
+- **`memoria.cjs buscar --texto` traz o mais relevante primeiro (bm25), não o mais recente que casa.** Sem `--texto`
+  continua listando por recência. A injeção da abertura e a por assunto não mudam: já ranqueavam.
+
+## 1.67.2 — 2026-10-14
+
+- **`Authorization` montado com variável em JavaScript deixa de ser barrado como credencial.** O gate de publicação
+  (`conferir-publicacao`) barrava o header montado como template de esquema `Bearer` com variável dentro, e a concatenação
+  de `Bearer` com um identificador, embora as duas formas, as mais comuns de montar header OAuth em JavaScript, não carreguem
+  segredo. O agente ficava sem saída honesta e a tarefa caía em redespacho (#494). A isenção nova é uma régua fechada:
+  - vale só na chave `Authorization` com esquema (`Bearer`, `Basic` ou `Token`); outras chaves de credencial não ganham
+    isenção, e `api_key` com concatenação segue barrado;
+  - passam o template com crase em que o trecho entre chaves é só uma variável ou uma cadeia de membros (ex.: `this.token`),
+    fechado logo depois, e a concatenação do esquema com uma variável, um membro ou uma chamada sem argumento literal;
+  - depois do template ou da concatenação vale só: fim de linha, comentário até o fim da linha (`//` ou `#` precedido de
+    espaço), barra de continuação, ou `, ; ) ] }` sem `+` emendado em seguida. Por isso continuam barrados o literal colado
+    depois da expressão, `.concat(...)`, comentário de bloco seguido de `+` e expressão com literal dentro das chaves do
+    template;
+  - o header entre aspas comuns (dupla, simples, f-string, `.format`) e sem aspa segue a régua de antes, da #410: o que
+    passava sem literal continua passando, com dois apertos que só olham até a aspa de fechamento: a referência tem de
+    terminar nela (`"Bearer ${tok} <literal>"` passa a ser barrado, e também uma segunda referência ou espaço antes do
+    fechamento), e um literal entre aspas emendado por `+` logo
+    depois dela também;
+  - fica de fora o literal que continua na linha seguinte, porque a checagem é por linha.
+
+## 1.67.1 — 2026-10-14
+
+- **O `--escopo` do `conferir-entrega` aceita `**` entre pastas, com a mesma regra do `creep`.** `arquivos: src/**` recusava
+  `src/a/b.txt` como fora do escopo, porque `**` só casava um nível de pasta. Agora o `conferir-entrega` (e o gêmeo `.py`)
+  usa `globMatches` de `scripts/lib/camadas.cjs`, o mesmo que o `creep` usa: `**` atravessa pastas, e barra no fim cobre a
+  pasta inteira. Junto, o `globMatches` passou a ancorar sempre: `*` e `?` nunca cruzam `/`. Antes, `src/*` casava
+  `src/a/b.txt` e `*.md` casava `docs/x.md`, no `creep` também. E o `globMatches` passou a escapar `[ ] ( ) + $ ^ { } |`:
+  no `creep`, `app/[id]/**` virava classe de caracteres e `c++/*` derrubava a checagem. `a/**/b` continua sem casar `a/b` (#518).
+
+## 1.67.0 — 2026-10-14
+
+- **Matar processo por nome passa a ser barrado, na janela e no subagente.** Um revisor rodou `taskkill /IM python.exe` em
+  2026-10-13, matou 3 processos que não eram dele e derrubou o MCP do WhatsApp. O gate `gate-matar-por-nome.cjs` nega
+  `taskkill /IM` e `/FI IMAGENAME`, `pkill`, `killall`, `Stop-Process -Name`, `Get-Process <nome> | Stop-Process` e `kill`
+  alimentado por `pgrep`/`pidof`, também quando vêm atrás de `bash -c`, `sudo`, `env` ou `pwsh -Command` (#517). Matar pelo
+  PID continua passando (`taskkill /PID`, `kill <pid>`, `Stop-Process -Id`). A mensagem de bloqueio ensina listar o processo,
+  conferir que é desta sessão e matar pelo PID. A saída é o toggle `matar-por-nome`; `RAINFOREST_GATE_OFF` desliga o gate só na
+  janela principal, nunca no subagente. Fica fora: matar por porta, `wmic`, `Invoke-CimMethod … Terminate` e matar de dentro de
+  script (`python -c`, `node -e`).
+
+## 1.66.1 — 2026-10-14
+
+- **O painel de PR não manda fazer o que a sessão já fez.** O despertar da sessão (`prompt.submit`, 3 min depois de o PR
+  parar de mudar) chegava mesmo com a sessão trabalhando, e o "foi mergeado, limpe o worktree e a branch" chegava depois de
+  a própria sessão mergear e limpar. Agora ferramenta ou turno da sessão principal depois da nota cancela o despertar (a
+  nota já está na conversa), e `gh pr merge` do PR rodado pela sessão deixa a virada para merged só no painel. Subagente
+  em segundo plano não conta como sessão ativa.
+
+## 1.66.0 — 2026-10-13
+
+- **Modo autônomo: com o plano aprovado, o fluxo vai sozinho até o PR mergeado.** Com a chave `executar-autonomo` ligada
+  (padrão desligado), `executar`, o laço do `revisar`, `verificar` e `fechar` seguem sem perguntar entre estágios. O fluxo só
+  para e chama em seis casos: achado `[design]`, 3ª reprovação, `flaky` terminal, teto de despachos, ambiente quebrado e
+  conflito real com a `main`. Cada parada e o fim avisam por `PushNotification`. Enxerto do `execute` do wildz-data
+  (Rafael Siqueira). Guia em `skills/executar/references/modo-autonomo.md`.
+- **Decisão no meio vira registro.** `estado.cjs decidir` aplica a recomendada e grava o porquê, e `decididos` imprime a
+  seção "Decidido sem você" do PR. Decisão que muda uma `D<n>` do design continua parando o fluxo.
+- **Integração de tarefa num comando:** `integrar-tarefa.cjs` faz a conferência, a mutação, o commit com trailer, o `marcar` e a
+  limpeza; traz todos os commits do agente de uma vez (`git apply --index`, atômico), recusa índice com stage prévio,
+  desfaz tudo na recusa e retoma do `marcar` se ele falhou depois do commit. **Processo longo fora do teto do Bash:** `rodar-longo.cjs`.
+
+## 1.65.2 — 2026-10-14
+
+- **A manutenção diária não prende mais a pasta do projeto.** O processo destacado da `manutencao` herdava o diretório
+  da sessão e, como a passada leva até uma hora, o Windows recusava apagar a pasta do projeto mesmo com a sessão fechada
+  ("em uso por outro processo"). Agora ele roda no diretório temporário, com a raiz de dados fixada em `RFM_ROOT` para
+  continuar achando a mesma raiz de quando a sessão abriu.
+
+## 1.65.1 — 2026-10-13
+
+- **A jornada só conta o que você digitou (#485).** `jornada.cjs` aceitava como presença todo prompt `user` que não fosse
+  retorno de ferramenta: sessão headless, revisão de segurança, `<task-notification>` e mensagem de plugin entravam na
+  conta, e o aviso de excesso da regra 8 disparava com você longe do teclado. Agora conta `origin.kind = human`; sem
+  `origin` (CLI antigo), só `entrypoint = cli` fora de subagente e de `<task-notification>`. O script imprime
+  `sinais de maquina descartados` (e o `--json` traz `maquina_descartadas`) para um filtro quebrado aparecer como número.
+  Em 2026-10-10: 613 mensagens pelo filtro antigo, 142 digitadas e 471 de máquina; jornada efetiva de 17h35 para 10h12.
+
+## 1.65.0 — 2026-10-13
+
+- **O `executar` calcula as camadas do `depende de:`.** `conferir-fluxo.cjs camadas` monta a ordem de despacho e recusa
+  ciclo, dependência inexistente e duas tarefas da mesma camada com arquivo em comum. O `paralela:` deixou de ser exigido;
+  plano antigo que ainda o traz passa com aviso. Enxerto do `plan_state.mjs` do wildz-data (Rafael Siqueira).
+- **Retomar um `executar` pela metade é um comando.** Cada tarefa integrada leva o trailer
+  `Rainforest-Tarefa: <slug>#<n>` no commit, e `estado.cjs retomar` lê o git para dizer o que re-marcar, o que
+  redespachar e qual camada vem agora. O JSON de estado não prova integração; o trailer prova.
+- **Painel HTML do fluxo.** Cada `marcar` de executar, revisar e verificar regenera
+  `<dados>/fluxos/<slug>/painel.html`, com o estado de cada tarefa e se o fluxo parou. Gerar à mão:
+  `painel-fluxo.cjs gerar --slug <slug>`.
+
+## 1.64.1 — 2026-10-13
+
+- **O 1º pedido da sessão não estoura mais o timeout da memória por assunto (#509).** A semeadura pelo transcrito
+  refazia, para cada linha servida na abertura, as 3 consultas do dia e a formatação de todas as candidatas. Agora
+  `acharAlvo` reaproveita consultas e formatação dentro do laço: 14 linhas do mesmo dia fazem no máximo 3 consultas
+  em vez de 42, e o 1º pedido caiu de ~1,7 s para ~0,3 s (mediana de 5 rodadas no Windows). A pontuação de sessão
+  (`pontuarSessao`) usa o mesmo cache. O `timeout` do hook subiu de 5 para 10 s, como folga para a partida do node sob carga.
+- **A bateria do hook parou de medir a máquina (#507).** O caso da 1ª chamada compara o tempo com o timeout do hook
+  lido do `hooks.json`, não com 1500 ms fixos.
+
+## 1.64.0 — 2026-10-13
+
+- **O `fechar` publica por script, com conferência antes e depois.** `scripts/publicar-branch.cjs publicar` roda
+  `git merge-tree` contra a base antes do push e para com a lista de arquivos se houver conflito (nada é empurrado).
+  Depois do push, confere `HEAD == @{u}` e reaproveita o PR aberto da branch em vez de criar outro. Enxerto do skill
+  `commit` do wildz-data (Rafael Siqueira).
+- **Merge só com CI verde e confirmado pelo state do PR.** `esperar-ci` espera o `gh pr checks --watch`, e
+  `confirmar-merge` só sai 0 quando o PR está `MERGED`, nunca pela linha de sucesso do `gh`. O `fechar` só mergeia
+  com a chave nova `fechar-mergear` ligada (padrão desligado; ligada neste repositório). Desligada, para no PR aberto.
+- **`gh pr merge --auto` é barrado** pelo `gate-fechar-issue`: sem check obrigatório na branch, ele mergeia na hora,
+  sem esperar o CI (aconteceu no #178 e no #426). Toggle `gate-merge-auto`.
+
+## 1.63.0 — 2026-10-12
+
+- **Uma pasta só, quando não existe `~/.claude-personal`.** Sem a pasta pessoal, a troca de conta passa a acontecer
+  dentro de `~/.claude`: a conta da casa é a team, e a pasta vai para a pessoal quando a team passa de 97% (5 h ou
+  semana) e a pessoal está abaixo de 60% (5 h) e de 85% (semana). A pasta padrão (`~/.claude`) passa a gravar a conta
+  em uso no `~/.claude.json`, que é o arquivo que o Claude Code lê, também no modo duas pastas.
+- **`conta.cjs unificar`: a pasta pessoal vira parte da pasta única.** Sem `--aplicar` só relata. Com ele, copia
+  transcritos, memória e histórico sem sobrescrever (conflito vira `<nome>.pessoal.<ext>`), une os MCP e os projetos
+  do `.claude.json`, instala os plugins que só a pessoal tinha, recusa com janela do Claude aberta, reagenda o vigia e
+  renomeia a pessoal para `.claude-personal.aposentada`. `--profile <arquivo>` troca as funções `claude-pessoal` e
+  `claude-trabalho` do perfil do PowerShell por um `claude` só, com backup `.bak-pasta-unica`.
+- **`/conta preparar pessoal` em modo uma pasta** registra a conta pela própria reserva quando ela ainda não está
+  registrada, já que a pessoal não é casa de pasta nenhuma.
+- **Gate de publicação lê o marcador no conteúdo de um `Write`.** Antes só olhava o disco, e um arquivo novo ainda
+  não está lá: um `Write` de arquivo novo com o marcador de dados de exemplo no conteúdo passa a ser dispensado,
+  como já era com o arquivo no disco.
+
+## 1.62.0 — 2026-10-11
+
+- **Troca automática de conta Claude pelo uso, sem reiniciar sessão.** Quando a conta de uma pasta de configuração
+  (`~/.claude` ou `~/.claude-personal`) passa de 97% na janela de 5 h ou na semana, um vigia (tarefa agendada do
+  Windows, a cada 1 min) move para ela o login de reserva da outra conta, e volta sozinho quando o limite zera.
+  As sessões abertas seguem no login novo sem reiniciar e recebem um aviso a cada troca. O login nunca é copiado,
+  só movido, e a troca exige 30 min de vida nos dois logins. O vigia renova sozinho os logins guardados.
+- **`/conta`:** mostra o uso das duas contas e o login de cada pasta. `/conta pessoal|trabalho` troca na mão a pasta
+  da sessão (troca manual não volta sozinha e segue a mesma guarda de vida). `/conta preparar <conta>` grava a reserva
+  com um login no navegador, e `--refazer` substitui uma reserva morta. Com as duas reservas,
+  `node scripts/conta.cjs agendar` liga o vigia.
+- **O `/transferir claude` saiu:** com a conta trocando por baixo da pasta, mudar a sessão de pasta perdeu o motivo.
+  O `/transferir codex` fica.
+
+## 1.61.0 — 2026-10-11
+
+- **Gate que falha por acaso não decide mais a entrega: nova tentativa e estado `flaky`.** A bateria do critério
+  passa a rodar por `scripts/rodar-gate.cjs`, e a catraca de mutação (`conferir-mutacao.cjs`) repete uma vez o que o
+  acaso pode ter produzido (exit 2 e 4). A aprovação da catraca também exige o vermelho duas vezes. Verde só na nova
+  tentativa sai como aprovação e grava um flake no estado do fluxo (`estado.cjs registrar-flake`, com `--slug` e
+  `--tarefa`). Quando o mesmo gate só passa na nova tentativa em duas voltas seguidas do laço executor → revisor, o
+  `executar` fecha como `flaky`. Esse status é distinto de `reprovado`, não consome as 3 tentativas do laço e sobe a
+  você; sair dele pede o `liberar` de sempre, que vale uma rodada.
+- **Teto de despachos de agente por fluxo.** O hook novo `gate-teto-despachos.cjs` conta todo despacho de agente do
+  fluxo ativo, em todos os estágios e inclusive o que a portaria nega, e nega o que passa do teto. O padrão é 40
+  despachos (acima do maior fluxo medido, 36); o plano declara outro com `teto-despachos: N` no cabeçalho, e a
+  `cobertura` recusa o cabeçalho ilegível. Acima do teto, a única porta é
+  `estado.cjs liberar-teto --slug <slug> --motivo "<a sua palavra>"`, que soma +10 por liberação; não há liga/desliga.
+  O contador mora fora do repo, em `<dados>/fluxos/<slug>/despachos.json`, e fora de fluxo nada é contado.
+  Enxerto do orquestrador do plugin `wildz-data` (Rafael Siqueira).
+
+## 1.60.2 — 2026-10-10
+
+- **O bloqueio de escrita em outro repositório agora mostra saídas que funcionam.** Antes ele mandava usar um worktree
+  daquele repo, e o próprio gate barrava a escrita nesse worktree. Além disso, a janela principal recebia o texto
+  escrito para subagente ("PARE e reporte à janela principal") e nunca via as saídas que eram dela (#495).
+- **`gh pr merge <n> --repo dono/outro` não é mais barrado por engano.** O gate lia a descrição do PR sem o `--repo`,
+  e por isso procurava o número no repositório da sessão. Quando o número não existia ali, barrava um merge legítimo.
+  Quando existia, conferia o PR errado (#496).
+- **`gh pr merge` só passa numa forma que o gate entende por inteiro.** É o comando sozinho, com o PR por número ou URL
+  completa, as flags do manual em token separado e no máximo um `--repo dono/repo`. Prefixo de ambiente (`GH_REPO=`),
+  `env`, `--x=valor`, flag agrupada e ref de branch barram, e a mensagem mostra a forma aceita. As revisões de
+  segurança acharam quatro jeitos de o gate conferir um PR enquanto o `gh` mergeava outro; a lista fecha a classe
+  em vez de mais um caso (#496). `gh pr merge --help` deixou de ser barrado.
+- **`env -S '...'` não esconde mais comando dos gates.** O `env -S` (`--split-string`) parte o texto em argumentos e roda
+  o resultado, mas os gates paravam no `env` e liberavam: `env -S 'gh issue close 12'` e `env -S 'git add -A'`
+  saíam com exit 0. Agora o texto é aberto e conferido como comando; forma que não se lê com segurança (aspa grudada,
+  `$`, contrabarra, `#`) barra. Vale para todos os gates que usam o tokenizador compartilhado.
+- **Mais seis caminhos para fechar Issue sem evidência foram fechados**, achados pela revisão de segurança: `-R` entre
+  `pr`/`issue` e o verbo (`gh issue -R x close 12`); no PowerShell, vírgula, `@`, aspas coladas e espaço Unicode que
+  partem um argumento em dois; `Closes #12` no `--body` ou `--subject` do próprio `gh pr merge` (a mensagem do commit
+  de merge também fecha a Issue); subcomando montado por variável (`gh pr $m`) ou com contrabarra (`gh issue clo\se`);
+  `gh api` que mergeia PR ou fecha Issue; e script gravado por heredoc com `GH_REPO=` antes do merge. No PowerShell, o
+  `gh pr merge` só passa sem aspas. Os limites que ficaram de fora estão em `docs/travas-mecanicas.md`.
+- No mesmo PR: três repos contra texto de IA avaliados no livro de repos
+  (`relatorios/2026-10-10-anti-slop-tres-repos.md`).
+
+## 1.60.1 — 2026-10-10
+
+- **Registrar um repo avaliado não exige mais versão nova.** O `conferir-versao.cjs` já dispensava o bump quando só
+  mudava estado de fluxo (`docs/rainforest/estado/`). Agora dispensa também quando só mudam o livro de repos
+  (`vigias/livro-de-repos.md`) e `relatorios/`, porque nada disso é executado pelo plugin. Qualquer outro arquivo junto,
+  inclusive outro arquivo de `vigias/`, continua exigindo bump. Neste mesmo PR entrou a avaliação do `claude-cockpit`
+  para a troca automática de conta (`relatorios/2026-10-10-claude-cockpit-troca-de-conta.md`).
+
+## 1.60.0 — 2026-10-10
+
+- **Atualizar o plugin numa janela chega às outras.** Antes o `/plugins-em-dia` só recarregava (ou avisava) a janela
+  que atualizou; as outras seguiam com a versão velha até alguém rodar `/reload-plugins` nelas. Agora quem atualiza
+  grava um marcador, e cada janela aberta confere a cada 5 s: com **Recarregar sozinho** ligado roda o
+  `/reload-plugins`, desligado avisa "plugins atualizados em outra janela - rode /reload-plugins". Uma vez por
+  atualização, por janela. `RAINFOREST_RECARGA=off` no ambiente desliga. Adaptado do mod do wildz-data, de Rafael
+  Lopes, com autorização dele.
+
+## 1.59.4 — 2026-10-10
+
+- **O gate de staging total reconhece `git.cmd`, `GIT.EXE`, nome com espaço no fim e `| iex` (Issue #456).** O
+  Windows abre o executável sem diferenciar maiúsculas, aceita as extensões do `PATHEXT` e ignora espaço e ponto no fim
+  do nome. Mas o `ehComando` só reconhecia `git` ou `git.exe` em minúsculas, então `git.cmd add -A`, `GIT.EXE add -A`
+  e `& "C:\x\git.exe " add -A` passavam com exit 0. Já o `iex` sem argumento no fim de um pipeline executa a saída do
+  comando anterior, que não está na linha, e agora conta como conteúdo ilegível e barra.
+
+## 1.59.3 — 2026-10-10
+
+- **Veredito do revisor gravado quando o subagente entrega por `SubagentHandback` (Issue #465).** No Claude Code
+  2.1.296 o subagente pode entregar o relato numa chamada de ferramenta `SubagentHandback`. Aí a última entrada do
+  assistente no transcrito é essa chamada, o `last_assistant_message` chega vazio e a linha `VEREDITO:` fica no input
+  da ferramenta. O hook e o `estado.cjs veredito` não a enxergavam, e o estágio `revisar` não fechava sem desligar o
+  `contrato-veredito`. Agora os dois leem o relato do input do `SubagentHandback`. Como o nome do campo não é
+  documentado, a leitura tenta os nomes prováveis e, sem nenhum deles, usa o maior texto do input.
+
+## 1.59.2 — 2026-10-10
+
+- **O painel de PR não acorda mais a sessão de novo para o mesmo conflito (Issue #482).** Enquanto recalcula o PR, o
+  GitHub devolve o estado de merge como desconhecido; a volta para "conflito" contava como novidade e a sessão era
+  acordada outra vez, três vezes no PR #481. Agora a leitura sem dado de merge logo depois de um conflito continua como conflito, e o
+  histórico do pane deixa de listar o vaivém. Só o conflito é mantido; a leitura nunca vira "mergeável".
+- **A abertura do mod chama o `node` por caminho absoluto (Issue #480).** Era o último ponto do mod que chamava o
+  `node` pelo nome. E quando o `node` não é achado, o mod espera 5 minutos antes de procurar de novo, em vez de refazer
+  a busca a cada leitura do relógio, da barra e do desvio.
+
+## 1.59.1 — 2026-10-10
+
+- **Achado que cabe no PR aberto entra nele, sem virar Issue (regra 6 e skill `fechar`).** Desde 09/10, 12 issues
+  abertas e 10 fechadas: a fila não descia, porque achado da revisão ou do security-review virava Issue com PR, CI e
+  versão próprios. Agora, achado da mesma classe do conserto ou pequeno no repo da sessão é corrigido no PR em curso
+  e sai como pendência `resolvida`. Issue fica para o que não cabe (outra área, decisão aberta, trabalho grande) ou é
+  de outro dono.
+
+## 1.59.0 — 2026-10-10
+
+- **Revisor que reprova devolve o trabalho ao executor sozinho.** Depois de um `revisar` reprovado, a sessão roda
+  `scripts/critica-do-revisor.cjs`, que tira os achados do transcrito gravado do revisor, e redespacha o executor com
+  essa crítica colada literal — só a da última rodada, sem resumo da sessão. O laço respeita o teto de 3 reprovações
+  que já existia (a 4ª rodada continua sendo decisão sua) e para antes quando o revisor marca um achado com
+  `[design]`: decisão de design sobe para você, não volta ao executor. Roteiro em `skills/revisar/references/laco.md`.
+
+## 1.58.0 — 2026-10-10
+
+- **Compacta sozinho a 60% de contexto.** Quando o uso da janela passa de 60%, o mod roda o mesmo `/compact` entre
+  turnos e avisa "compactado em N%". Compacta uma vez por subida e volta a armar quando o uso cai abaixo do limiar. Com
+  subagente rodando na sessão, não compacta: avisa "contexto em N%: agente rodando, compacto quando ele voltar (ou faça
+  a passagem)" e compacta quando ele termina. Opções novas: **Compactar sozinho** (ligada) e **Compactar em (%)**
+  (padrão 60). Contorna o limiar fixo que o Claude Code usa com modelo de 1M, que ignora o
+  `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`. Adaptado do mod do wildz-data, de Rafael Lopes, com autorização dele.
+- **Linha do PR na barra.** Com um PR acompanhado e o pane **PR** fora da tela, a barra acima do prompt ganha uma
+  linha com o número, os checks e o merge, nas cores do pane. Some quando o pane aparece ou o PR é mergeado ou fechado.
+  `/painel esconder` esconde junto.
+- **`node` por caminho absoluto no mod (#457).** As seis chamadas do `mod.tsx` a scripts do plugin (barra, relógio,
+  erros e desvio) acham o `node` uma vez por sessão, fora do repositório aberto, como o painel de PR já fazia com o
+  `gh`. A abertura (`hooks/abertura-mod-puro.mjs`) ainda chama pelo nome, com cwd na pasta do plugin (#480).
+
+## 1.57.4 — 2026-10-10
+
+- **Os comandos `leve` e `iniciar` que a portaria e o aviso de fluxo imprimem vão entre aspas simples (Issue #474).**
+  Com aspas duplas, colar o comando no bash expandia um `$(...)` que estivesse no nome de uma pasta e executava o que
+  houvesse ali. Aspas simples são literais no bash e no PowerShell, e a dica do `& ` do PowerShell continua valendo.
+  Se o caminho tiver aspa simples, a mensagem mostra os caminhos em vez de um comando para colar.
+
+## 1.57.3 — 2026-10-10
+
+- **Mutação que falhou medindo não vira mais "corte de shell" (Issue #475).** O `conferir-mutacao` suspeitava de
+  corte de shell só pelo tempo, quando a bateria mutada terminava abaixo de 10% do baseline. Com o runner da CI
+  carregado, um baseline lento fazia a mutação legítima sair `pulada`, e a seção 13c de `testa-conferir-fluxo.sh`
+  falhava de vez em quando. Agora, se a saída pós-mutação mostra falha medida (placar com falha, ou o resumo
+  `fail N` do `node --test`), a suspeita não vale.
+
+## 1.57.1 — 2026-10-10
+
+- **Observação já gravada não trava mais a marca d'água da memória (Issue #452, item 1).** Depois da migração do
+  #435, uma observação vinda da pasta de worktree podia já estar gravada no projeto canônico com a mesma origem. O
+  gravador falhava com `UNIQUE constraint failed` e a sessão parava de avançar. Agora a linha repetida conta como já
+  gravada e a marca avança. Banco antigo, ainda sem a restrição, grava como antes.
+
+## 1.57.0 — 2026-10-10
+
+- **Cada agente roda no effort do seu papel.** O `Agent` não tem parâmetro de effort, e o subagente herdava o da
+  sessão. Agora o frontmatter fixa: `effort: high` para revisor, tester, depurador, auditor-de-segurança,
+  planejador e arqueólogo; `effort: medium` para executor, documentador e resolvedor-de-build. A variável
+  `CLAUDE_CODE_EFFORT_LEVEL`, se você a definir, continua valendo por cima disso para todos os subagentes.
+  A bateria `testa-agentes-effort.sh` reprova agente novo sem a linha.
+
+## 1.56.3 — 2026-10-10
+
+- **O comando de regenerar do `conferir-ponte` funciona colado no repositório-alvo (Issue #450).** Antes ele imprimia
+  `node scripts/ponte.cjs --alvo . ...`, que no alvo falhava com `MODULE_NOT_FOUND`, porque o `ponte.cjs` só existe
+  no plugin. Agora o comando traz o caminho absoluto do `ponte.cjs` do plugin e o diretório do arquivo conferido,
+  entre aspas. Vale para as quatro mensagens: editado à mão, SKILL.md que mudou, bloco antigo e glossário.
+
+## 1.56.2 — 2026-10-10
+
+- **O núcleo da regra 10 diz quando a portaria barra agente que escreve (Issue #445).** Ela barra só agente
+  declarado no manifesto, em repositório com trilho de fluxo e com a chave `aviso-fluxo` ligada. Agente de outro
+  plugin, ou repositório sem trilho, segue só registrado. O núcleo não cresceu: a frase "sem frase digitada por
+  sessão" saiu, e o detalhe continua em `references/regra-10-portaria.md`.
+
+## 1.56.1 — 2026-10-10
+
+- **A portaria diz por que a branch ficou fora do fluxo (Issue #447).** Às vezes um agente que escreve é recusado com
+  "estagio aberto: fora-de-fluxo" mesmo havendo fluxo aberto. A recusa agora mostra a branch que leu e quais fluxos
+  abertos estão mais perto, cada um com a branch que casaria (`fluxo/<slug sem a data>`). O caso comum é a branch
+  levar o slug inteiro, com a data.
+
+## 1.56.0 — 2026-10-10
+
+- **Pendência do fluxo só sai com destino (Issue #449).** Antes, fechar um estágio `ok`/`aprovado` apagava em silêncio
+  as `pendentes` que o `--json` não repetia. Agora o `marcar` recusa (exit 2) e lista as que faltam. Cada pendência
+  ganha um destino no campo novo `destinos`:
+  - `resolvida`, com `evidencia`;
+  - `plantada`, com `ref` `#<n>`, URL de issue do GitHub ou `ideia:<id>`;
+  - `descartada`, com `motivo`.
+
+  O `destinos` acumula entre chamadas e fica no estado depois do `ok`. Se uma pendência voltar a ser listada, ela
+  perde o destino antigo e o comando avisa no stderr. Destino inválido não conta.
+- **Novo `estado.cjs destinar --slug <s> --estagio <e> --json '{"destinos":[...]}'`.** Grava o destino num estágio
+  já fechado sem mudar o status e sem refazer os gates. É o remédio que o `exigir --estagio fechar` indica.
+- **`parcial` que deixa uma pendência de fora avisa e a mantém.** A pendência só sai da lista com um destino.
+- **`exigir --estagio fechar` recusa pendência sem destino**, também em arquivo de estado antigo ou editado à mão.
+- **Novo `estado.cjs deixado --slug <s>`.** Lista em markdown o que ficou para depois e o destino de cada item.
+  O corpo do PR do `fechar` ganha a seção "Deixado para depois" com essa saída.
+- **Fluxo em andamento com `pendentes` num `parcial` precisa gravar `destinos` antes do `ok`.** Estados já fechados
+  não mudam, e nenhum migra.
+
+## 1.55.1 — 2026-10-10
+
+- **Worktree do agente pode nascer do commit de trabalho.** Com `"worktree": { "baseRef": "head" }` nas
+  settings do Claude Code, o worktree de `isolation: "worktree"` nasce do HEAD da sessão que despacha, não da ponta
+  de `origin/main`. A regra 11, o `executar` e o glossário descrevem os dois modos; sem a chave (`fresh`, o padrão)
+  nada muda. A conferência de base continua obrigatória nos dois. Despache de dentro do worktree do fluxo, com a
+  árvore limpa.
+
+## 1.55.0 — 2026-10-09
+
+- **Painel de PR que abre sozinho (`/pr`).** Todo `gh pr create`, `merge`, `checks`, `ready` ou `view` que a sessão
+  rodar com a URL do PR no comando ou na saída abre o pane **PR** ao lado (o `gh pr create` sempre imprime a URL): título, branch → base, autor, commit, checks, merge, review, threads e comentários,
+  com a linha do tempo do que mudou desde que começou a acompanhar. A sessão que abre numa branch com PR aberto já
+  acompanha. O `gh` é consultado a cada 1 min. `/pr <numero|url>` acompanha outro PR, `/pr fechar` para.
+- **O Claude age quando o PR da sessão vira.** Só vale para o PR que esta sessão criou, ou o da branch `fluxo/*` em
+  que ela abriu, com você como autor e sem fork. Checks verdes e mergeável: ele manda mergear. Checks vermelhos:
+  investiga e conserta na branch do PR. Mudança pedida na review ou conflito: resume e traz para você, sem alterar
+  nada. Merge: avisa e lembra de limpar worktree e branch. A virada vira uma nota na conversa, e se a sessão estiver
+  parada e o PR quieto há 3 min, ela acorda sozinha com um turno novo. PR alheio aparece no pane e a nota só informa, sem pedir ação, e nunca acorda.
+- **Plugins em dia dentro da sessão (`/plugins-em-dia`).** Na abertura e a cada 3 h, atualiza o marketplace e os
+  plugins da opção **Plugins a manter em dia** (padrão: `rainforest-mind@rainforest-mind`; só os instalados no
+  escopo user). Várias janelas abertas juntas rodam uma vez só a cada 30 min. Subindo versão, avisa para rodar
+  `/reload-plugins`; a opção **Recarregar sozinho** (desligada) recarrega por conta própria. `/plugins-em-dia`
+  força a rodada e responde com as versões.
+
+## 1.54.4 — 2026-10-09
+
+- **O Jardineiro de ideias resume as plantadas em vez de listar todas.** A Ronda 1 traz o total, a contagem por faixa de
+  idade e as 5 mais antigas; com 162 nomes, a mensagem no WhatsApp tinha virado paredão que escondia as rondas que pedem resposta.
+- **A Ronda 5 para de perguntar "algum livro na fila?".** O vault é acervo de consulta; medido em 2026-10-09, a skill
+  `segundo-cerebro` teve zero invocações e os temas dela quase não aparecem nas sessões. Segue conferindo índice x wiki.
+
+## 1.54.3 — 2026-10-09
+
+- **A varredura de baterias não deixa mais teste trocar a identidade git do repositório (Issue #446).** Com
+  `GIT_DIR` ou `GIT_WORK_TREE` herdado do ambiente, o git ignora `-C` e `cd`, e o `git config user.email` das caixas
+  de teste caía no repositório de verdade. `scripts/varrer-baterias.sh` limpa essas variáveis antes de rodar, e confere
+  o `user.*` do repositório depois de cada bateria: a que mudar sai vermelha, com o antes e o depois. O que exportou
+  `GIT_DIR` em 2026-10-08 não foi identificado. Nenhuma bateria reproduz a troca sozinha.
+
+## 1.54.2 — 2026-10-09
+
+- **Banco ocupado não deixa mais colunas da memória faltando em banco antigo (Issue #460).** As migrações de
+  `offset_processado` e `consolidada_em` passam a engolir só "coluna duplicada", como as do #436: com outra sessão
+  escrevendo, a abertura tenta de novo na próxima vez em vez de seguir sem a coluna. Só afeta banco criado por versão
+  bem antiga do plugin.
+
+## 1.54.1 — 2026-10-09
+
+- **`utilidade --repontuar` mostra o progresso.** A cada 5 sessões refeitas (e na última) sai `repontuar: N de M sessões com
+  transcrito` no stderr. Na janela real o comando leva alguns minutos, e antes ficava mudo. O resumo no stdout não muda.
+- **Limites da busca ativa declarados por inteiro.** Além do que a 1.54.0 já dizia, a regra não reconhece `env`, flag do node
+  antes do script, chamada dentro de `$(...)`, `(...)` ou depois de `then`, continuação com `\` e `<<` dentro de outro comando.
+  Todos subcontam; nos transcritos reais nenhuma busca real ficou de fora.
+- **Correção na nota da 1.54.0:** ela dizia que "buscas ativas" cai. O número absoluto pode subir depois do `--repontuar`,
+  porque sessões antigas sem medida de buscas passam a ter uma.
+
+## 1.54.0 — 2026-10-09
+
+A régua D7 da memória por assunto (Issue #436) passa a medir o que diz medir. Os limiares (40% e 1/3), a base (27%, 171 de
+255) e a colheita de 2026-10-23 ficam como estavam; muda o que entra no número que o `--relatorio` lê.
+
+- **Busca ativa é instrução, não texto.** "Buscas ativas" conta só o comando em que alguma instrução começa por
+  `node <caminho>memoria.cjs buscar`. Citar o comando num `grep`, num `echo`, no corpo de um heredoc ou numa mensagem de
+  commit deixa de contar.
+- **A nota do pedido e do subagente desconta o que o pedido já tinha.** Só os termos raros da memória que não estavam no
+  texto que disparou a injeção medem uso. A abertura não muda.
+- **Memória sem termo raro fora do pedido sai da conta.** Não conta como útil nem como inútil; o relatório diz quantas
+  saíram na linha `servidas fora da conta`.
+- **A abertura grava o que serviu.** Os ids das memórias que de fato entraram no bloco vão para o arquivo de "já servidos"
+  da sessão (somando, na sessão retomada), e a memória que a abertura serviu não volta pelo canal do pedido. Se a gravação
+  falhar, a abertura sai como sempre.
+- **Só marca como servido o que entrou no bloco do pedido.** A memória cortada pelo teto de 1.500 bytes deixa de ficar
+  marcada.
+- **Banco ocupado não tira a sessão da fila.** Se a migração das colunas de utilidade pega o banco ocupado, o erro
+  sobe e a sessão fica para a próxima passada, em vez de ser marcada como falha definitiva.
+- **O peso do projeto atual continua como estava:** só desempata o bm25 igual. A parte das duas grafias do mesmo projeto
+  já saiu com o nome canônico (1.53.0, #435).
+- **Novo: `node scripts/memoria.cjs utilidade --repontuar --desde AAAA-MM-DD`.** Refaz, com as regras novas, as sessões
+  pontuadas a partir da data. Faz backup antes, preserva o `pontuada_em` de cada sessão, não toca a sessão sem transcrito
+  (ela aparece contada) e dá o mesmo resultado se rodar duas vezes. Sai com 2 se o banco estava ocupado e sobraram sessões.
+
+**Efeito prático.** Num ensaio sobre uma cópia do banco real (2026-10-09), `--repontuar --desde 2026-10-08` refez 46 das 56
+sessões da janela (as 10 sem transcrito ficaram com a nota antiga) e tirou 60 servidas da conta; "buscas ativas" passou a
+contar só chamada real do comando. O número do `--relatorio` muda.
+
+**Como atualizar o que já foi pontuado.** Depois de atualizar o plugin, rode
+`node scripts/memoria.cjs utilidade --repontuar --desde 2026-10-08` antes do `--relatorio`. Vale para as sessões abertas
+depois da atualização; a sessão aberta antes dela segue pela leitura do transcrito.
+
+## 1.53.2 — 2026-10-09
+
+- **O gate de staging deixa passar script rodado por `& "$pasta\script.ps1"`.** Com a variável só no diretório e o nome do
+  arquivo escrito por extenso, o PowerShell recebe o mesmo veredito do caminho todo literal. `& "$dir\git.exe" add -A`, `& "$t"`
+  sozinho, nome de arquivo em variável e qualquer executável que não seja `.ps1` continuam barrando.
+
+## 1.53.1 — 2026-10-09
+
+- **`buscar --projeto` aceita caminho de worktree e barra no fim.** `C:/repo/.claude/worktrees/<nome>` e `C:/repo/` passam a
+  achar as memórias do projeto principal, como o nome curto e o slug já achavam. Antes saíam com "não encontrado".
+
+## 1.53.0 — 2026-10-09
+
+- **Um nome por projeto no banco de memória (Issue #435).** O projeto passa a ser gravado como o slug do repositório
+  principal, pela regra que o Claude Code usa na pasta de transcritos, e a sessão em worktree grava no projeto principal.
+  A tela continua mostrando o nome curto. A abertura, o canal do assunto, a pontuação de utilidade e o `buscar` enxergam
+  o projeto inteiro, sem diferenciar maiúscula.
+- **Migração na primeira abertura do banco.** Faz backup em `.rainforest-backups/`, move observações e resumos de nome
+  curto com correspondência única (no banco medido: 9 nomes, 8.777 linhas), deixa os sem correspondência como estão
+  (17 nomes, 1.458 linhas) e grava o relatório em `migracao-projeto-canonico.txt`. Nenhuma linha some. Depois dela,
+  toda abertura recolhe o que uma versão antiga do plugin gravar fora do padrão.
+- **`buscar --projeto` aceita nome curto, slug ou caminho.** Nome ambíguo ou desconhecido sai com erro listando os
+  candidatos.
+- **Quando vale:** a partir da sessão seguinte à atualização. Para migrar na hora, rode `node scripts/memoria.cjs iniciar`.
+  A primeira abertura depois da atualização pode ainda não ver as memórias de nome curto, se ler o banco antes de o
+  outro hook da mesma abertura migrar; a seguinte vê tudo. Sessão aberta antes da migração e pontuada depois pode ter
+  linhas de outros projetos contadas como servidas sem id.
+
+## 1.52.0 — 2026-10-08
+
+- **Glossário de domínio por repositório.** Cada repo pode ter um `GLOSSARIO.md` na raiz com os termos do seu domínio: o que o termo é, onde ele mora, um cenário real e a forma "evite". Quem trabalha no repo passa a receber os verbetes certos sem precisar pedir.
+- **Injeção pelo assunto, no pedido e no briefing do subagente.** Quando o pedido cita um termo do glossário, o verbete entra no contexto; o subagente recebe os verbetes casados no briefing. No pedido, cada verbete entra uma vez por sessão; o subagente recebe os verbetes casados a cada despacho, porque cada briefing é contexto novo. Sem a pasta de dados do rainforest, o glossário entra no pedido do mesmo jeito, só que sem deduplicação; dedup corrompido ou impossível de gravar também não derruba o bloco. `GLOSSARIO.md` acima de 256 KB não é lido. Vale a partir da sessão seguinte à atualização.
+- **Ponte: linha do GLOSSARIO.md.** Quando o repo-alvo tem `GLOSSARIO.md`, a ponte acrescenta uma linha que aponta para ele no corpo levado ao Codex ou ao Gemini CLI. O `conferir-ponte` acusa quando o glossário surge ou some no alvo sem a ponte acompanhar.
+- **Skill `/glossario`.** Propõe verbetes, migra termos já espalhados para o arquivo e lista os verbetes existentes. Nada grava sozinho: o verbete entra por commit e PR, com aprovação do Luís.
+- **Conferidor na CI.** `scripts/conferir-glossario.cjs` roda no shard 1 da bateria e recusa verbete fora do formato.
+- **Regra 13 (referência).** Quando uma correção de termo de domínio aparece na conversa, ela vai para um verbete proposto via `/glossario`, que o Luís aprova. A elaboração mora em `references/regra-13.md`.
+- **Semente do próprio plugin.** O repositório do plugin ganha seu `GLOSSARIO.md` com nove verbetes do vocabulário dele.
+- **Fica de fora:** nenhum repo de trabalho da squad foi tocado. O glossário entra em cada repo só quando alguém o propõe nele.
+
+## 1.50.2 — 2026-10-08
+
+- **Mensagem dos gates de fluxo diz como colar em PowerShell.** O comando de `iniciar` e de `leve` impresso pelo
+  bloqueio de edição e pela portaria começa por string entre aspas, que PowerShell só roda com `& ` na frente. A
+  mensagem agora traz a dica (Issue #442).
+
+## 1.50.1 — 2026-10-08
+
+- **`verificar` reprovado depois do `fechar` reabre o `fechar`.** Quando o CI do PR reprova com o fluxo já fechado,
+  `marcar --estagio verificar --status reprovado` devolve o `fechar` a `pendente`, e o `executar` pode voltar a
+  `parcial` sem o contorno manual de reprovar o `fechar` antes (Issue #441).
+
+## 1.50.0 — 2026-10-08
+
+- **O aviso de fluxo virou bloqueio.** Editar arquivo de código (fora de `docs/`) num repositório com fluxo
+  rainforest ou protheus, sem fluxo aberto nem caminho leve na branch, sai com erro. A mensagem traz as duas
+  saídas com o comando pronto: abrir o fluxo, ou declarar o caminho leve. Repete a cada edição, não só na primeira
+  da sessão.
+- **Caminho leve declarado: `estado.cjs leve --motivo "<por quê>"`.** Registra, por branch, que aquela branch é um
+  hotfix mecânico sem fluxo. O motivo é obrigatório e fica no rastro: no trilho rainforest, no arquivo de estado
+  versionado da branch; no protheus, sob o `.git` do repositório. Na branch padrão de repositório rainforest o
+  comando é recusado, porque a regra 11 manda trabalho em worktree.
+- **Despacho de agente que escreve é barrado fora do estágio dele.** Agente com `escreve: true` no manifesto não
+  roda sem fluxo no estágio que ele declara, nem sem `leve` na branch. A mensagem diz o agente, o estágio exigido e
+  as duas saídas. Agente que não está no manifesto (de outro plugin) segue só registrado.
+- **Chave `aviso-fluxo` desliga tudo.** No config do projeto, ela desliga a trava de edição e a de despacho.
+- **Protheus: fluxo aberto pelo campo `branch` do `.gates.json`.** Um `docs/plans/*.gates.json` com `branch` no topo abre o fluxo só na branch que ele nomeia, sem olhar o mtime; sem o campo, vale o mtime de menos de 24 h; arquivo ilegível é ignorado.
+- **Fica de fora:** escrita feita por Bash (`sed`, `node -e`, redirecionamento) não é barrada. O bloqueio pega o
+  Edit, o Write e o MultiEdit. O motivo do `leve` não é julgado: fica no rastro para auditar depois.
+
+Vale a partir da sessão seguinte à atualização.
+
+## 1.49.0 — 2026-10-08
+
+- **A memória chega pelo assunto, não só pela recência.** Em cada pedido que você digita, o plugin busca no banco
+  as memórias de qualquer projeto que tratam do mesmo assunto e junta até 3 delas ao contexto, sob
+  `## Memória do assunto`. O subagente recebe o mesmo bloco no fim do briefing, quando a sessão o despacha pela
+  ferramenta `Agent`. Só entra o que passa de um limiar de relevância (palavras comuns não contam), o pedido nunca repete o que a sessão já recebeu
+  (nem o que a abertura serviu), e o bloco tem no máximo 1.500 bytes. A abertura não mudou.
+- **Se o banco falhar, o pedido segue.** Banco ausente ou travado ou qualquer erro do hook saem sem injetar nada
+  e sem bloquear o pedido nem o despacho do subagente.
+- **O relatório de utilidade separa por canal e tem régua.** `node scripts/memoria.cjs utilidade --relatorio`
+  passa a mostrar a utilidade da abertura, do pedido e do subagente, quantas sessões e subagentes buscaram memória
+  por conta própria, e a régua D7: o canal novo fica se, 14 dias depois de a versão estar viva, houver ao menos 40%
+  de sessões com memória útil (base 27%) e perdas de no máximo 1/3 (base 171 de 255); senão sai. O relatório só
+  conta desde a primeira memória servida pelo canal novo e diz "sem dado" enquanto não houver.
+
+Vale a partir da sessão seguinte à atualização.
+
+## 1.48.0 — 2026-10-08
+
+- **O `semear` lê a sessão real.** Além de observações e relatórios, lista os transcripts recentes do projeto
+  (inclusive os dos worktrees, onde roda o subagente), com quantas chamadas de ferramenta cada um fez e quantas
+  deram erro (`--sessoes N`, padrão 5). A skill traz as lentes para ler o transcript: navegação, checagem que
+  faltou, regra mecânica que vira trava, economia de ferramenta, instrução sem efeito, informação que faltou.
+- **Corpo de PR com Resumo, Evidência e Perigo de merge.** O `fechar` passa a escrever o PR com o menor visual que
+  explica a mudança, a saída antes/depois e se o merge é porta de mão dupla ou única, com o raio de impacto.
+- **Pergunta em que "sim" aceita a recomendada** (`brainstorm`) e **prova de que a mutação pousou**
+  antes de confiar no vermelho (`depurar`).
+
+## 1.47.3 — 2026-10-08
+
+- **O cabeçalho do `aviso-fluxo` diz o que ele faz.** O aviso dispara quando o repositório tem fluxo e nenhum
+  está aberto; o comentário dizia o contrário e já levou a propor um hook duplicado. Só texto, nada muda no
+  comportamento.
+
+## 1.47.2 — 2026-10-08
+
+- **Painel do mod confere de novo o que ainda não tinha resposta.** Escrever um arquivo antes de o plano existir
+  e reescrevê-lo depois agora checa o desvio na reescrita; antes o "sem plano" ficava guardado e o arquivo
+  fora do plano passava sem aviso. Um arquivo cuja checagem falhou e depois respondeu aparece uma vez só no
+  mapa, e uma sessão `claude -p` aberta ao lado não zera mais a memória da sua sessão.
+
+## 1.47.1 — 2026-10-07
+
+- **Pasta com acento não acusa mais creep falso.** Num repo com caminho acentuado (`Transferencia Serviço/`),
+  o `marcar revisar` recusava por "arquivo no diff sem tarefa correspondente": o git devolve o nome escapado em
+  octal e o plano o traz em UTF-8. As listagens de caminho do fluxo (`conferir-fluxo`, `estado`, `conferir-entrega`,
+  `conferir-versao`, `conferir-publicacao`) passam a pedir o nome literal ao git, sem mexer na sua config.
+
+## 1.47.0 — 2026-10-07
+
+- **Erros de ferramenta ficam registrados.** O "Erros N" do mod zerava com a sessão. Agora cada falha (comando que
+  falhou, gate que bloqueou, permissão negada) vira uma linha em `~/.rainforest/erros.jsonl` na hora, com pasta,
+  ferramenta, comando e o começo da mensagem — inclusive em janela fechada no X. `/painel erros [horas]` lista
+  as últimas 24 h agrupadas por tipo, e o `/saude` avisa quantas houve.
+
+## 1.46.2 — 2026-10-07
+
+- **Janela fechada sai do relógio.** O `⏰ … parada há` mostrava janela que já tinha sido fechada no X — inclusive
+  a da outra conta, que divide o `sessoes.json` — por até 6 h. O heartbeat agora grava o PID da sessão (lido do
+  registro do próprio Claude Code em `<config dir>/sessions/`), e janela com processo morto some na hora.
+
+## 1.46.1 — 2026-10-07
+
+- **"Deixado para depois" fecha o que se resolveu.** O segundo modelo passa a receber os itens abertos e
+  diz quais o turno resolveu — por ferramenta, pelo relato ou pela sua resposta — e esses saem da lista e da
+  contagem da barra. Roda em todo turno com item aberto, mesmo sem ferramenta.
+- **Pergunta de decisão não é pendência.** Turno que termina com `Q1.`, `Q2:`… para você não gera item: a
+  linha `Q` sai da varredura de frases e o segundo modelo não anota pendência nova nesse turno.
+- **`/painel limpar`** zera a lista, como o botão "Limpar tudo".
+
+## 1.46.0 — 2026-10-07
+
+Fecha as Issues #409 a #414, #417 e #419, e retira o contorno da política de segurança em conta de organização.
+
+- **Pastas de docs do repositório (#412).** Mapa da arqueologia, design e plano passam a seguir a pasta que o
+  repositório já usa: `docs/legado/` quando existe `docs/legado/COBERTURA.md` (o mapa entra com uma linha por
+  fatia no índice que já existe), `docs/plans/` quando lá há `*-design.md` ou `*.gates.json` (design e plano com
+  sufixo `-design.md`/`-plano.md`), ou o que a chave nova `pastas` do `.rainforest/config.json` disser. Sem nada
+  disso, `docs/rainforest/` como sempre. `node scripts/pastas-docs.cjs caminho --tipo <t> [--slug <s>]` diz onde.
+  Estado, portões, réguas e varredura continuam em `docs/rainforest/`. O estado passa a ler o caminho do design
+  que o brainstorm grava (`doc`).
+- **Desligar gate: só `RAINFOREST_GATE_OFF` ou a chave do config (#417).** O arquivo `.rainforest-gate-off` deixou
+  de ser lido por qualquer gate; se você usava, troque por `node scripts/setup.cjs --desligar <gate> --escopo
+  projeto`. O `gate-git-verificacao` não oferece mais a saída a subagente.
+- **Config de projeto em worktree (#411).** `.rainforest/config.json` é lido da raiz do checkout principal, também
+  de dentro de `.claude/worktrees/*` ou de um subdiretório, e `setup --escopo projeto` grava lá.
+- **Repo privado fora do GitHub (#419).** Com `"visibilidade-repo": "privada"` no config **do projeto**, o gate de
+  publicação deixa de barrar termos da sua lista privada quando o `gh` não sabe a visibilidade (GitLab, por
+  exemplo). Telefone, JID, CPF e credencial continuam barrando, e a declaração não vale com remoto GitHub.
+- **Gate de publicação (#409, #410).** Pseudo-versão de módulo Go em `go.mod`/`go.sum` não é mais telefone, e
+  `Authorization` com `Bearer`/`Basic`/`Token` seguido de referência de variável (`f"Bearer {KEY}"`, `.format(KEY)`,
+  `${KEY}`) não é mais credencial. Literal depois do esquema continua barrado.
+- **`gate-fechar-issue` (#414).** `. arquivo`/`source arquivo` lê o arquivo e só barra se ele fecha Issue: carregar
+  `.env` com `set -a; . x.env; set +a` passa.
+- **`verificar --raiz <dir>` (#413).** Quando o código vive noutro worktree que não o do estado (PR para upstream),
+  `estado.cjs marcar --estagio verificar --raiz <worktree>` roda as mutações lá.
+- **Conta de organização.** Em conta com o plugin gerenciado `cc-plugin-sec-default`, o mod da abertura não entrega
+  mais as regras inteiras como mensagem de usuário: a política da organização barra o system prompt de plugin de
+  usuário, e contorná-la saiu. Nessa conta as regras chegam pelo núcleo do SessionStart; para as regras inteiras,
+  peça ao admin da organização a liberação do plugin.
+
+## 1.45.0 — 2026-10-07
+
+Uma barra de sessão acima do prompt e um painel que abre sob demanda.
+
+- **A barra entra no lugar da faixa.** Foco, fluxo e Q saem da linha acima do prompt, porque você as
+  ignorava; o relógio ⏰ (jornada e janela parada) fica, agora como uma figura da barra, e a nota da
+  regra 8 segue como estava. A barra mostra estado (trabalhando ou pronto), tokens, custo, contexto de 0
+  a 100, cache (quente ou frio, com a estimativa do reenvio), itens deixados, ferramentas por minuto,
+  subagentes, turnos e erros; cada figura entra se couber no que sobra, então o corte não é contíguo, e o ⏰
+  é o último a cair.
+- **`/painel` abre o pane** com os fluxos em curso, o mapa da sessão, o contexto por fatia, o cache, os
+  subagentes e o custo. Subcomandos: `esconder`, `mostrar` (a barra só volta quando você manda),
+  `cache 5m|1h` e `checar ligar|desligar`. O mapa lista os arquivos escritos, as skills, os serviços MCP e os
+  subagentes; com um fluxo em curso, escrever num arquivo fora dos `arquivos:` do plano acende uma linha
+  vermelha e um único toast, o aviso de desvio, que vai só a você, nunca ao modelo. Só `Edit`, `Write` e
+  `NotebookEdit` contam: escrita por `Bash` não é detectada, e fora de fluxo o mapa só lista.
+- **Deixado para depois, com um checker que vê as ferramentas.** Frases de adiamento em português e inglês,
+  marcadores de pendência em arquivo e, em turno com 5 ou mais ferramentas, um segundo modelo (Haiku) que lê o
+  pedido, o fim do relato e a lista de ferramentas do turno com as falhas — a regra 12 na tela: "feito" sem
+  comando que o sustente aparece como item. "Faz agora" só preenche o prompt; quem envia é você.
+- **Crédito.** O painel é adaptado do terminal-desk 0.2.1 (licença MIT, ClariSortAi); o texto da licença está
+  em `NOTICE`, e os arquivos adaptados abrem com a remissão a ele.
+- **Falha aberta nas duas contas.** Se uma leitura (uso de tokens, segundo modelo, pane, subprocesso) é
+  recusada, falha ou demora, some só aquela peça; a barra e o pane nunca derrubam a sessão, e o mod não
+  grava nada em disco. Medido no terminal, Claude Code 2.1.292, nas contas pessoal e de trabalho: a barra, o
+  `/painel`, as fatias de contexto e o toast funcionam nas duas; o checker Haiku respondeu em 835 ms na
+  conta de trabalho, e na pessoal um `Edit` fora do plano gerou a linha vermelha e um único toast, com cerca de 5 s
+  de latência.
+- **A conta de trabalho barra só duas coisas** (política `cc-plugin-sec-default`): `prompt.compose` e
+  `classic.SessionStart`, e o painel não usa nenhuma. `ui.render`, `ui.open`, `session.usage`,
+  `model.complete` e `ui.toast` passam.
+- **Requisito.** O painel pede o Claude Code 2.1.292 ou mais novo, a versão em que foi medido, no terminal; o
+  desktop não foi medido. Sem o mod nada muda.
+- **Vale a partir da sessão seguinte à atualização:** o mod é carregado na abertura da sessão.
+
+## 1.44.1 — 2026-10-07
+
+- **O aviso de agente em voo só barra a sessão que despachou.** Antes, qualquer sessão aberta no mesmo
+  worktree era bloqueada no fim do turno por um agente que outra janela tinha despachado. Agora o
+  `estado.cjs marcar` grava a sessão dona em cada item de `em_voo`, e o aviso só conta os da sessão que
+  está parando; registro antigo, sem dono, segue barrando como antes. Vale a partir da sessão seguinte
+  à atualização.
+
+## 1.43.0 — 2026-10-06
+
+Fecha as doze Issues abertas pela revisão bimestral (#396 a #405, #407, #408).
+
+- **Hooks novos.** `aviso-fluxo` (PreToolUse em Write/Edit): no primeiro arquivo de código editado numa
+  sessão de repositório com fluxo rainforest e nenhum fluxo aberto, lembra de abrir o fluxo ou de dizer por
+  que pula (#396; desliga com a chave `aviso-fluxo`). `gate-subagente-sem-instalar` (PreToolUse em
+  Bash/PowerShell/Write/Edit/MultiEdit/NotebookEdit): subagente não instala pacote — também atrás de `bash -c`,
+  `sudo`, `env`, `FOO=1`, `pwsh -Command`, `&` do PowerShell e flags com valor antes do verbo (`npm --prefix x install`), decidido pelo subcomando (`npm test`, `yarn build`, `--help` passam) — nem cria
+  ou altera `.rainforest-gate-off` nem define `RAINFOREST_GATE_OFF` (#402; chave `subagente-sem-instalar`). `idioma-session-start` (SessionStart na
+  compactação): com a chave `idioma` no config, a sessão compactada volta a responder no idioma preferido (#401).
+- **`gate-fechar-issue`:** `bash scripts/$b.sh` (caminho que mistura literal e variável) deixa de ser
+  ilegível (#405), e `--body-file` criado por heredoc no mesmo comando é lido do próprio comando (#407).
+- **`conferir-fluxo cobertura`** recusa plano que o `executar` não consome: tarefa paralela com
+  dependência, paralelas que tocam o mesmo arquivo, `tipo` inválido, chave desconhecida, caminho com `..` ou
+  absoluto, e `de:` de mutação que casa mais de uma vez no fonte (#397).
+- **Baterias (#398, #403):** `varrer-baterias.sh` confere a lista de obrigatórias
+  (`scripts/baterias-obrigatorias.txt`) antes de repartir em shards; a catraca roda o bash por caminho e sai 69
+  com o bash do WSL; mutação concorrente nas fixtures de cobertura sai 69 com a trava ocupada, e a restauração do fonte se confere por sha256 (divergindo, sai ≠ 0 e a trava fica marcada, barrando a próxima rodada); três baterias de memória
+  recusam rodar contra a raiz real; o payload das sete baterias de gate da #403 sai de `JSON.stringify` — seis casos eram
+  JSON inválido e ficavam verdes sem o gate olhar.
+- **`conferir-entrega` (.cjs e .py, #400):** stderr do git vira aviso em vez de sujeira; `status` que falha
+  sai 69; `--gravar-sujo-antes` grava o snapshot com a árvore de origem e a conferência recusa snapshot de
+  outra árvore; regressão em bateria vizinha passa a ser avisada.
+- **`limpar-worktrees` e leitor de estado (#399):** revalidam antes de remover, poupam worktree em uso
+  recente (10 min, nome acentuado incluído) e dizem "fluxo concluído na base" quando a branch já entrou na `main`.
+- **`/saude`** avisa skill de usuário divergente entre os dois config dirs (#404).
+- **Memória:** legenda e bloco mostram a data local da observação, não a UTC (#408); o relatório de
+  utilidade continua achando a observação servida quando a data local e a UTC caem em dias diferentes.
+
+## 1.42.0 — 2026-10-06
+
+- **`/transferir claude`: a sessão muda de conta com o contexto inteiro.** Copia o transcript da sessão atual
+  (e a pasta dos subagentes e das saídas de ferramenta) da conta em que ela roda para a outra conta do Claude
+  Code nesta máquina, e imprime a linha `cd` + `claude --resume <id>` para continuar lá. Não resume nada nem
+  gasta token; a origem fica intacta; cópia que já existe no destino só é sobrescrita com `--forcar`. Sem chave
+  no `/setup`. `/transferir` sem argumento continua indo para o Codex.
+- **Conserto:** o `/transferir` para Codex recusava (exit 2) toda sessão da conta pessoal, porque só aceitava
+  transcript em `~/.claude/projects`; agora aceita as duas contas.
+
+## 1.41.0 — 2026-10-05
+
+- **Revisão bimestral das regras.** As 214 observações registradas desde 2026-08-08 foram triadas por conteúdo:
+  85 já estavam cobertas pelo texto e foram colhidas; 26 lições viraram texto novo nas regras e nas skills do
+  fluxo; o que era defeito de script virou Issue (#396 a #404). Nenhum núcleo mudou; as elaborações das regras 11,
+  12, 16 e 17, que a abertura injeta inteiras, cresceram 1,3 KB (38.863 B de 40.960 B) — o resto do texto novo
+  mora em arquivos irmãos das `references/`.
+- **Regras (references):** citar terceiro pela frase literal e memória do usuário como ambiente (16); `Q` só
+  para decisões independentes, sempre com recomendada (16); a prova tem de medir o defeito, verde em quantos
+  ambientes, e mutação que alarga o padrão (12, em `regra-12-prova.md`); um worktree por atividade e sem
+  `EnterWorktree` com agente em voo (11, em `regra-11-atividade.md`); foco é entrega, não pasta (3); plantio
+  é para o que desvia, não para o que ele quer resolver (6); ressalva antes da ordem e comentário lateral não
+  vira gate (7); como ler recusa de gate e anunciar quando parar de despachar (14); processo de fundo e `&`
+  no Bash (15); balanço da sessão antes de "alguma observação?" (5); origem marcada em mensagem entre sessões (17).
+- **Skills do fluxo:** `brainstorm` varre ideias e Issues antes da primeira rodada, pergunta alvo e
+  convive-ou-substitui, exige modelo de ameaça quando o design cria trava, e reconhece delegação prévia e
+  pedido de conversa; `plano` ganha "Critério de trava" e três cuidados de critério; `modo-dev` manda invocar
+  a catraca de mutação, proíbe temporário de nome genérico e põe teto no relatório; `fechar` troca a base da
+  PR empilhada antes do merge; `arqueologia` não devolve arquivo sem funções; `regua` confere a cobertura do
+  material de origem; `CONTRIBUTING` pede releitura hostil de texto injetado.
+- **Vigia `revisao-bimestral`** passa a ser por ciclo: quem fecha a revisão reagenda a próxima.
+
+## 1.40.0 — 2026-10-05
+
+- **Mapa de estágios do território.** Um plugin de domínio (um "território") passa a declarar, num
+  `territorio.json`, quais agentes despachar, quais tools de MCP e skills consultar e quais comandos
+  rodar em cada estágio do fluxo. Antes, mesmo com os dois plugins habilitados, o modelo não
+  despachava nenhum agente do outro plugin: ficava por iniciativa dele.
+- **`scripts/territorio.cjs estagio <nome>`.** Descobre o território do repositório (pela detecção do
+  manifesto, ou pelo apontamento `.rainforest/territorio`, que vence) e imprime o bloco do estágio.
+  Variáveis de comando vêm de `~/.rainforest/territorios/<nome>.json`; variável sem valor sai 3
+  nomeando a que falta. Sem território, imprime `sem territorio` e nada muda. O `{arquivo}` sai
+  citado para shell (aspas simples quando tem caractere fora do conjunto seguro): o nome vem do
+  repositório em que se trabalha e a linha impressa é executada, então `x$$(cmd).prw` não roda `cmd`.
+- **O `marcar` recusa item obrigatório sem evidência.** Agente, tool ou comando que o mapa marca
+  como obrigatório e não aparece no campo `territorio` do `--json` do `marcar` recusa com exit 2
+  nomeando o item. Item opcional só gera aviso. Sem território, o `marcar` se comporta como antes.
+- **As quatro skills ligadas.** `brainstorm`, `executar`, `revisar` e `verificar` rodam o
+  `territorio.cjs` na abertura e agem sobre o bloco: consultas de MCP no brainstorm, agente do
+  território no lugar do executor (`modo: substitui`), revisores em paralelo ao do rainforest
+  (`modo: soma`) e comandos do mapa na verificação.
+- **Contrato `versao_contrato: 0`, experimental.** Está descrito em
+  `docs/rainforest/referencia/contrato-territorio.md`, com o protocolo de aceite em números (agentes
+  despachados, qualidade do júri cego, custo até +30%). Vira v1 quando um segundo território o
+  implementar. O mapa de um território real mora no plugin dele, não neste repositório.
+
+## 1.39.3 — 2026-10-05
+
+- **`git` e `gh` não são mais procurados na pasta do repositório aberto** (#392). Hooks e scripts chamavam
+  os dois pelo nome, com a pasta atual dentro do repositório, e no Windows o `cmd.exe` e o Node procuram o
+  executável ali antes do PATH quando `NoDefaultCurrentDirectoryInExePath` não está definida: um `git.exe`
+  plantado na raiz de um repositório rodaria a cada hook. Agora o caminho sai do PATH, com as mesmas extensões
+  que o Node usa (`.com`, `.exe`), e entrada relativa do PATH (`.`) é ignorada. Sem `git` no PATH, o erro
+  continua sendo `ENOENT` — nunca volta a procurar pelo nome. Os `execSync("git ...")` de string viraram
+  chamadas sem shell. Os desvios de teste `RAINFOREST_GH` e `RFM_VARRER_GH` continuam valendo, e o `gh`
+  instalado como `.cmd` segue alcançado onde já era. Vale também para os dois scripts Python
+  (`conferir-entrega.py`, `validar-colhidas.py`), porque o `subprocess` do Windows procura do mesmo jeito.
+- **Bateria nova `scripts/testa-git-por-nome.sh`** barra a regressão: acusa `git`/`gh` chamado pelo nome em
+  `hooks/` e `scripts/` — inclusive por wrapper, em chamada quebrada em duas linhas e em `.py`, e roda o `conferir-versao` numa pasta com um `git.exe` falso para provar que ele
+  não é executado.
+
+## 1.39.2 — 2026-10-05
+
+- **Plano ou design que não existe no disco não fecha mais o estágio.** `marcar --estagio plano --status ok`
+  com `arquivo` declarado, ou `--estagio design --status aprovado` com `doc` declarado, recusa (exit 2)
+  quando o arquivo não está lá. Antes, uma escrita barrada por um gate deixava o fluxo andar sem o documento.
+- **A catraca de mutação mede em pasta com `node_modules` como junction.** É o jeito de dar dependências a
+  um worktree no Windows, e antes a cópia morria com `EPERM` e saía 1 sem veredito. Quando a cópia falha por
+  outro motivo, sai 69 (`nao-verificavel: copia da raiz falhou — ...`), e os casos que ficaram vermelhos
+  saem inteiros numa seção `--- casos vermelhos ---`, mesmo com o resto da saída cortado.
+- **Monorepo: `raiz:` no bloco `mutacao:` do plano.** A bateria roda na pasta do app; o `verificar` deixa de
+  ser infechável quando cada app tem seus testes. Tarefa pulada sem rótulo de erro passa a mostrar a linha do erro.
+- **O `node` não é mais procurado na pasta do repositório aberto.** O mod roda seus scripts com a pasta atual
+  na raiz do plugin, e os `.cjs` chamam o Node pelo caminho do processo. No Windows, um `node.exe` plantado
+  na raiz de um repositório não confiável podia rodar no lugar do seu.
+- **CI em dois jobs.** As baterias se repartem por tempo entre dois jobs de ~17 min, em vez de um de ~31 min
+  que encostava no teto de 35.
+
+## 1.39.1 — 2026-10-05
+
+- **A jornada de ontem não acende mais depois da meia-noite.** A leitura da jornada roda a cada
+  5 min; nos primeiros minutos do dia novo ela ainda era a de ontem e a linha `⏰ jornada` piscava
+  com as horas do dia anterior rotuladas como de hoje (e um "esconder" nesse intervalo valia para o
+  dia inteiro). Agora só acende quando a última mensagem medida é do mesmo dia.
+- **O relógio sobrevive ao `/clear`.** Antes, `/clear` parava a linha do relógio até a próxima
+  sessão; agora ela segue e passa a se reconhecer pelo id novo da conversa.
+- **O fim de outra sessão não para o relógio.** Só o fim da sessão que ligou o relógio o desliga.
+- **Caracteres invisíveis não deformam mais a faixa.** Marcas de direção (LRM, RLM, ALM),
+  separadores de linha e parágrafo, espaços de largura zero e o BOM, vindos de um título de foco, de
+  uma Q ou da pasta de uma janela, viram espaço — como já acontecia com ESC e os overrides bidi.
+- **`sessoes.json` acima de 256 KB é recusado.** O relógio apaga só a sua linha em vez de ler um
+  arquivo enorme a cada minuto.
+
+## 1.39.0 — 2026-10-05
+
+- **Linha do relógio na faixa.** Quando você passa de 9 h efetivas de jornada, ou trabalha entre 19 h
+  e 5 h com mensagem sua nos últimos 30 min, aparece `⏰ jornada 9h12 · 20h40`. Uma janela esperando
+  você além da ociosidade máxima do `FOCO.md` (45 min se não houver) entra na mesma linha, nomeada
+  pela pasta: `⏰ jornada 9h12 · 20h40 | janela-a parada há 32 min`, com ` (+1)` quando há mais
+  de uma. Só entram janelas paradas há menos de 6 h. Antes, esses avisos dependiam de o modelo
+  lembrar de checar.
+- **A faixa tem até 4 linhas:** foco, fluxo, relógio e Q. Com pouco espaço, sobra primeiro a Q, depois
+  o relógio, depois o fluxo.
+- **"esconder" não volta com os minutos.** Ele tira a faixa inteira até algo mudar, e os minutos não
+  contam: da parte do relógio, só o dia novo ou outra janela virando a mais parada (ou uma nova
+  cruzando o limite) a trazem de volta. Quando volta, volta a faixa inteira, jornada inclusive.
+- **Nota de uma vez por dia para o modelo.** Quando a jornada acende, o prompt seguinte que você
+  digita leva ao modelo uma nota que traz a regra 8; você não a vê, e quem decide se avisa ou se
+  cala (por exemplo, quando você só está delegando) continua sendo o modelo. No REPL real, o modelo
+  citou a nota no primeiro prompt do dia e não a recebeu no segundo.
+- **As Q respondidas saem da faixa no envio, agora de verdade no REPL.** A 1.38.1 prometia isso, mas no
+  REPL interativo o gancho que usava não rodava, e a linha das Q ficava até o fim do turno. A limpeza
+  passou para o evento que o REPL executa.
+- **`scripts/jornada.cjs` ficou rápido.** Passou a ler só os transcripts tocados no dia: de 14 a 18 s
+  antes para 0,39 s numa medição de manhã e entre 0,75 e 2 s em medições à tarde.
+- **Requisito:** Claude Code 2.1.287+. Sem o mod, nada muda. Vale a partir da sessão seguinte à
+  atualização do plugin, e o relógio só nasce em sessão interativa.
+
+## 1.38.1 — 2026-10-03
+
+- **Q respondida sai da faixa na hora.** Ao enviar a mensagem, a linha das Q some; o fim do turno
+  seguinte traz de volta só as que continuarem abertas. Antes, as Q do turno anterior ficavam na
+  tela enquanto o modelo trabalhava na resposta.
+- **Todas as Q cabem na linha.** O título é só a pergunta (na forma `**Qn.** texto`, a
+  recomendação que vinha depois deixou de entrar), e cada Q ganha uma fatia da largura, cortada com
+  `…` dentro dela. Antes, uma Q1 longa empurrava as outras para fora da tela.
+
+## 1.38.0 — 2026-10-03
+
+- **Faixa acima do prompt.** Com Claude Code 2.1.287+, no terminal e no desktop, aparecem até três
+  linhas logo acima do prompt: o **foco** ativo, o **fluxo em curso** (etapa, progresso, agentes em
+  voo e `+N` se houver outros) e as **Q abertas** da última resposta (`Q1 título | Q2 título`).
+  Os fluxos vêm de todos os worktrees do repositório, inclusive quando a janela está no checkout
+  principal.
+- **Só acende quando ajuda.** Sem fluxo em curso e sem Q aberta, a faixa não aparece; o foco
+  sozinho não a acende. Ela continua visível durante o turno do modelo e cede a vaga quando o
+  Claude Code mostra uma pesquisa.
+- **"esconder"** tira a faixa até algo mudar: Q nova ou resolvida, etapa nova, ou
+  mudança nos agentes em voo.
+- **Atualiza** ao abrir a sessão, ao fim de cada turno e ao apertar o botão. Uma resposta sem Q
+  zera a linha das Q. Falha de leitura apaga só a linha afetada; a sessão nunca quebra.
+- **Não repete a statusline** (jornada, prazo, versão).
+- **Sem mod, nada muda.** No Codex ou em Claude Code anterior à 2.1.287 não há faixa.
+- **Vale a partir da sessão seguinte** à atualização do plugin.
+
+## 1.37.0 — 2026-10-03
+
+- **A abertura chega inteira.** Com Claude Code 2.1.287+, o mod (`hooks/register.ts`) entrega a
+  abertura da sessão como seção do system prompt, fora do teto de entrega do hook: o núcleo das
+  regras **mais a elaboração inteira das regras 16, 12, 11 e 17**, o `FOCO.md` sem corte e a
+  memória sem o corte de 160 caracteres por linha. Medido: a seção de 48.589 caracteres chegou
+  inteira ao modelo, e o núcleo deixa de vir duplicado (o mod tira do `SessionStart` as entradas
+  que ele mesmo passou a entregar).
+- **Lista e orçamentos num lugar só.** `hooks/abertura-mod.json` diz quais regras vêm inteiras e
+  os tetos (regras 40.960 B, foco 12.288 B, memória 8.192 B, total 61.440 B).
+  `node scripts/sugerir-elaboracoes.cjs` sugere a ordem a partir das observações, sem alterar nada;
+  quem muda a lista edita o JSON. `node scripts/orcamento.cjs --agregado --destino mod` mede o total.
+- **Sem mod, nada muda.** No Codex, em Claude Code anterior à 2.1.287, ou se o mod falhar, a abertura
+  vem pelo hook com o núcleo, byte a byte como antes. O mod não chega ao prompt de subagente.
+- **Vale a partir da sessão seguinte** à atualização do plugin. O canário da 1.36.0 saiu.
+
+## 1.36.0 — 2026-10-02
+
+- **Entra o primeiro mod do plugin, e é um canário.** `hooks/hooks.json` ganha a chave
+  `modules` apontando para `hooks/register.ts` (Claude Code 2.1.287+, "Claude Mods"); a
+  chave `hooks` não mudou. O mod é **inerte**: sem a variável `RFM_CANARIO_MOD` o hook
+  `prompt.compose` devolve o prompt como veio. É temporário, do fluxo
+  `2026-10-02-mod-regras-inteiras`, e será substituído.
+- **Como medir.** Com o plugin instalado do marketplace, rode
+  `RFM_CANARIO_MOD=1 claude -p --model haiku "Procure no seu system prompt linhas no formato RF-TETO-CANARIO-<numero>. Responda SO com os numeros, ou NENHUM."`.
+  A seção tem ~49.500 caracteres com marcas em 1024, 3072, 16384, 32000, 40000 e 48000; as
+  marcas que voltam dizem até onde o texto chega. Três linhas finais (`RF-TETO-TRAITS-`,
+  `-TOOLS-`, `-IDS-`) mostram o que o mod enxergou. Sem a variável, a resposta esperada é `NENHUM`.
+
+## 1.35.2 — 2026-10-01
+
+- **A recusa do gate de PR ensina o caminho do PR.** Quando `gh pr create/edit/merge` cita
+  `closes #N` e a Issue não tem evidência, a mensagem agora nomeia o marcador literal
+  `<!-- rainforest-evidencia -->` e mostra como comentar a evidência **sem fechar** a Issue
+  (`gh issue comment`, em comando separado do `gh pr`). Antes ela só apontava o
+  `fechar-issue.cjs`, que fecha a Issue antes de o PR existir.
+
+## 1.35.1 — 2026-10-01
+
+Os dois menores da revisão da rodada 14 (#373).
+
+- **Slug com `*` ou `?` é recusado.** O `estado.cjs` recusa curinga de glob no slug, como já recusava
+  `/`, `\` e `..`: o `conferir-fluxo creep` monta a isenção com o slug (`portoes/*<slug>.md`,
+  `varredura/<slug>.txt`), e um slug `x*` alargava a isenção a arquivos de outro fluxo.
+- **A premissa do desempate do `veredito-revisor` está escrita.** A docstring de `raizComEstadoDoSlug`
+  dizia "2+ → ambíguo", o que o desempate da 1.35.0 já não fazia. Agora diz que o worktree do revisor
+  vence e por quê, inclusive o caso aceito de revisor isolado fora de `agent-*`.
+
+## 1.35.0 — 2026-10-01
+
+Rodada 14: a triagem de inbox do `sentinela-foco` (#367), o creep da varredura (#368) e as três
+dívidas da revisão da rodada 13 (#369).
+
+- **A ronda do vigia dá 90 s para o MCP subir** (#367). O `run-vigia.ps1` define `MCP_TIMEOUT=90000`
+  só no próprio processo, antes do `claude -p`. Medido em 01/10: o `@artymclabin/gmail-mcp` via
+  `npx -y` levou 57,6 s para responder ao `initialize`, acima do teto de 30 s do Claude Code, e a
+  triagem sumia do briefing em silêncio. Nenhuma variável do usuário ou do sistema muda.
+- **O vigia lê só pelo `gmail-leitura`** (#367). Toda ronda, com ou sem `-Teste`, nega o servidor
+  `gmail` inteiro por `--disallowedTools mcp__gmail`; o prompt nomeia `mcp__gmail-leitura__search_emails`.
+  Em 01/10 a triagem tinha lido pelo `gmail` de escopo completo (envia, apaga).
+- **Inbox não lido vira aviso explícito** (#367). Quando o MCP não sobe nem com o teto maior, o briefing
+  traz `inbox: não verificado — MCP do Gmail não subiu`, além do registro no `ERROS.md`.
+- **A varredura do próprio fluxo não é mais creep** (#368). O `conferir-fluxo creep` isenta
+  `docs/rainforest/varredura/<slug>.txt` do slug em revisão — o `brainstorm` obriga a criar e o
+  `marcar --estagio design` exige. Varredura de outro slug continua creep.
+- **Dívidas da rodada 13** (#369). Empate de worktrees armados no `veredito-revisor`: vence o do revisor.
+  `preparar-worktree --exige` aceita `..foo` dentro do worktree, recusa `.` dizendo que é a raiz e
+  confere existência pelo mesmo caminho resolvido (absoluto dentro do worktree passa). Saiu do
+  `gate-turno-prometido` a normalização de CRLF que nenhum caso distinguia.
+
+Fora desta versão: o log da ronda sem a saída do modelo entre 03 e 28/09 (#372).
+
+## 1.34.0 — 2026-10-01
+
+Rodada 13: os três resíduos da revisão do semear-travas (#362, #363, #364).
+
+- **`bash $b` sem aspas continua barrado, e agora a mensagem diz por quê** (#362). Sem aspas,
+  a variável se divide em palavras e pode injetar `-c`. Medido: `CMD='-c gh${IFS}issue${IFS}close${IFS}12'; bash $CMD`
+  fecha a Issue. O gate não ganhou exceção nenhuma; o contorno é pôr aspas (`bash "$b"` passa).
+- **O veredito do revisor vai para o worktree do fluxo** (#363). O `veredito-revisor` descarta
+  os worktrees de agente do harness (`.claude/worktrees/agent-*`) e, sobrando mais de um candidato,
+  prefere o que tem a janela de revisar armada. Antes, com o revisor isolado (regra 11), o veredito
+  caía na cópia do estado dentro do worktree descartável do revisor.
+- **`gate-turno-prometido` lê aspas e citações direito** (#364). Aspa ou crase solta (`5"`, `6"`,
+  ou uma aspa aberta e nunca fechada, com LF ou CRLF) não engole mais a promessa; citação entre
+  aspas colada em negrito, itálico ou pontuação (`**"…"**`, `_"…"_`), citação que atravessa uma
+  quebra de linha e citação em bloco `>` deixam de contar como promessa.
+  O pareamento ficou mais estrito de propósito: aspa com espaço por dentro (`"… "`, `" …"`) ou
+  colada em letra (`"…"s`, `x"…"`) não conta como citação e a promessa dentro dela barra o turno —
+  afrouxar isso reabre o caso da aspa solta que engole a promessa.
+- O `veredito-revisor` ainda grava quando a única cópia do estado está num worktree de agente.
+- **Caminho fora do lugar é recusado** (#364). `preparar-worktree --exige` fora do worktree e
+  `varrer --slug` com separador ou `..` saem com exit 2 e nomeiam o valor.
+- `docs/travas-mecanicas.md` cita `python3` na forma simples do `conferir-prova`, como o código aceita.
+
+## 1.33.1 — 2026-10-01
+
+- Arrumação: os erros do sentinela de 21 a 30/09 entram no `vigias/ERROS.md` versionado, e sai o estado `2026-09-05-inventario-do-acervo`, que nunca passou do design.
+
+## 1.33.0 — 2026-10-01
+
+- **Falha de vigia que volta aparece como recorrente.** O `/saude` ganha o aviso
+  `vigias-recorrentes`, e a âncora do batedor ganha a seção `FALHAS RECORRENTES (30 DIAS)`.
+  Cada erro do `vigias/ERROS.md` recebe uma impressão digital: vigia mais causa, com
+  caminho, id e número normalizados. É o mecanismo do reef, enxertado. Com 2 ou mais
+  ocorrências em 30 dias, a falha aparece como `recorrente xN em 30 dias, desde DD/MM,
+  ultima DD/MM`, e só sai da lista quando alguém escreve `[vigia]: RESOLVIDO` no
+  `ERROS.md`. Antes, cada ocorrência chegava como novidade: o backup externo falhou 5
+  vezes entre 11 e 25/09 sem aparecer como repetição.
+
+## 1.32.0 — 2026-09-30
+
+Seis travas para defeitos que já se repetiram aqui. Cada uma nasceu de uma
+observação registrada, pelo `semear`.
+
+- **Turno que promete e não faz é barrado no `Stop`.** O hook novo
+  `gate-turno-prometido` (ligado por padrão) sai 2 em dois casos:
+  - o turno diz "vou despachar" e não chama `Agent`, `Task`, `SendMessage` nem
+    `Workflow`;
+  - o turno diz "CI rodando" ou "aguardando o build" sem vigia: nem `Bash` ou
+    `PowerShell` em background, nem `Monitor`, nem `ScheduleWakeup`.
+
+  Não disparam: passado, negação, código, aspas e lista. Para desligar:
+  `node scripts/setup.cjs --desligar gate-turno-prometido`.
+- **Critério de pronto tem de falhar antes do trabalho.** O
+  `marcar --estagio plano` roda a `prova:` de cada tarefa num worktree
+  descartável. Prova que já passa na base é recusada (exit 2), porque um critério
+  assim não prova nada. A exceção se declara: `prova-na-base: verde — <motivo>`.
+  Peça nova: `scripts/conferir-prova.cjs`.
+- **A base do agente virou um comando.** `scripts/preparar-worktree.cjs --hash <H>
+  [--exige <arquivo>]` leva o worktree ao hash do briefing por fast-forward e
+  recusa divergência real. O `conferir-entrega` passa a exigir `--base` (exit 2
+  sem ele), nos dois motores.
+- **Design só é aprovado com varredura.** O `scripts/varrer.cjs --slug <s>
+  <termos>` registra em `docs/rainforest/varredura/<slug>.txt` o que o repo já
+  sabia: branches, commits, Issues e ideias. A seção `## Varredura` do design tem
+  de citar esse arquivo.
+- **Edição literal sem corromper.** `scripts/substituir.cjs --arquivo F --de <arq>
+  --para <arq> [--ocorrencias N]` troca byte a byte e confere a contagem antes de
+  gravar. Texto com `$`, crase ou contrabarra entra literal, e `--para` vazio
+  apaga o trecho.
+- **Comandos reais contra as travas.** 50 comandos legítimos (curados) passam por
+  cada gate de Bash, nos contextos principal e subagente. Um gate que comece a
+  barrar comando legítimo deixa a bateria vermelha. O extrator dos candidatos é
+  `scripts/extrair-corpus-comandos.cjs`.
+
+## 1.30.2 — 2026-09-29
+
+- **Livro de repos: três indicados avaliados.** `strands-agents/harness-sdk` e
+  `Human-Agent-Society/reef` enxertam, e `reconurge/flowsint` vale voltar. Nada muda no
+  que o plugin executa; a versão sobe para o registro chegar a quem atualiza. Relatório:
+  `relatorios/2026-09-29-batedor-strands-reef-flowsint.md`.
+
+## 1.30.1 — 2026-09-29
+
+- **Backup externo com o banco da memória aberto.** Quando a ronda do sentinela
+  coincidia com uma sessão do Claude Code aberta, o `rainforest.db` estava em uso, e o
+  `Compress-Archive` não conseguia ler o arquivo. O zip inteiro falhava, e em seis
+  dias (11, 21, 22, 23, 25 e 29/09) nem o FOCO.md nem as ideias foram para o
+  backup externo. Agora o `backup.cjs gravar` tira uma cópia consistente do banco com
+  `VACUUM INTO`, por uma conexão só de leitura, e zipa a cópia. Se a cópia falhar, o
+  zip sai com os outros itens, e o comando sai 2 com `RECUSADO: rainforest.db ficou
+  fora do backup: <motivo>`, linha que continua indo para o `vigias/ERROS.md`.
+- **`backup.cjs conferir` prova o banco por restauração.** O `rainforest.db` do zip é
+  aberto e precisa passar no `PRAGMA integrity_check`, porque a cópia nunca tem o hash
+  do arquivo vivo. Os demais arquivos continuam conferidos por hash.
+
+## 1.30.0 — 2026-09-29
+
+- **Bloqueio por variável diz que a causa é a variável (#350).** Com outra sessão no
+  mesmo diretório, `git -C "$H" switch -c x` (ou `cd "$TMP"` antes do `git`) continua
+  barrado, porque o gate não sabe para onde o comando vai. Antes, a mensagem só dizia
+  "move o HEAD deste checkout". Agora ela explica que o alvo usa variável, substituição
+  ou `cd` que o gate não resolve e manda usar o caminho literal. Com o caminho literal,
+  o gate compara o repositório de verdade, e um clone de outro repo passa.
+- **`--body-file` com variável tem mensagem própria (#350).** `gh pr create --body-file
+  "$SP/pr.md"` continua barrado pelo `gate-fechar-issue`, mas a mensagem agora diz
+  "variável que o gate não resolve" em vez de culpar um caminho relativo que não
+  existe, e pede o caminho literal.
+- **Por que nenhum gate expande variável.** A rodada 9 tentou resolver `$VAR`
+  estaticamente no `gate-fechar-issue`, e quatro revisões acharam bypass (crase colada,
+  array, `read`/`declare`, heredoc como atribuição falsa). Na trava de sessão
+  co-locada, um bypass desses liberaria mover o HEAD da outra sessão.
+
+## 1.29.1 — 2026-09-29
+
+- **Abertura sonda uma bridge WhatsApp por conta (#356).** Com duas contas no
+  `~/.whatsapp-mcp/accounts.json` (pessoal 3005, trabalho 3006), o hook de abertura
+  sondava só a `WHATSAPP_API_BASE_URL` e anunciava o resultado como o WhatsApp inteiro
+  — dizia FORA com a de trabalho de pé. Agora, quando a porta declarada é de uma das
+  contas, sonda todas e nomeia cada uma; só a conta caída vira aviso na tela.
+
+## 1.29.0 — 2026-09-28
+
+- **Mensagem do bloqueio de `bash $t` (#337).** `bash $t` sem aspas continua barrado
+  pelo `gate-fechar-issue` (resolver a variável estaticamente abriu bypass nas quatro
+  revisões da rodada 9), mas a mensagem agora diz o que fazer: rodar um arquivo cujo
+  caminho está numa variável se faz com aspas, `bash "$t"`, que passa. Antes ela mandava
+  "rodar o `gh` diretamente" num comando sem `gh`.
+- **Eval de gatilho sob demanda (#302).** A suíte de 21 casos (7 pares de skills que
+  colidem) entra em `evals/`, e `scripts/eval-gatilho.sh` roda a trava com
+  `--ablation none` — onde o disparo da skill conta no score, ao contrário do
+  `with-without` que deixava a eval passar sem a skill disparar. Cada caso roda 3 vezes
+  e passa pela maioria (o disparo oscila entre rodadas); `mutacao <skill>` sabota a
+  `description` numa cópia e exige a trava vermelha; `baseline` mede se a skill
+  acrescenta. Fica **fora do CI** (~US$ 20 por trava completa). A bateria prova o
+  mecanismo com um `claude` falso; **nenhuma rodada paga foi feita ainda**, então a
+  premissa de que o grader de disparo pontua sob `--ablation none` segue por confirmar.
+
+## 1.28.1 — 2026-09-28
+
+**Vigia que não chega ao Claude não sai mais com sucesso.** De 2026-09-02 a
+2026-09-28 nenhum vigia mandou mensagem: o `claudeExe` do `vigia.config.json`
+apontava para o `claude.exe` que o WinGet tinha removido, a chamada falhava sem
+chegar ao log, e a tarefa agendada saía com 0 — nem linha no `ERROS.md`. Agora o
+`run-vigia.ps1`:
+
+- confere o `claudeExe` configurado; se o arquivo sumiu, registra no `ERROS.md` e
+  usa o `claude` do PATH, para a ronda não se perder por config velho;
+- conta a saída do `claude -p` e lê o exit code: saída vazia ou exit ≠ 0 viram linha
+  no `ERROS.md` e **exit 1** da tarefa (o backup do estado roda assim mesmo).
+
+**`-Teste` não envia mais de verdade.** O "não envie" do modo de teste era só texto no
+prompt, e uma ronda de teste do jardineiro foi parar no grupo. Agora o `-Teste` tira
+as tools de envio (WhatsApp e Gmail) da sessão por `--disallowedTools`, e o prefixo
+avisa o modelo que a ausência delas não é bridge fora do ar.
+
+**Falha do backup externo diz o motivo.** Cinco linhas `backup externo falhou (exit 2):
+System.Management.Automation.RemoteException` (11 a 25/09, sem zip nos dias 21–23)
+não traziam causa nenhuma: o PowerShell 5.1 embrulha cada linha de stderr do node, e o
+registro pegava a última, que era vazia. Agora o `ERROS.md` recebe a linha `RECUSADO`
+do `backup.cjs` e o log do vigia guarda o stderr inteiro. A causa da falha intermitente
+em si ainda não é conhecida — a próxima ocorrência vai dizê-la.
+
+Bateria nova: `scripts/testa-run-vigia-claude.sh`, que executa o script com `claude`
+falso e uma porta simulando a bridge — contra a versão anterior ela fica vermelha
+nos três casos de falha e no caso do `-Teste`.
+
+## 1.28.0 — 2026-09-28
+
+**Subagente não escreve mais no GitHub.** Em 2026-09-13 e em 2026-09-28, um revisor
+fechou uma Issue de verdade (`gh issue close 12`) enquanto testava um gate — nas duas
+vezes com a proibição escrita no briefing, uma por stub que não entrou no PATH, outra
+por `alias` num script (alias não expande em script). O gate novo
+`gate-subagente-sem-gh.cjs` nega, dentro de subagente, todo `gh` que escreve no GitHub:
+`issue close|comment|edit|create|reopen|delete…`, `pr create|edit|merge|close|comment…`,
+`release`, `repo`, `gist`, `alias set`, `extension install`, `workflow run`, `run rerun`,
+qualquer família que não é do `gh` (alias ou extensão, como `gh co 12`), e `gh api` com método diferente de GET ou
+com campo (`-f`/`-F`, que viram POST) — `gh api graphql` só com `mutation`. Leitura (`view`, `list`, `checks`, `api` GET)
+passa, e a janela principal passa sempre.
+
+- **Onde ele olha:** o comando (inclusive atrás de `timeout`/`stdbuf`/`env`, com flag
+  global como `-R o/r` antes do subcomando, contrabarra e aspas ANSI-C), `bash -c` legível
+  (e nega o ilegível, `bash -c "$x"`), corpo de heredoc, e o **script que o subagente
+  manda rodar** — lido antes de rodar em `bash`/`sh`/`source`/`python3`/`node`, `./x.sh`,
+  `bash < x.sh` e `cat x.sh | bash`, pela forma de shell, pela forma de chamada
+  (`execFileSync('gh', ['issue', 'close'…`) e com variável no lugar do `gh`; também
+  `pwsh`/`powershell` com `.ps1`, e código inline em `node -e`, `python -c`,
+  `pwsh -Command` e `cmd /c`, inclusive `--eval="..."` e flags agrupadas
+  (`python -Bc`, `perl -we`); `pwsh -EncodedCommand`, ilegível, nega.
+- **Limite declarado:** a leitura de script é textual. Pega o jeito comum de chamar
+  (`os.system("gh …")`, `execSync(…)`, `system 'gh', …`, `$(gh …)`, crase), não a
+  evasão deliberada (função apelidada, comando montado por concatenação). O alvo é o
+  agente que roda `gh` sem perceber, não o que tenta burlar.
+- **Isenção:** bateria `testa-*` rastreada pelo git, mesmo alterada — as baterias citam
+  `gh issue close` como texto de teste. Bateria nova precisa de `git add` antes de rodar,
+  e a mensagem diz isso. `scripts/fechar-issue.cjs` é negado pelo nome.
+- **Toggle `subagente-sem-gh`** (padrão ligado). O perfil dos agentes
+  (`referencias/perfil-de-trabalho.md`, aplicado aos `agents/*.md`) explica a regra e
+  como medir um gate sem executar `gh`: payload JSON no stdin do hook.
+- `semContrabarra` saiu do `gate-fechar-issue.cjs` para `hooks/lib/tokens-comando.cjs`,
+  e os dois gates usam a mesma.
+
+## 1.27.0 — 2026-09-28
+
+**Seis defeitos abertos fechados numa rodada** (Issues #346, #344, #342, #341, #340,
+#339). A #337 (`bash $VAR` sem aspas) e a #302 (eval de gatilho) continuam abertas:
+as duas pedem outro desenho, não conserto.
+
+- **`stdbuf --output L` não escapa mais do `gate-bateria-sem-timeout`** (#346). A
+  forma longa com espaço deixava o `L` passar por comando e a bateria ia para
+  segundo plano (exit 0); agora sai 2, como `-oL`, `-o L` e `--output=L`. O `stdbuf`
+  entrou na lista comum de wrappers dos gates, que agora olham o comando depois
+  dele. `stdbuf -oL gh issue close 12` já era barrado antes, pela busca de sequência,
+  e ganhou caso de regressão.
+- **`gh pr create --body-file /c/...` lê o arquivo** (#344). No Git Bash o caminho
+  MSYS virava `C:\c\...` e o gate barrava com "não consegui ler o arquivo de corpo do
+  PR" com o arquivo existindo; agora o caminho é normalizado como o do `cd`.
+- **Contrabarra fora de aspas não esconde mais o subcomando** (#339). `bash -c "gh
+  issue \\\<quebra>close 12"` (três contrabarras) executava `gh issue close 12` e o
+  gate saía 0. Metade era a leitura das aspas duplas, que agora é uma passada só,
+  como no bash. A outra metade apareceu na medição e era mais larga do que a issue:
+  `gh issue \close 12`, sem wrapper nenhum, também saía 0, e na revisão apareceram as
+  aspas ANSI-C (`gh issue $'close' 12`, `$'clo\x73e'`). O gate passou a comparar o
+  subcomando sem contrabarra e com os escapes do ANSI-C resolvidos. Um efeito colateral: `echo hi \gh issue close 12` agora
+  é barrado, como `echo hi gh issue close 12` já era.
+- **Veredito grava o transcrito com `~`** (#340). `estado.cjs veredito` gravava o
+  caminho absoluto, que começa pela pasta pessoal, num arquivo versionado de repo
+  público. Agora grava `~/.claude*/projects/...` (também quando o disco ou o usuário
+  chegam em outra caixa, como o Git Bash entrega), e a conferência D12/D14 continua
+  sobre o caminho real. Os 10 estados que já estavam na main foram reescritos.
+- **R5 do `testa-saude.sh` diz quando a falha é do próprio teste** (#342). O servidor
+  de teste escuta na porta que o sistema der e grava essa porta; se ele não subir, o
+  R5 reprova com `fixture: servidor node nao subiu` em vez de acusar o `saude.cjs`.
+- **Nenhuma bateria roda duas vezes na varredura** (#341). `testa-gate-publicacao-destino.sh`
+  rodava outras duas baterias que o varredor já roda. O bloco saiu, e o teste (n) do
+  `testa-varrer-baterias.sh` passou a barrar qualquer `testa-*.sh` que execute outra
+  `testa-*.sh` (por `bash`/`sh`/`source`/`.`/`exec` ou pelo caminho direto), além da
+  casca `.cjs` que já barrava.
+
+## 1.26.0 — 2026-09-27
+
+**Subagente já não deixa bateria sem `timeout` ir para segundo plano.** Em 2026-09-27,
+10 de 14 subagentes numa sessão tiveram comando empurrado para segundo plano, e em
+quase todos o motivo foi bateria rodada sem o parâmetro `timeout` do Bash. O gate
+novo `gate-bateria-sem-timeout.cjs` nega execução dentro de subagente em dois casos:
+uma bateria (`testa-*.sh`, `testa-*.cjs`, `varrer-baterias.sh`, `conferir-mutacao.cjs`,
+`conferir-fluxo.cjs mutacoes`) sem `tool_input.timeout` > 120000, e a varredura
+completa (`varrer-baterias.sh` sem `--so`), que passa do teto de 10 minutos. A
+mensagem de bloqueio sugere `timeout: 600000`. Ler arquivo (`cat`, `grep`, `sed`)
+não é barrado.
+
+- **Toggle `bateria-sem-timeout`** (padrão ligado): desliga o gate para o projeto se
+  necessário. Mesma forma do `busca-na-raiz` e `agente-folha`. Janela principal vê e
+  pode parar qualquer execução.
+- **Texto acompanha o mecanismo** (`referencias/perfil-de-trabalho.md`): a linha
+  "Nada seu fica rodando depois da resposta" agora cita o gate. Os `agents/*.md` são
+  atualizados por `node scripts/perfil.cjs --aplicar`.
+- **Fora do gate**: checagem de sintaxe (`bash -n`, `node --check`), leitura de bateria
+  (`cat`, `grep`, `git add/diff/log`, mensagem de commit ou corpo de PR que cita o nome)
+  e bateria cujo nome só existe em runtime (`for f in …; do bash $f`, `find -exec {}`,
+  `xargs {}`). `stdbuf --output L` (opção longa com espaço) ainda escapa: issue #346.
+- **Skill `executar` (`skills/executar/SKILL.md`)** deixa claro que o laço de baterias
+  inteiro é rodado pela integração; o agente cola o placar das baterias que a tarefa
+  toca.
+
+## 1.24.0 — 2026-09-26
+
+**Os gates fecharam um buraco e pararam de barrar um `Edit` que só preserva o que já
+estava no arquivo.** O `bash $t` sem aspas (#337) continua barrado: quatro revisões acharam
+jeito de esconder `bash -c` atrás da variável em cada versão da resolução, e a issue segue
+aberta.
+
+- **Contrabarra dupla dentro das aspas duplas de um wrapper** deixou de esconder o comando
+  (#313): `bash -c "gh issue \\<quebra>close 12"` passava; agora o gate faz a mesma
+  redução de escape que o bash faz antes de juntar a linha.
+- **O gate de publicação mede o que a edição introduz** (#322): um `Edit` que preserva um
+  dado sensível já presente no `old_string` (a linha do trailer `Co-Authored-By`, por
+  exemplo) não é mais barrado. A comparação é pelo valor, não pelo trecho redigido: trocar
+  um e-mail por outro, ou acrescentar um segundo na mesma linha, continua barrado. A isenção
+  do `noreply@` no conferidor já existia e não mudou.
+
+**O fluxo passou a achar o próprio estado onde ele mora.**
+
+- **O veredito do revisor é gravado no worktree** quando o estado do fluxo só existe lá
+  (#329). Se o estado estiver em mais de um worktree, ou em nenhum, o hook avisa em stderr
+  e não grava — antes saía em silêncio.
+- **Tarefa acrescentada por emenda ao plano recebe carimbo** (#312): o teto do carimbo lê
+  o arquivo do plano, como a validação de `mutacao` já fazia; o número gravado no
+  `plano ok` fica de reserva quando o arquivo não existe.
+
+**Medição.**
+
+- **As baterias em Node entram no CI** (#335): o varredor descobre `testa-*.cjs` em
+  `scripts/` e `hooks/` e as roda com `node`. As cascas `.sh` que chamavam `.cjs`
+  saíram, inclusive a `hooks/testa-portaria.sh`, que rodava as da portaria por glob;
+  uma bateria nova falha se alguma `.sh` voltar a chamar uma `.cjs`. Antes, duas
+  baterias (`testa-estagio-ativo` e `testa-conferir-cobertura-fixtures`) nunca
+  rodavam no CI, e cada `.cjs` nova dependia de alguém lembrar da casca.
+- **A checagem de duplicata do `/saude` mede só o plugin versionável** (#323): arquivo
+  gitignorado (as cópias em `.claude/marketplaces/`, por exemplo) não conta mais. No
+  checkout principal, o aviso caía de 811 grupos para 0.
+
+## 1.23.0 — 2026-09-22
+
+**Os gates de texto pararam de deixar passar `bash -c` escondido atrás de palavra
+reservada, e pararam de barrar `bash "$t"`.** Antes, `for t in x; do bash -c "gh
+issue close 12"; done` passava pelo gate de fechar issue, enquanto o mesmo `bash -c`
+sem o laço era barrado: `do`, `then`, `else`, `elif`, `if`, `while`, `until`, `!` e
+`coproc` tiravam o `bash` da posição de comando. E o inverso: rodar uma lista de baterias com
+`for t in ...; do bash "$t"; done` era recusado como "comando encapsulado".
+
+- **Palavra reservada é pulada** na posição de comando, nos três gates de texto e no
+  gate de worktree.
+- **Variável entre aspas duplas como último argumento é caminho de script**:
+  `bash "$t"`, `bash "${t}"` e `bash "$t" 2>&1` passam. Sem aspas (`bash $t`) ou com
+  argumento depois (`bash "$f" "gh ..."`, que com `f=-c` vira `bash -c`) continuam
+  barrados.
+- **Parâmetro especial é ilegível**: `set -- -c "<cmd>"; bash "$@"`, `bash "$*"` e
+  `eval "$@"` passavam como se fossem caminho de script, e agora são barrados.
+- **Pipe com stderr (`|&`) e continuação de linha** deixaram de esconder comando: `echo
+  hi |& bash -c "<cmd>"`, `bash -c "gh issue \<quebra>close 12"` e a mesma quebra sem
+  wrapper nenhum passavam, e passavam também na 1.22.0 — são buracos antigos, achados
+  pela revisão desta rodada.
+- **E-mail em TLD reservado** (`.invalid`, `.example`, `.test`, `.localhost`, RFC 2606)
+  deixa de ser achado do gate de publicação, desde que seja o último rótulo
+  (com `.test` no meio, como em `foo.test.com`, continua pego).
+
+**O `conferir-entrega` em Python voltou a valer o mesmo que o de Node.** Ele tinha
+parado em agosto: faltavam `--escopo`, o exit 69 de "não deu para verificar",
+a reprovação de commit vazio e o BOM no `git status`. As quatro foram portadas, e o
+CI passou a rodar a bateria contra o gêmeo em passo próprio, para ele não congelar
+de novo em silêncio.
+
+## 1.22.0 — 2026-09-22
+
+**A régua do `/regua` não pode mais ser mexida depois que o loop começa.** Antes,
+"a régua é imutável" era uma frase na skill: nada impedia o builder (ou uma edição
+distraída) de afrouxar um mecanismo no meio das rodadas, e o crítico julgaria
+contra a régua nova sem ninguém perceber.
+
+- **Selada pelo commit.** O manifesto em `docs/rainforest/reguas/<slug>.md` vale
+  como foi commitado pela primeira vez. `node scripts/conferir-regua.cjs validar
+  --slug <slug>` confere o formato antes de selar; `conferir` recusa (exit 1)
+  régua alterada, apagada ou adicionada mais de uma vez no histórico; `mostrar` é
+  o único caminho que a imprime, e só imprime depois de conferir. Clone raso sai
+  2 — no CI, use `fetch-depth: 0`.
+- **Keep/discard automático.** A partir da 2ª rodada, um segundo crítico cego
+  compara o novo com o melhor guardado. Perdeu, o commit fica e o ponteiro não
+  anda; a próxima rodada parte do melhor. Estagnação em 3 rodadas vira a quarta
+  condição de parada.
+- **Log de rodadas versionado**, um TSV com SHA, veredito, status e lacuna de
+  cada rodada.
+
+O que o selo **não** cobre está escrito: manipulação deliberada de histórico por
+quem tem escrita no repositório (rebase, squash, branch órfã). Ele vigia o
+builder e os fluxos normais de git, não quem reescreve o histórico de propósito.
+
+## 1.21.1 — 2026-09-21
+
+**A limpeza de branches para de mandar procurar no GitHub o que só existe no
+disco.** A listagem do `limpar` rotulava toda branch fora da `main` como "o remoto
+está de pé", inclusive as que nunca tiveram remoto. Agora elas saem num grupo
+próprio, `viva-so-local`: os commits só existem na sua máquina, o script não sabe
+dizer se é trabalho em andamento ou tentativa descartada, e quem decide é você,
+olhando e apagando à mão. Nada que antes era protegido passou a ser removido.
+
+## 1.21.0 — 2026-09-21
+
+**A instrução de comportamento de uma skill passa a ter trava.** Até agora, uma
+frase que manda o agente fazer (ou não fazer) alguma coisa podia sumir de um
+`SKILL.md` numa reescrita e nada ficava vermelho — o CI conferia sintaxe, links e
+tamanho de injeção, nunca conteúdo de instrução.
+
+- **Quinze invariantes em sete skills.** Cada skill protegida declara, num
+  `invariantes.json` ao lado do `SKILL.md`, as frases que não podem sumir do corpo
+  dela. Apagar uma deixa o CI vermelho nomeando a skill e a frase.
+- **Assertiva negativa.** Uma entrada `tipo: "nao_deve"` trava a **ausência** de uma
+  formulação já rejeitada — é guarda prospectiva contra reintroduzir um vocabulário
+  que o usuário mandou sumir.
+- **Degraus.** Uma frase pode ser exigida no corpo inteiro, só no bloco de regras,
+  na referência da regra, ou no núcleo que a abertura de sessão injeta — este último
+  pega a frase que continua no arquivo mas parou de chegar na sessão.
+
+Enxertado do `openai/openai-developers-for-claude`, que afirma frase de
+comportamento no corpo de cada skill dele. O que não veio de lá é a segunda fonte:
+aqui a bateria declara as quinze frases por escrito e compara com o que lê de
+produção, para que encurtar a frase declarada até ela casar com um `SKILL.md`
+reescrito não seja o conserto barato.
+
+## 1.20.0 — 2026-09-19
+
+**A memória deixa de só acumular.** Duas coisas que não existiam passam a existir,
+e as duas rodam sozinhas numa passada de manutenção que abre junto com a sessão:
+
+- **Reconciliação.** Observação que corrige, repete ou complementa uma antiga agora
+  atualiza ou funde-se a ela, em vez de virar mais uma linha ao lado. **Nada é
+  apagado**: a substituída ganha um ponteiro, sai da injeção e da busca, e continua
+  na tabela — fusão ruim se desfaz.
+- **Consolidação automática em resumos.** Era manual e nunca tinha rodado uma vez.
+  Passa a agrupar por origem a partir de 30 dias — pela sessão quando ela existe, e
+  por `(projeto, dia)` para as 10.092 observações importadas do claude-mem, que não
+  têm sessão nenhuma e são 88% do acervo.
+
+**Aviso na abertura quando o pipeline para.** Captura ou manutenção paradas há mais
+de 48 h viram uma linha na abertura da sessão, com há quantas horas e o comando que
+religa. O silêncio de 13 dias que ninguém viu (#282) é o que ela existe para matar —
+aviso que só aparece quando alguém pergunta não é aviso.
+
+A busca de parecidas continua no FTS5, sem índice vetorial: medido em 200 sondagens
+com o CLI real, o recall ficou em 82,0% global (74,6% em português, 89,2% em inglês).
+O relatório está em `relatorios/2026-09-18-recall-fts5-reconciliacao.md`.
+
+Nada disso mexe no `observar.cjs`: a captura não ganhou chamada de LLM nenhuma no
+caminho da escrita, que é onde ela já tinha parado calada uma vez.
+
+## 1.19.2 — 2026-09-19
+
+**Este arquivo.** O plugin passa a trazer notas de atualização, e o contrato de
+como mantê-las: versão nova entra aqui no mesmo commit que sobe o `version` do
+`plugin.json`.
+
+Ganhou versão própria porque a catraca `conferir-versao.cjs` exige número maior
+em toda PR que não seja só estado de fluxo — e ela está certa: sem bump não há
+versão nova para o `claude plugin update` buscar, e notas que ninguém baixa não
+resolvem o problema que elas existem para resolver.
+
+Junto, um adendo ao design do contrato de território (`docs/rainforest/design/`),
+que não muda comportamento nenhum.
+
+## 1.19.1 — 2026-09-17
+
+**Rota com emoji de status por etapa** (Issue #299).
+
+A regra 4 já mandava fechar cada etapa com "Fechamos [n]/[total]", mas não dizia em
+que **formato** acompanhar o todo. Em tarefa longa o checkpoint contava o avanço e
+não mostrava o mapa, e a pessoa perdia de vista quantas etapas faltavam e onde
+estava. Agora a elaboração da regra 4 traz a rota — uma linha por etapa com marcador
+de status — e a `modo-dev` aponta para ela.
+
+Muda o que você vê na resposta; não muda comando, gate nem dado.
+
+## 1.19.0 — 2026-09-17
+
+Cinco issues fechadas, todas de trava que prometia mais do que cumpria.
+
+- **Regra 6 agora diz em que repo "conserta na hora" vale** (#291). A regra mandava
+  consertar defeito na hora e não dizia **onde**: o conserto saía no repositório do
+  vizinho. Passou a ser explícita — defeito que atrapalha no repo **da sessão**
+  conserta na hora; repo alheio é Issue + `Q`, nunca commit.
+- **`gate-agente-em-voo` para de repetir o aviso a cada turno** (#298). O gate
+  prometia avisar **uma** vez e, em sessão interativa, repetia no turno seguinte.
+  A memória era de slot único e duas sessões alternando se sobrescreviam; virou mapa
+  por sessão, com assinatura dos agentes em voo.
+- **`gate-verificador-staged` volta a respeitar o marcador `dados-de-exemplo`** (#293).
+  O marcador era ignorado e o toggle anunciado no cabeçalho do arquivo não existia —
+  duas promessas sem implementação.
+- **Mutantes de `testa-foco.sh` passam a morrer pelo comportamento certo** (#292).
+  Os mutantes dos itens 9 e 13 morriam por `MODULE_NOT_FOUND`, não pela mutação:
+  a bateria parecia provar e não provava nada.
+- **Achados da revisão do ciclo anterior** (#294): catraca que rodava em cópia, `.pyc`
+  no caminho de teste e conversão de caminho do MSYS.
+
+## Antes da 1.19.0
+
+Sem notas escritas. Para ver o que cada release carregou:
+
+```
+git log --grep="^Versao " --format="%ad %s" --date=short
+```
+...'` no mesmo comando (`echo it\'s; gh pr create --body-file b.md`): o gate não acha o diretório efetivo desse trecho. Contorno: caminho absoluto no `--body-file`.
+- **Wrapper segue as próprias regras de aspas.** O texto de dentro de `bash -c` (e `eval`, `sh`, `zsh`) é lido com as regras do Bash mesmo quando o comando veio pela ferramenta PowerShell, e o de `pwsh -Command` (e `cmd`, `iex`) com as do PowerShell mesmo quando veio pelo Bash. Dentro de `bash -c "..."`, `eval "..."` e `sh -c "..."`, a contrabarra antes de aspa escapa a aspa como no bash, e o `gh` que vem depois dela é lido. `eval` junta as palavras como o bash antes de ler (`eval echo\ x\;gh pr merge 5` é lido como `echo x;gh pr merge 5`), e palavra com contrabarra e espaço em `bash -c` é lida pelo valor.
 - **Commit por heredoc canônico volta a passar.** `git commit -m "$(cat <<'EOF' ... EOF)"` que cita `gh issue close` entre crases no corpo sai 0 de novo, porque o bash não executa o corpo de heredoc citado. Se o mesmo commit vier seguido de `gh` de escrita, o `gh` é checado. A forma só conta como canônica quando o delimitador que fecha o heredoc é a última linha antes do `)`: uma linha igual ao delimitador no meio do corpo fecha o heredoc no bash, o que vem depois é lido como comando, e o `gh` é checado.
 
 ## 2.12.2 — 2026-11-11
