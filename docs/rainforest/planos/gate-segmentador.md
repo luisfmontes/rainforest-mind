@@ -754,15 +754,15 @@ busca:
 desfecho: estender
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `const mistaComGh = FERRAMENTA !== "PowerShell" && !wrapperSemContrabarra && `
+  de: `const mistaComGh = !wrapperSemContrabarra && `
   para: `const mistaComGh = `
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (r8-2) a (r8-4)`
 prova-na-base: verde — a base não tem a regra da palavra mista e já deixa passar (r8-2) a (r8-4); a prova é a mutação acima, que volta a barrá-los
-pronto quando: com o payload real de PreToolUse (PowerShell), `& "C:\Microsiga\advpls.exe" appre x.prw -I"C:\Microsiga\includes"`, `cmd /c dir "C:\Program Files"\foo` e `& "C:\Program Files\nodejs\node.exe" --out="C:\x y\z"` saem 0, e os casos (mx-1) a (mx-15) do Bash seguem saindo 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` com exit 0 e 0 falha(s) e pela mutação acima deixando (r8-2) vermelho.
+pronto quando: com o payload real de PreToolUse (PowerShell), `& "C:\Microsiga\advpls.exe" appre x.prw -I"C:\Microsiga\includes"`, `cmd /c dir "C:\Program Files"\foo` e `& "C:\Program Files\nodejs\node.exe" --out="C:\x y\z"` saem 0, `bash -c "echo"' \"; gh issue close 12'` pela ferramenta PowerShell (r8-5) sai 2, e os casos (mx-1) a (mx-15) do Bash seguem saindo 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` com exit 0 e 0 falha(s) e pela mutação acima deixando (r8-2) vermelho.
 
-Forma prescrita: em `processarSegmento`, `exeDoWrapper` é `normalizarExecutavel` do token na posição de comando; `mistaComGh` só vale com `FERRAMENTA !== "PowerShell"` e `exeDoWrapper` fora de `cmd`, `pwsh`, `powershell`, `iex`, `invoke-expression` e `&`.
+Forma prescrita: em `processarSegmento`, `exeDoWrapper` é `normalizarExecutavel` do token na posição de comando; `mistaComGh` só vale com `exeDoWrapper` fora de `cmd`, `pwsh`, `powershell`, `iex`, `invoke-expression` e `&`. Decide o dialeto do wrapper, não a ferramenta de fora: `bash -c` pela ferramenta PowerShell segue barrando (revisão de segurança automática do commit b2db757a).
 
 ### 26. CHANGELOG da 8ª rodada [tipo: docs]
 atende: D3, D8

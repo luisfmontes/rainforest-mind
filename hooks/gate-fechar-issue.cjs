@@ -1656,11 +1656,12 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // procura (flag entre substantivo e verbo, chaves, ANSI-C, glob): a palavra
   // mista com contrabarra dentro de wrapper barra SEMPRE, sem procurar `gh`,
   // como `bash -c "$x"` ja barra (falha fechada).
-  // So no dialeto do bash (revisao 7, Q1 B): no PowerShell e em `cmd /c`,
-  // `pwsh -Command` e `iex` a contrabarra e literal, e `-I"C:\x"` nao esconde nada.
+  // So quando o wrapper fala bash (revisao 7, Q1 B): em `cmd /c`, `pwsh -Command`,
+  // `iex` e `&` a contrabarra e literal, e `-I"C:\x"` nao esconde nada. Decide o
+  // dialeto do WRAPPER, nao a ferramenta: `bash -c` pelo PowerShell segue barrando.
   const exeDoWrapper = pos === null ? "" : normalizarExecutavel(toksComAspas[pos].v);
   const wrapperSemContrabarra = ["cmd", "pwsh", "powershell", "iex", "invoke-expression", "&"].includes(exeDoWrapper);
-  const mistaComGh = FERRAMENTA !== "PowerShell" && !wrapperSemContrabarra && interno !== null && depois.some((t) => t.mista && t.v.includes("\\"));
+  const mistaComGh = !wrapperSemContrabarra && interno !== null && depois.some((t) => t.mista && t.v.includes("\\"));
   if (ilegivel || mistaComGh) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).

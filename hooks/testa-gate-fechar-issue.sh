@@ -1547,6 +1547,8 @@ caso_gate_ps() { # $1 rotulo, $2 exit esperado, $3 comando (ferramenta PowerShel
 caso_gate_ps r8-2 0 '& "C:\Microsiga\advpls.exe" appre x.prw -I"C:\Microsiga\includes"'
 caso_gate_ps r8-3 0 'cmd /c dir "C:\Program Files"\foo'
 caso_gate_ps r8-4 0 '& "C:\Program Files\nodejs\node.exe" --out="C:\x y\z"'
+# Revisao de seguranca do commit b2db757a: a isencao segue o dialeto do wrapper, nao a ferramenta.
+caso_gate_ps r8-5 2 $'bash -c "echo"\' \\"; gh issue close 12\''
 # Revisao de seguranca do commit 60835732: o gh fora da palavra mista, e o \U de 8 digitos.
 caso_gate mx-9 2 $'eval "echo"\' \\"; gh\' issue close 12'
 caso_gate mx-10 2 $'eval "echo"\' \\";\' gh issue close 12'
