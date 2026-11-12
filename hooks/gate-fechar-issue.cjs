@@ -1507,13 +1507,6 @@ function temGhLiteralQueEscreve(texto) {
   return false;
 }
 
-// Algum `gh` no texto, em qualquer posicao (aspas, crase e contrabarra somem;
-// separadores de shell e chaves viram espaco). Usado so onde a leitura ja e
-// insegura (palavra de aspas mistas dentro de wrapper).
-function temGhQualquer(texto) {
-  return String(texto).replace(/\$(?=["'])/g, "").replace(/["'\x60\\]/g, "").split(/[\s;&|(){},]+/).some((p) => normalizarExecutavel(p) === "gh");
-}
-
 function ehSourceDeArquivo(toks, pos) {
   if (pos === null) return false;
   const exe = normalizarExecutavel(toks[pos].v);
@@ -1663,11 +1656,11 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // verbo (`gh issue -R o/r close`) e expansao de chaves (`gh issue {close,}`),
   // que o bash executa (revisao de seguranca do commit f06775e7).
   const depois = toksComAspas.slice(pos + 1);
-  // ANSI-C (`$'\x67h'`) monta qualquer palavra, inclusive `gh`, e o token ja vem
-  // sem as aspas: com `$'` ou `$"` no segmento, a palavra mista barra sem
-  // procurar o `gh` (revisao de seguranca do commit 5513b4d3).
-  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\")) &&
-    (/\$['"]/.test(segmento) || temGhQualquer(depois.map((t) => t.v).join(" ")));
+  // Tres revisoes de seguranca seguidas acharam um jeito de esconder o `gh` da
+  // procura (flag entre substantivo e verbo, chaves, ANSI-C, glob): a palavra
+  // mista com contrabarra dentro de wrapper barra SEMPRE, sem procurar `gh`,
+  // como `bash -c "$x"` ja barra (falha fechada).
+  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\"));
   if (ilegivel || mistaComGh) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).
