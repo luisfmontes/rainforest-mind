@@ -68,7 +68,7 @@ echo "== medida (D1, D2) =="
 { usuario; msg 200000; usuario; msg 320000; } > "$TRANSCRITOS/alto.jsonl"
 env -u CLAUDE_CODE_SESSION_ID node scripts/estado.cjs exigir --slug caixa --estagio limpar > "$T/out-base" 2> "$T/err-base"
 rodar alto
-com_aviso "uso acima do limiar avisa com tokens, limiar e estagio" "aviso: contexto em 320 mil tokens (limiar 310 mil). Antes de abrir 'limpar', registre o estado e considere /compact ou uma sessão nova."
+com_aviso "uso acima do limiar avisa com tokens, limiar e estagio" "aviso: contexto em 320 mil tokens (limiar 310 mil). Antes de abrir 'limpar', peça ao usuário um /compact e siga o fluxo depois dele: o estado está gravado e sobrevive à compactação. Não pare o fluxo nem proponha sessão nova por causa deste aviso."
 if cmp -s "$T/out" "$T/out-base"; then passa "stdout igual ao de sessao sem transcript"; else falha "stdout igual ao de sessao sem transcript" "$(cat "$T/out")"; fi
 
 { msg 320000; msg 309999; } > "$TRANSCRITOS/abaixo.jsonl"
