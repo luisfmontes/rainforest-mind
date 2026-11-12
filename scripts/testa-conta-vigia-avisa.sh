@@ -371,5 +371,13 @@ rodar d4-6 r1
 afirma "(d4-6) pasta em casa não grava semUsoDesde" test "$(estado_pasta trabalho semUsoDesde)" = AUSENTE
 afirma "(d4-6) pasta em casa não grava uso_ilegivel" test "$(contar uso_ilegivel)" = 0
 
+# (st-1) status da pasta manual diz a condição da volta (D3), e nunca "sem volta automática".
+novo_caso_d1 st-1
+RC=0
+cli "$CASO" status > "$RAIZ/st-1.txt" 2>&1 || RC=$?
+LINHA_ST_1="$(grep -F 'pasta trabalho' "$RAIZ/st-1.txt" || true)"
+afirma "(st-1) a linha da pasta trabalho diz a condição da volta" contem "$LINHA_ST_1" "troca manual (volta se a conta em uso chegar ao limite e a de casa tiver folga)"
+afirma "(st-1) o status não diz sem volta automática" bash -c '! grep -qF "sem volta automática" "$1"' _ "$RAIZ/st-1.txt"
+
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

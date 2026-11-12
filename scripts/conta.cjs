@@ -820,7 +820,7 @@ async function statusLido(c, sobTrava) {
       // Sem a trava não se grava: diz a divergência em vez do "troca manual" do estado velho.
       linha += ` · estado diverge: diz conta ${NOME[div.estado]}, o login é da conta ${NOME[div.login]} (a próxima rodada com a trava alinha)`;
     } else {
-      if (info.manual) linha += ' · troca manual (sem volta automática)';
+      if (info.manual) linha += ' · troca manual (volta se a conta em uso chegar ao limite e a de casa tiver folga)';
       if (info.travouPor) linha += ` · volta em ${info.travouPor.resetsAt}`;
     }
     if (conta && usos[conta]) {
