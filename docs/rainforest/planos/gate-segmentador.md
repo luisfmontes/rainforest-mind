@@ -683,7 +683,7 @@ pronto quando: com o payload real de PreToolUse (Bash), `bash -c echo\ \'x\'\;\ 
 
 Forma prescrita: em `textoAPartir`, token sem aspas com espaço (só nasce da opção `contrabarra`) sai entre aspas duplas com contrabarra antes de contrabarra, aspa dupla, cifrão e crase (crase escrita como `\x60` na classe), que o `desempacota` reduz ao valor exato.
 
-Emenda da 7ª rodada (revisão 6; Q1 A do Luís em 2026-11-12): as tarefas 21 a 23 fecham os achados 1 a 3 da revisão 6. A bateria passa a 504 ok (492 + os 12 casos (mx) e (ac)).
+Emenda da 7ª rodada (revisão 6; Q1 A do Luís em 2026-11-12): as tarefas 21 a 23 fecham os achados 1 a 3 da revisão 6. A bateria passa a 507 ok (492 + os 15 casos (mx) e (ac); (mx-9), (mx-10) e (ac-5) vieram da revisão de segurança do commit 60835732: o `gh` fora da palavra mista e o `\U` de 8 dígitos).
 
 ### 21. Palavra de aspas mistas com contrabarra e `gh` de escrita dentro de wrapper é ilegível (revisão 6) [tipo: implementar]
 atende: D8
@@ -700,9 +700,9 @@ mutacao:
   timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (mx-1) a (mx-5)`
 prova-na-base: verde — a base também deixa passar (mx-1) e (mx-3) a (mx-5) e barra (mx-2) só por acidente; a prova é a mutação acima, que reabre os cinco
-pronto quando: com o payload real de PreToolUse (Bash), `eval "echo"' \"; gh issue close 12'`, `bash -c "echo"' \"; gh issue close 12'`, `eval ""'echo \"; gh pr merge 5'`, `time eval "echo"' \"; gh issue close 12'` e `eval "e"'cho \"'"; gh pr merge 5"` saem 2 (o bash executa o `gh` nos cinco, conferido com o stub de `gh`), e os vizinhos `eval "echo"' \"oi'`, `bash -c "gh issue view 12"' --json \"title\"'` e `echo "a"' \"; gh issue close 12'` saem 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 504 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (mx-1) vermelho.
+pronto quando: com o payload real de PreToolUse (Bash), `eval "echo"' \"; gh issue close 12'`, `bash -c "echo"' \"; gh issue close 12'`, `eval ""'echo \"; gh pr merge 5'`, `time eval "echo"' \"; gh issue close 12'` e `eval "e"'cho \"'"; gh pr merge 5"` saem 2 (o bash executa o `gh` nos cinco, conferido com o stub de `gh`), e os vizinhos `eval "echo"' \"oi'`, `bash -c "gh issue view 12"' --json \"title\"'` e `echo "a"' \"; gh issue close 12'` saem 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 507 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (mx-1) vermelho.
 
-Forma prescrita: `tokensComAspas` guarda, por palavra, os modos de citação vistos (aspas duplas, simples, fora de aspas; abrir a aspa conta, mesmo vazia) e o token com mais de um modo sai com `mista: true` (sem mistura, o campo não existe). Em `processarSegmento`, depois de achar o `interno` do wrapper, `mistaComGh` é verdadeiro quando algum token depois da posição de comando é misto, tem contrabarra e `temGhLiteralQueEscreve` acha `gh` de escrita no valor dele; `ilegivel || mistaComGh` barra.
+Forma prescrita: `tokensComAspas` guarda, por palavra, os modos de citação vistos (aspas duplas, simples, fora de aspas; abrir a aspa conta, mesmo vazia) e o token com mais de um modo sai com `mista: true` (sem mistura, o campo não existe). Em `processarSegmento`, depois de achar o `interno` do wrapper, `mistaComGh` é verdadeiro quando algum token depois da posição de comando é misto e tem contrabarra, e `temGhLiteralQueEscreve` acha `gh` de escrita no texto de todas as palavras depois do wrapper (o `gh` pode estar fora da palavra mista); `ilegivel || mistaComGh` barra.
 
 ### 22. A rede do D3 decodifica o ANSI-C antes de procurar o `gh` (revisão 6) [tipo: implementar]
 atende: D3
@@ -719,9 +719,9 @@ mutacao:
   timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (ac-1) a (ac-3)`
 prova: `bash hooks/testa-gate-fechar-issue.sh`
-pronto quando: com o payload real de PreToolUse (Bash), `echo "$(echo ')' ; gh issue $'clo\x73e' 12)"`, `echo "$(echo ')' ; gh issue $'cl\157se' 12)"` e `echo "$(echo ')' ; $'\x67h' issue close 12)"` saem 2 (o bash executa `gh issue close 12` nos três, conferido com o stub), e `echo "$(echo ')' ; echo $'clo\x73e')"` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 504 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (ac-1) vermelho.
+pronto quando: com o payload real de PreToolUse (Bash), `echo "$(echo ')' ; gh issue $'clo\x73e' 12)"`, `echo "$(echo ')' ; gh issue $'cl\157se' 12)"` e `echo "$(echo ')' ; $'\x67h' issue close 12)"` saem 2 (o bash executa `gh issue close 12` nos três, conferido com o stub), e `echo "$(echo ')' ; echo $'clo\x73e')"` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 507 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (ac-1) vermelho.
 
-Forma prescrita: em `temGhLiteralQueEscreve`, antes de tirar aspas, cada `$'...'` do texto tem `\xHH`, `\uHHHH` e octal de até três dígitos trocados pelo caractere; fora de `$'...'` nada muda.
+Forma prescrita: em `temGhLiteralQueEscreve`, antes de tirar aspas, cada `$'...'` do texto tem `\xHH`, `\uHHHH` e `\UHHHHHHHH` (até 0x10FFFF) e octal de até três dígitos trocados pelo caractere; fora de `$'...'` nada muda.
 
 ### 23. CHANGELOG restaurado e os falsos positivos da revisão 6 [tipo: docs]
 atende: D4

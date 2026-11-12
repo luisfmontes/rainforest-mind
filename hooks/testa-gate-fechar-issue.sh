@@ -1532,6 +1532,10 @@ caso_gate ac-1 2 $'echo "$(echo \')\' ; gh issue $\'clo\\x73e\' 12)"'
 caso_gate ac-2 2 $'echo "$(echo \')\' ; gh issue $\'cl\\157se\' 12)"'
 caso_gate ac-3 2 $'echo "$(echo \')\' ; $\'\\x67h\' issue close 12)"'
 caso_gate ac-4 0 $'echo "$(echo \')\' ; echo $\'clo\\x73e\')"'
+# Revisao de seguranca do commit 60835732: o gh fora da palavra mista, e o \U de 8 digitos.
+caso_gate mx-9 2 $'eval "echo"\' \\"; gh\' issue close 12'
+caso_gate mx-10 2 $'eval "echo"\' \\";\' gh issue close 12'
+caso_gate ac-5 2 $'echo "$(echo \')\' ; gh issue $\'clo\\U00000073e\' 12)"'
 
 # Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
 echo

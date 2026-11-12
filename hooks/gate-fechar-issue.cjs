@@ -1493,6 +1493,7 @@ function temGhLiteralQueEscreve(texto) {
   const ansiC = String(texto).replace(/\$'((?:[^'\\]|\\[\s\S])*)'/g, (_, corpo) => "'" + corpo
     .replace(/\\x([0-9a-fA-F]{1,2})/g, (__, h) => String.fromCharCode(parseInt(h, 16)))
     .replace(/\\u([0-9a-fA-F]{1,4})/g, (__, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\U([0-9a-fA-F]{1,8})/g, (m, h) => { const c = parseInt(h, 16); return c <= 0x10ffff ? String.fromCodePoint(c) : m; })
     .replace(/\\([0-7]{1,3})/g, (__, o) => String.fromCharCode(parseInt(o, 8))) + "'");
   const v = ansiC.replace(/\$(?=["'])/g, "").replace(/["'\x60\\]/g, "").split(/[\s;&|(){}]+/).filter(Boolean);
   const escreve = { issue: ["close", "create", "comment"], pr: ["create", "edit", "merge"] };
@@ -1650,8 +1651,11 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // contrabarra (`"echo"' \"; gh issue close 12'`) tem a contrabarra reduzida
   // aqui pela regra da PRIMEIRA aspa, e o bash reduz cada trecho pela propria
   // aspa. Dentro de wrapper, com `gh` que escreve no texto dela, a leitura nao
-  // e segura: ilegivel.
-  const mistaComGh = interno !== null && toksComAspas.slice(pos + 1).some((t) => t.mista && t.v.includes("\\") && temGhLiteralQueEscreve(t.v));
+  // e segura: ilegivel. O `gh` pode estar em outra palavra (`eval "echo"' \";'
+  // gh issue close 12`, ou so o `gh` dentro da mista): a procura e no texto de
+  // todas as palavras depois do wrapper, nao so no da mista.
+  const depois = toksComAspas.slice(pos + 1);
+  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\")) && temGhLiteralQueEscreve(depois.map((t) => t.v).join(" "));
   if (ilegivel || mistaComGh) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).
