@@ -24,7 +24,7 @@
     "em": "2026-11-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-12",
     "carimbos": [
       {
@@ -71,8 +71,8 @@
       }
     ],
     "em": "2026-11-12",
-    "tarefas_ok": 16,
-    "tarefas": 16,
+    "tarefas_ok": 17,
+    "tarefas": 17,
     "mutacao": [
       {
         "tarefa": 1,
@@ -153,10 +153,15 @@
         "tarefa": 16,
         "resultado": "n/a",
         "motivo": "só texto; o comportamento está medido pelas tarefas 11 a 15, e a falsificação é a coerência do texto com a D7 e a D8"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-vigia-avisa.sh, caso (e-1)"
       }
     ],
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug conta-reserva-avisa",
-    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 3: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 6: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: pulada (n/a — só texto e número de versão; o comportamento está medido pelas tarefas 1 a 8, e a falsificação é a coerência do texto com o design e com o código) | tarefa 10: vermelho | tarefa 11: vermelho | tarefa 12: vermelho | tarefa 13: vermelho | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: pulada (n/a — só texto; o comportamento está medido pelas tarefas 11 a 15, e a falsificação é a coerência do texto com a D7 e a D8) | exit=0",
+    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 3: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 6: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: pulada (n/a — só texto e número de versão; o comportamento está medido pelas tarefas 1 a 8, e a falsificação é a coerência do texto com o design e com o código) | tarefa 10: vermelho | tarefa 11: vermelho | tarefa 12: vermelho | tarefa 13: vermelho | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: pulada (n/a — só texto; o comportamento está medido pelas tarefas 11 a 15, e a falsificação é a coerência do texto com a D7 e a D8) | tarefa 17: vermelho",
     "reaberturas": 1
   },
   "revisar": {
