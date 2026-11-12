@@ -219,8 +219,10 @@
     "head": "447d2fdbd0309b388adda2e671b4f310c5546741"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-11-12"
+    "status": "ok",
+    "em": "2026-11-12",
+    "acao": "merge",
+    "pr": 695
   },
   "reaberturas": [
     {
