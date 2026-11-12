@@ -2,8 +2,10 @@
 // @categoria: bateria
 // rainforest-gate: dados-de-exemplo — tokens FALSOS (prefixo falso-) e identificadores de teste; nenhum valor real.
 // Bateria do hook de sessão dos avisos de conta (hooks/conta-aviso-sessao.cjs; plano
-// conta-reserva-avisa, tarefa 5). Roda o hook de verdade, com o payload no stdin e
-// RFM_CONTA_DADOS apontando para um diretório temporário. Sem rede, sem servidor, sem conta.cjs.
+// conta-reserva-avisa, tarefas 5 e 7). Seções 1 a 5: o hook de verdade, com o payload no stdin e
+// RFM_CONTA_DADOS num diretório temporário. Seção e2e-*: rodadas REAIS de scripts/conta.cjs (vigiar
+// e status) contra o servidor de fixture (scripts/fixtures/conta/servidor.cjs, porta livre, morto no
+// fim), e o hook lendo o que elas gravaram. Tudo em diretório temporário; nenhuma conta real.
 // Uso: node hooks/testa-conta-aviso-sessao.cjs
 
 'use strict';
@@ -11,7 +13,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 
 const SRC = path.resolve(__dirname, '..');
 const HOOK = path.join(SRC, 'hooks', 'conta-aviso-sessao.cjs');
@@ -281,6 +283,246 @@ try {
   fs.rmSync(RAIZ, { recursive: true, force: true });
 }
 
-console.log('');
-console.log(`${ok} ok, ${falhou} falha(s)`);
-process.exitCode = falhou === 0 ? 0 : 1;
+// ---------------------------------------------------------------------------------------------
+// Seção ponta a ponta (e2e-*, tarefa 7 de conta-reserva-avisa). Os cenários são os mesmos da
+// bateria bash scripts/testa-conta-vigia-avisa.sh (D1, D2, D4); aqui a prova é o hook lendo o log
+// que o vigia real gravou, e o status mostrando a mesma falha de renovação.
+// ---------------------------------------------------------------------------------------------
+const CONTA = path.join(SRC, 'scripts', 'conta.cjs');
+const SERVIDOR = path.join(SRC, 'scripts', 'fixtures', 'conta', 'servidor.cjs');
+const VIDA = 4102444800000;
+// Uso baixo nas duas contas: o vigia não troca de conta no meio do cenário (team a 97% trocaria).
+const USO_BAIXO = { uso5: 10, uso7: 10 };
+const TOKENS_E2E = {
+  'falso-team-pasta': { email: 'team@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000a', uso: 'team', ...USO_BAIXO },
+  'falso-team-reserva': { email: 'team@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000a', uso: 'team', ...USO_BAIXO },
+  'falso-pessoal-pasta': { email: 'pessoal@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000b', uso: 'pessoal', ...USO_BAIXO },
+  'falso-pessoal-reserva': { email: 'pessoal@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000b', uso: 'pessoal', ...USO_BAIXO },
+};
+const REFRESH_E2E = {
+  'falso-refresh-team-reserva': { de: 'falso-team-reserva' },
+  'falso-refresh-pessoal-reserva': { de: 'falso-pessoal-reserva' },
+};
+const OAUTH_E2E = {
+  team: { accountUuid: '00000000-0000-0000-0000-00000000000a', emailAddress: 'team@exemplo.invalid', organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa Team' },
+  pessoal: { accountUuid: '00000000-0000-0000-0000-00000000000b', emailAddress: 'pessoal@exemplo.invalid', organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa Pessoal' },
+};
+
+function credE2e(tok, refresh, expiresAt = VIDA) {
+  return {
+    mcpOAuth: { 'servidor-falso': { accessToken: 'falso-mcp-' + tok, refreshToken: 'falso-mcp-refresh-' + tok, expiresAt: 1, scope: 'a b' } },
+    claudeAiOauth: { accessToken: tok, refreshToken: refresh, expiresAt, refreshTokenExpiresAt: VIDA, scopes: ['user:inference', 'user:profile'], subscriptionType: 'max', rateLimitTier: 'default_claude_max_20x' },
+    trustedDeviceToken: 'falso-tdt-' + tok,
+  };
+}
+
+const escreverE2e = (arq, obj) => {
+  fs.mkdirSync(path.dirname(arq), { recursive: true });
+  fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n');
+};
+const lerE2e = (arq) => JSON.parse(fs.readFileSync(arq, 'utf8'));
+
+// Arranjo no formato real: pasta trabalho (o .claude.json dela mora fora, como ~/.claude.json),
+// pasta pessoal (o .claude.json mora dentro), duas reservas e estado com a troca automática ligada.
+function semearE2e(raiz) {
+  const caso = {
+    trabalho: path.join(raiz, 'trabalho', '.claude'),
+    pessoal: path.join(raiz, 'pessoal', '.claude-personal'),
+    dados: path.join(raiz, 'dados'),
+    claudeJson: path.join(raiz, 'trabalho', '.claude.json'),
+  };
+  escreverE2e(path.join(caso.trabalho, '.credentials.json'), credE2e('falso-team-pasta', 'falso-refresh-team-pasta'));
+  escreverE2e(caso.claudeJson, { numStartups: 3, oauthAccount: OAUTH_E2E.team, projects: {} });
+  escreverE2e(path.join(caso.pessoal, '.credentials.json'), credE2e('falso-pessoal-pasta', 'falso-refresh-pessoal-pasta'));
+  escreverE2e(path.join(caso.pessoal, '.claude.json'), { numStartups: 3, oauthAccount: OAUTH_E2E.pessoal, projects: {} });
+  escreverE2e(path.join(caso.dados, 'contas', 'reserva-team.json'), { claudeAiOauth: credE2e('falso-team-reserva', 'falso-refresh-team-reserva').claudeAiOauth });
+  escreverE2e(path.join(caso.dados, 'contas', 'reserva-pessoal.json'), { claudeAiOauth: credE2e('falso-pessoal-reserva', 'falso-refresh-pessoal-reserva').claudeAiOauth });
+  escreverE2e(path.join(caso.dados, 'contas', 'estado.json'), { automatico: true });
+  return caso;
+}
+
+// Sobe o servidor de fixture com o mapa `extra` (renovacaoStatus, por exemplo), roda fn(api) e mata
+// o servidor no fim. O mapa é lido na subida, por isso cada cenário com outro mapa sobe o seu.
+async function comServidor(raiz, nome, extra, fn) {
+  const mapa = path.join(raiz, `mapa-${nome}.json`);
+  escreverE2e(mapa, { tokens: TOKENS_E2E, refresh: REFRESH_E2E, ...extra });
+  const filho = spawn(process.execPath, [SERVIDOR], {
+    env: { ...process.env, RFM_CONTA_SERVIDOR_MAPA: mapa, RFM_CONTA_SERVIDOR_CONTROLE: path.join(raiz, `segurar-${nome}`) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  try {
+    const api = await new Promise((resolve, reject) => {
+      let buf = '';
+      filho.stdout.on('data', (d) => {
+        buf += d;
+        const n = buf.indexOf('\n');
+        if (n >= 0) resolve('http://127.0.0.1:' + buf.slice(0, n).trim());
+      });
+      filho.on('error', reject);
+      filho.on('exit', (code) => reject(new Error('servidor de fixture saiu com código ' + code)));
+    });
+    return await fn(api);
+  } finally {
+    filho.kill();
+  }
+}
+
+function envConta(caso, api) {
+  return {
+    ...process.env,
+    RFM_TEST: '1',
+    RFM_CONTA_PASTA_TRABALHO: caso.trabalho,
+    RFM_CONTA_PASTA_PESSOAL: caso.pessoal,
+    RFM_CONTA_CLAUDE_JSON: caso.claudeJson,
+    RFM_CONTA_DADOS: caso.dados,
+    RFM_CONTA_API: api,
+  };
+}
+
+// Sem RFM_CONTA_DADOS: a pasta de dados vem só de RFM_ROOT (o caminho que o hook e o conta.cjs
+// precisam compartilhar).
+function envSemDados(dados, base = process.env) {
+  const e = { ...base, RFM_ROOT: dados };
+  delete e.RFM_CONTA_DADOS;
+  return e;
+}
+
+function conta(env, args) {
+  const r = spawnSync(process.execPath, [CONTA, ...args], { cwd: SRC, encoding: 'utf8', timeout: 60000, env });
+  return { rc: r.status, out: (r.stdout || '') + (r.stderr || '') };
+}
+
+function eventosDe(caso) {
+  const arq = path.join(caso.dados, 'contas', 'eventos.jsonl');
+  if (!fs.existsSync(arq)) return [];
+  return fs.readFileSync(arq, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
+}
+
+// Troca a pasta trabalho para a conta pessoal (como depois de uma troca real): o login dela passa a
+// ser o da reserva-pessoal, vencido, e a reserva-pessoal fica vazia. Com isso o uso pessoal some.
+function trocarTrabalhoPraPessoal(caso) {
+  const credT = path.join(caso.trabalho, '.credentials.json');
+  const reservaP = path.join(caso.dados, 'contas', 'reserva-pessoal.json');
+  const cred = lerE2e(credT);
+  cred.claudeAiOauth = { ...lerE2e(reservaP).claudeAiOauth, expiresAt: 1 };
+  escreverE2e(credT, cred);
+  escreverE2e(reservaP, {});
+  const claude = lerE2e(caso.claudeJson);
+  claude.oauthAccount = OAUTH_E2E.pessoal;
+  escreverE2e(caso.claudeJson, claude);
+  escreverE2e(path.join(caso.dados, 'contas', 'estado.json'), {
+    automatico: true,
+    pastas: { trabalho: { conta: 'pessoal', manual: true, travouPor: null } },
+    contas: {
+      team: { email: OAUTH_E2E.team.emailAddress, oauthAccount: OAUTH_E2E.team },
+      pessoal: { email: OAUTH_E2E.pessoal.emailAddress, oauthAccount: OAUTH_E2E.pessoal },
+    },
+  });
+}
+
+async function e2e() {
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'conta-aviso-e2e-'));
+  try {
+    // (e2e-1) pasta pessoal sem .credentials.json: a rodada real grava pasta_sem_credencial; com a
+    // credencial de volta, outra rodada grava pasta_com_credencial e a linha some.
+    await comServidor(raiz, 'um', {}, async (api) => {
+      const caso = semearE2e(path.join(raiz, 'caso-e2e-1'));
+      const env = envConta(caso, api);
+      const cred = path.join(caso.pessoal, '.credentials.json');
+      const guardada = fs.readFileSync(cred, 'utf8');
+      fs.rmSync(cred);
+      conta(env, ['vigiar']);
+      const c1 = contexto(rodar(payload('SessionStart', 'sessao-e2e-1a'), caso.dados).out);
+      afirma('e2e-1a pasta pessoal sem .credentials.json: a rodada real grava e o hook injeta a linha da pasta pessoal',
+        linhaQue(c1, '- pasta pessoal:').includes('/login'));
+      fs.writeFileSync(cred, guardada);
+      conta(env, ['vigiar']);
+      const c2 = contexto(rodar(payload('SessionStart', 'sessao-e2e-1b'), caso.dados).out);
+      afirma('e2e-1b credencial de volta: a rodada grava pasta_com_credencial e a linha some em outra sessão',
+        eventosDe(caso).some((ev) => ev.tipo === 'pasta_com_credencial' && ev.pasta === 'pessoal') &&
+          linhaQue(c2, '- pasta pessoal:') === '');
+    });
+
+    // (e2e-2) estado.json corrompido: a rodada real grava vigia_falhou; uma rodada completa cria
+    // vigia-ok e a linha some.
+    await comServidor(raiz, 'dois', {}, async (api) => {
+      const caso = semearE2e(path.join(raiz, 'caso-e2e-2'));
+      const env = envConta(caso, api);
+      const estado = path.join(caso.dados, 'contas', 'estado.json');
+      fs.writeFileSync(estado, '{ isto não é json');
+      conta(env, ['vigiar']);
+      const c1 = contexto(rodar(payload('SessionStart', 'sessao-e2e-2a'), caso.dados).out);
+      afirma('e2e-2a estado.json corrompido: a rodada real grava vigia_falhou e o hook injeta a linha do vigia',
+        linhaQue(c1, '- vigia:') !== '');
+      escreverE2e(estado, { automatico: true });
+      conta(env, ['vigiar']);
+      const c2 = contexto(rodar(payload('SessionStart', 'sessao-e2e-2b'), caso.dados).out);
+      afirma('e2e-2b rodada completa cria vigia-ok e a linha do vigia some em outra sessão',
+        fs.existsSync(path.join(caso.dados, 'contas', 'vigia-ok')) && linhaQue(c2, '- vigia:') === '');
+    });
+
+    // (e2e-3) renovação recusada (servidor responde 500) com reserva-team vencendo em menos de 1 h:
+    // o hook e o status mostram a falha; depois a renovação de verdade (outro servidor, sem a recusa)
+    // tira a falha dos dois.
+    const caso3 = semearE2e(path.join(raiz, 'caso-e2e-3'));
+    escreverE2e(path.join(caso3.dados, 'contas', 'reserva-team.json'), {
+      claudeAiOauth: credE2e('falso-team-reserva', 'falso-refresh-team-reserva', Date.now() + 30 * MIN).claudeAiOauth,
+    });
+    await comServidor(raiz, 'falha', { renovacaoStatus: 500 }, async (api) => {
+      const env = envConta(caso3, api);
+      conta(env, ['vigiar']);
+      const c1 = contexto(rodar(payload('SessionStart', 'sessao-e2e-3a'), caso3.dados).out);
+      afirma('e2e-3a renovação recusada: o hook injeta a linha de renovacao_falhou de reserva-team',
+        linhaQue(c1, '- login guardado reserva-team') !== '');
+      const st1 = conta(env, ['status']).out;
+      afirma('e2e-3b o status mostra o mesmo aviso: aviso: a renovação de reserva-team falhou',
+        st1.includes('aviso: a renovação de reserva-team falhou'));
+    });
+    await comServidor(raiz, 'renova', {}, async (api) => {
+      const env = envConta(caso3, api);
+      conta(env, ['vigiar']); // renova de verdade: o expiresAt sai de 30 min e vai para 8 h
+      const st2 = conta(env, ['status']).out;
+      const c2 = contexto(rodar(payload('SessionStart', 'sessao-e2e-3c'), caso3.dados).out);
+      afirma('e2e-3c login renovado: o aviso some do status e do hook',
+        !st2.includes('aviso: a renovação de reserva-team') && linhaQue(c2, '- login guardado reserva-team') === '');
+    });
+
+    // (e2e-4) pasta trabalho na conta pessoal (sem login pessoal que responda) e uso ilegível há 31
+    // min: a rodada real grava uso_ilegivel e o hook injeta a linha. semUsoDesde é forjado no estado.
+    await comServidor(raiz, 'quatro', {}, async (api) => {
+      const caso = semearE2e(path.join(raiz, 'caso-e2e-4'));
+      trocarTrabalhoPraPessoal(caso);
+      const estado = path.join(caso.dados, 'contas', 'estado.json');
+      const e = lerE2e(estado);
+      e.pastas.trabalho.semUsoDesde = Date.now() - 31 * MIN;
+      escreverE2e(estado, e);
+      conta(envConta(caso, api), ['vigiar']);
+      const c = contexto(rodar(payload('SessionStart', 'sessao-e2e-4'), caso.dados).out);
+      afirma('e2e-4 uso ilegível há 31 min de pasta fora de casa: a rodada grava uso_ilegivel e o hook injeta a linha',
+        linhaQue(c, '- pasta trabalho: o uso da conta pessoal').includes('ilegível há mais de 30 min'));
+    });
+
+    // (e2e-5) só RFM_ROOT, sem RFM_CONTA_DADOS: o conta.cjs grava no log e o hook lê do mesmo lugar.
+    await comServidor(raiz, 'cinco', {}, async (api) => {
+      const caso = semearE2e(path.join(raiz, 'caso-e2e-5'));
+      fs.rmSync(path.join(caso.pessoal, '.credentials.json'));
+      conta(envSemDados(caso.dados, envConta(caso, api)), ['vigiar']);
+      const c = contexto(rodar(payload('SessionStart', 'sessao-e2e-5'), caso.dados, { env: envSemDados(caso.dados) }).out);
+      afirma('e2e-5 só RFM_ROOT: o conta.cjs grava e o hook lê o mesmo <RFM_ROOT>/contas/eventos.jsonl',
+        fs.existsSync(path.join(caso.dados, 'contas', 'eventos.jsonl')) && linhaQue(c, '- pasta pessoal:') !== '');
+    });
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true });
+  }
+}
+
+e2e()
+  .catch((e) => {
+    falhou++;
+    console.log(`  FALHA e2e (exceção): ${e.message}`);
+  })
+  .finally(() => {
+    console.log('');
+    console.log(`${ok} ok, ${falhou} falha(s)`);
+    process.exitCode = falhou === 0 ? 0 : 1;
+  });

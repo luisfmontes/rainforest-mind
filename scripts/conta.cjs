@@ -25,6 +25,7 @@ const { mover, gravarAtomico: gravarCred, prefixo: prefixoDoLogin } = require('.
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 const API = require('./lib/conta-api.cjs');
 const UNIFICAR = require('./lib/conta-unificar.cjs');
+const AVISOS = require('./lib/conta-avisos.cjs');
 const { sessoesVivas, JANELA_COLOCADA_MS } = require('../hooks/lib/contexto-sessao.cjs');
 
 // Padrão dos limiares (D4). Vale o que o arquivo <dados>/contas/config.json diz, chave a chave.
@@ -34,7 +35,7 @@ const TRAVA_MS = 5 * 60 * 1000;
 const GUARDA_MS = 30 * 1000;
 const ESPERA_TRAVA_MS = 30 * 1000;
 const RECUO_MS = 15 * 60 * 1000;
-const RENOVAR_ANTES_MS = 60 * 60 * 1000;
+const { RENOVAR_ANTES_MS } = AVISOS;
 const LEITURA_MAX_MS = 15 * 60 * 1000;
 // Aviso repetido (mesmo tipo e motivo) não vira uma linha por minuto: 1 por hora.
 const AVISO_REPETIDO_MS = 60 * 60 * 1000;
@@ -80,11 +81,7 @@ function pastaDaSessao() {
 // credencial dentro do repositório dele, separada da que o vigia agendado lê. Por isso o
 // "projeto" aqui é o home (nível 2 e 3 da cadeia coincidem em ~/.rainforest).
 function dadosDir() {
-  if (process.env.RFM_CONTA_DADOS) return process.env.RFM_CONTA_DADOS;
-  const raiz = require('../hooks/lib/raiz.cjs').resolverRaiz({
-    cwd: os.homedir(),
-    plugin: path.resolve(__dirname, '..'),
-  }).raiz;
+  const raiz = AVISOS.dadosDir({ env: process.env, home: os.homedir(), plugin: path.resolve(__dirname, '..') });
   if (!raiz) throw new Error('sem pasta de dados do rainforest (defina RFM_CONTA_DADOS)');
   return raiz;
 }
@@ -594,24 +591,22 @@ function carimboLocal(agora = new Date()) {
 // menos de 1 h): login que já foi renovado depois da falha, ou que sumiu, não aparece. Lê só os
 // eventos (que não levam credencial) e o expiresAt do arquivo.
 function falhasDeRenovacao(c) {
-  const ultima = new Map();
-  for (const { ev } of lerEventos(c)) {
-    if (ev.tipo !== 'renovacao_falhou' || typeof ev.motivo !== 'string') continue;
-    const m = /^([\w-]+): (.*)$/.exec(ev.motivo);
-    if (m) ultima.set(m[1], { em: ev.em, erro: m[2] });
-  }
-  const linhas = [];
-  for (const [nome, f] of ultima) {
-    let login;
+  const eventos = lerEventos(c).map(({ ev }) => ev);
+  // expiresAt do login guardado (null sem arquivo ou em erro). O critério mora na lib, que o hook usa também.
+  const expiraEm = (nome) => {
     try {
-      login = (lerJson(path.join(c.contas, `${nome}.json`), null) || {}).claudeAiOauth;
+      const login = (lerJson(path.join(c.contas, `${nome}.json`), null) || {}).claudeAiOauth;
+      return login ? Number(login.expiresAt) : null;
     } catch {
-      continue;
+      return null;
     }
-    if (!login || !(Number(login.expiresAt) - Date.now() < RENOVAR_ANTES_MS)) continue;
-    const conta = /^reserva-(\w+)$/.exec(nome);
+  };
+  const linhas = [];
+  const abertas = AVISOS.falhasDeRenovacao(eventos, expiraEm, Date.now()); // D5 (conta-reserva-avisa)
+  for (const f of abertas) {
+    const conta = /^reserva-(\w+)$/.exec(f.nome);
     const refazer = conta && NOME[conta[1]] ? `; se o servidor recusa, refaça: preparar ${NOME[conta[1]]} --refazer` : '';
-    linhas.push(`aviso: a renovação de ${nome} falhou em ${new Date(f.em).toISOString()} (${f.erro})${refazer}`);
+    linhas.push(`aviso: a renovação de ${f.nome} falhou em ${new Date(f.em).toISOString()} (${f.erro})${refazer}`);
   }
   return linhas;
 }
