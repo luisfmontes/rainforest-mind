@@ -327,6 +327,17 @@ function lerEventos(c) {
   return validos;
 }
 
+// Leitura do log que só serve de contabilidade da rodada (D1, D4, D7 de conta-reserva-avisa): erro de
+// leitura que não seja ENOENT (EISDIR, EBUSY, EACCES) vale "sem evento". A base só lia o log ao gravar,
+// e um log ilegível não derrubava a decisão (revisão 2, achado 1).
+function eventosDaRodada(c) {
+  try {
+    return lerEventos(c);
+  } catch {
+    return [];
+  }
+}
+
 // Evento de diagnóstico que pode se repetir enquanto o problema durar.
 function registrarAviso(c, ev) {
   const agora = Date.now();
@@ -922,7 +933,7 @@ async function trocar(c, args) {
 // D1 (conta-reserva-avisa): pasta sem .credentials.json fica fora da decisão e vira evento. O último
 // evento de credencial da pasta diz em que estado ela está (sem credencial ou com).
 function ultimoDaCredencial(c, P) {
-  const evs = lerEventos(c)
+  const evs = eventosDaRodada(c)
     .map(({ ev }) => ev)
     .filter((ev) => ev.pasta === P && (ev.tipo === 'pasta_sem_credencial' || ev.tipo === 'pasta_com_credencial'));
   return evs[evs.length - 1];
@@ -968,7 +979,7 @@ const RESOLVEM_PASTA = ['trocar', 'voltar', 'reconciliado'];
 
 function avisoAberto(c, P, aviso, fecha) {
   const tipos = new Set([aviso, fecha, ...RESOLVEM_PASTA]);
-  const da = lerEventos(c).map(({ ev }) => ev).filter((ev) => ev.pasta === P && tipos.has(ev.tipo));
+  const da = eventosDaRodada(c).map(({ ev }) => ev).filter((ev) => ev.pasta === P && tipos.has(ev.tipo));
   return da.length > 0 && da[da.length - 1].tipo === aviso;
 }
 
@@ -1000,7 +1011,7 @@ function avisarUsoIlegivel(c, estado, pastas, usos) {
       mudou = true;
     }
     if (agora - info.semUsoDesde < SEM_USO_AVISAR_MS) continue; // D4 (conta-reserva-avisa)
-    const ja = lerEventos(c).some(({ ev }) => ev.tipo === 'uso_ilegivel' && ev.pasta === P && ev.em >= info.semUsoDesde);
+    const ja = eventosDaRodada(c).some(({ ev }) => ev.tipo === 'uso_ilegivel' && ev.pasta === P && ev.em >= info.semUsoDesde);
     if (ja) continue;
     const min = Math.floor((agora - info.semUsoDesde) / 60000);
     registrarEvento(c, {

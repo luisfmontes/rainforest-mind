@@ -73,8 +73,9 @@ function decidir({ pastas, usos, reservas, config, agora }) {
   return acoes;
 }
 
-// Pasta trocada na mão (D8) nunca recebe ação que mova credencial, mas quando a conta em uso dela
-// chega ao trocarEm o usuário precisa saber (#584: 4 dias a 100% da semana sem aviso). Com os dois
+// Pasta trocada na mão (D8) que chega ao trocarEm e não pode voltar (casa sem folga, sem dado da casa ou
+// sem estacionado: a voltaManual da D3 de conta-reserva-avisa devolveu null) não recebe ação que mova
+// credencial, mas o usuário precisa saber (#584: 4 dias a 100% da semana sem aviso). Com os dois
 // limites passados, avisa o que reseta por último: é ele que segura a conta. limite e resetsAt
 // formam a chave do "uma vez por estouro" que o vigia confere antes de registrar.
 function avisoManual(nome, pasta, usos, config) {

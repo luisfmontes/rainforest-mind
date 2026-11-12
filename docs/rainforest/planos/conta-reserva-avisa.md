@@ -345,7 +345,7 @@ mutacao:
   bateria: `bash scripts/testa-conta-vigia-avisa.sh`
   fixture: `testa-conta-vigia-avisa.sh, caso (f-1)`
 prova: `bash scripts/testa-conta-vigia-avisa.sh`
-pronto quando: com o caso de `novo_caso_d4` (pasta `trabalho` manual na pessoal, login da pasta vencido) e `semUsoDesde` = agora − 31 min, a rodada real de `node scripts/conta.cjs vigiar` grava um `uso_ilegivel`; com o login de volta (`expiresAt` 4102444800000), a rodada seguinte grava um `uso_legivel` da `trabalho`, a terceira não grava outro, e nenhum `manual_fora_do_limite` sai — provado por `bash scripts/testa-conta-vigia-avisa.sh` devolvendo `ok: 49   falhou: 0`.
+pronto quando: com o caso de `novo_caso_d4` (pasta `trabalho` manual na pessoal, login da pasta vencido) e `semUsoDesde` = agora − 31 min, a rodada real de `node scripts/conta.cjs vigiar` grava um `uso_ilegivel`; com o login de volta (`expiresAt` 4102444800000), a rodada seguinte grava um `uso_legivel` da `trabalho`, a terceira não grava outro, e nenhum `manual_fora_do_limite` sai — provado por `bash scripts/testa-conta-vigia-avisa.sh` devolvendo `ok: 51   falhou: 0`.
 
 Forma: `avisoAberto(c, P, aviso, fecha)` devolve true quando o último evento da pasta `P` entre `aviso`, `fecha`, `trocar`, `voltar` e `reconciliado` é o `aviso`. Em `avisarUsoIlegivel`, no ramo da pasta em casa ou com dado legível, grava `uso_legivel` (`de` = conta em uso, `motivo` `dado de uso voltou` ou `pasta em casa`) quando `avisoAberto` diz que o `uso_ilegivel` está aberto.
 
@@ -363,7 +363,7 @@ mutacao:
   bateria: `bash scripts/testa-conta-vigia-avisa.sh`
   fixture: `testa-conta-vigia-avisa.sh, caso (f-2)`
 prova: `bash scripts/testa-conta-vigia-avisa.sh`
-pronto quando: com o caso de `novo_caso_d2` (pasta `trabalho` manual na pessoal, as duas com credencial) e o servidor do mapa D1 (pessoal a 100% na semana, team a 97%), a rodada real grava um `manual_no_limite` e nenhum `manual_fora_do_limite`; com o servidor do mapa base (pessoal a 7%) e o `uso-cache.json` apagado, a rodada seguinte sai 0 e grava um `manual_fora_do_limite` da `trabalho`, a terceira não grava outro, e nenhum `uso_legivel` sai — provado por `bash scripts/testa-conta-vigia-avisa.sh` devolvendo `ok: 49   falhou: 0`.
+pronto quando: com o caso de `novo_caso_d2` (pasta `trabalho` manual na pessoal, as duas com credencial) e o servidor do mapa D1 (pessoal a 100% na semana, team a 97%), a rodada real grava um `manual_no_limite` e nenhum `manual_fora_do_limite`; com o servidor do mapa base (pessoal a 7%) e o `uso-cache.json` apagado, a rodada seguinte sai 0 e grava um `manual_fora_do_limite` da `trabalho`, a terceira não grava outro, e nenhum `uso_legivel` sai — provado por `bash scripts/testa-conta-vigia-avisa.sh` devolvendo `ok: 51   falhou: 0`.
 
 Forma: `fecharManualNoLimite(c, estado, pastas, usos, config)`, chamada logo depois do `decidir` em `vigiarRodada`, com o estado de antes das ações. Para cada pasta: `naSituacao` = manual e fora de casa; `abaixo` = dado completo e `five_hour` e `seven_day` abaixo de `config.trocarEm`. Em situação e sem `abaixo` (inclusive sem dado), nada; senão, com o aviso aberto, grava `manual_fora_do_limite` (`motivo` `conta em uso abaixo do limite` ou `pasta saiu da troca manual`).
 
@@ -422,6 +422,24 @@ depende de: 15
 mutacao: n/a
   motivo: só texto; o comportamento está medido pelas tarefas 11 a 15, e a falsificação é a coerência do texto com a D7 e a D8
 pronto quando: o README, na seção da troca de conta, nomeia `uso_legivel` como o fechamento do `uso_ilegivel` e `manual_fora_do_limite` como o do `manual_no_limite` (com as condições da D7: dado de volta; conta abaixo do limite ou pasta fora da troca manual), cita os comandos `/conta ...` e os quatro sinais tirados do trecho do log (D8); o CHANGELOG 2.13.0 diz que o aviso fecha quando o problema acaba e que os comandos são `/conta ...` — conferido lendo o item "O que trava a troca também chega à sessão" do README contra o texto da D7 e da D8.
+
+### 17. Log ilegível não derruba a rodada sem evento a gravar (revisão 2) [tipo: implementar]
+atende: D1, D7
+arquivos: `scripts/conta.cjs`, `scripts/lib/conta-decidir.cjs`, `scripts/testa-conta-vigia-avisa.sh`, `commands/conta.md`
+depende de: 16
+busca:
+- repo | lerEventos | `scripts/conta.cjs` lê o log em `ultimoDaCredencial`, `avisoAberto` e `avisarUsoIlegivel` toda rodada; a base só lia ao gravar
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `const da = eventosDaRodada(c)`
+  para: `const da = lerEventos(c)`
+  bateria: `bash scripts/testa-conta-vigia-avisa.sh`
+  fixture: `testa-conta-vigia-avisa.sh, caso (e-1)`
+prova: `bash scripts/testa-conta-vigia-avisa.sh`
+pronto quando: com as duas pastas em casa, logins válidos, o servidor do mapa D1 (nenhuma troca nem renovação) e `eventos.jsonl` virado diretório, a rodada real de `node scripts/conta.cjs vigiar` sai 0 e imprime `rodada concluída` — provado por `bash scripts/testa-conta-vigia-avisa.sh` devolvendo `ok: 51   falhou: 0` e pela mutação acima deixando (e-1) vermelho.
+
+Forma: `eventosDaRodada(c)` devolve `lerEventos(c)` e, em erro de leitura, lista vazia; as três leituras de contabilidade da rodada (`ultimoDaCredencial`, `avisoAberto`, o `ja` de `avisarUsoIlegivel`) passam a usá-la. Junto (achado 2 e observação da revisão 2): o comentário de `avisoManual` em `scripts/lib/conta-decidir.cjs` deixa de dizer que a pasta manual nunca recebe ação que mova credencial, e o `argument-hint` de `commands/conta.md` lista `status` e `--refazer`.
 
 ## Premissas aceitas sem conferir
 

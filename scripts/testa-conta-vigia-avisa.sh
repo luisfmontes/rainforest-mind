@@ -421,5 +421,18 @@ rodar f-2 r3
 afirma "(f-2) a rodada seguinte não grava outro" test "$(contar manual_fora_do_limite trabalho)" = 1
 afirma "(f-2) nenhum uso_legivel sem uso_ilegivel aberto" test "$(contar uso_legivel)" = 0
 
+# (e-1) revisão 2, achado 1: eventos.jsonl ilegível (um diretório) não derruba a rodada que não tem
+# evento a gravar; a base decidia nesse caso, e a leitura de contabilidade da rodada vale "sem evento".
+# As duas pastas em casa, logins válidos e o servidor do mapa D1 (a pessoal a 100%, o team a 97%):
+# nenhuma troca nem renovação, então a rodada não tem evento a gravar.
+CASO="$RAIZ/caso-e-1"
+mkdir -p "$CASO"
+node "$RAIZ/semear.cjs" caso "$CASO" sim
+API="$API_D1"
+mkdir -p "$CASO/dados/contas/eventos.jsonl"
+rodar e-1 r1
+afirma "(e-1) com o log ilegível, a rodada sai 0" test "$RC" -eq 0
+afirma "(e-1) e chega a decidir: rodada concluída" contem "$(cat "$RAIZ/e-1-r1.txt")" "rodada concluída"
+
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

@@ -1,6 +1,6 @@
 ---
 description: Mostra a conta em uso de cada pasta do Claude Code e troca a pasta de conta na mão
-argument-hint: [pessoal | trabalho [--pasta trabalho|pessoal] | preparar pessoal|trabalho | agendar [--imprimir] | desagendar | unificar [--aplicar] [--profile <arquivo>]]
+argument-hint: [status | pessoal | trabalho [--pasta trabalho|pessoal] | preparar pessoal|trabalho [--refazer] | agendar [--imprimir] | desagendar | unificar [--aplicar] [--profile <arquivo>]]
 ---
 
 Rode o CLI da troca de conta com os argumentos recebidos:
@@ -25,7 +25,8 @@ guardado. Sem isso, o vigia só avisa (`manual_no_limite`).
 que as duas reservas existem; `agendar --imprimir` mostra o comando sem agendar nada.
 
 **`preparar pessoal` ou `preparar trabalho`**: abre um login no navegador para a conta pedida e grava a reserva
-dela, depois de conferir no servidor que o login é mesmo da conta. Faz-se uma vez por conta. A troca automática
+dela, depois de conferir no servidor que o login é mesmo da conta. Faz-se uma vez por conta; `--refazer` troca uma
+reserva que já existe (é o que o aviso de renovação recusada manda rodar). A troca automática
 só liga quando as duas reservas existem (com uma pasta só, basta a reserva da pessoal).
 
 **`unificar`**: junta a pasta pessoal na de trabalho (pasta única). Sem `--aplicar` só relata o que faria. Com

@@ -24,7 +24,7 @@
     "em": "2026-11-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-12",
     "carimbos": [
       {
@@ -160,29 +160,52 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "25197a08282b26127d3fb1c14ddffe35dc84d0e0",
+      "head": "1a01040596cd5d5cc583d7bbdae50dbba09a19c1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a1a0909693f7a1e5f",
-        "veredito": "reprovado",
+        "agente_id": "a05adec04e0ef9266",
+        "veredito": "ok",
         "em": "2026-11-12",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a1a0909693f7a1e5f.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a05adec04e0ef9266.jsonl"
       }
     ],
-    "em_voo": [],
     "em": "2026-11-12",
-    "achados": 5,
-    "tentativas": 1
+    "achados": 2,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a1a0909693f7a1e5f",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a1a0909693f7a1e5f.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "e3d7896de294375107c6e86fba591ba91cec0452",
+    "head": "1a01040596cd5d5cc583d7bbdae50dbba09a19c1"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-12"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-12"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-12",
+      "de": "revisar",
+      "motivo": "revisão 2 ok com 2 achados [baixa]: lerEventos sem try/catch em ultimoDaCredencial/avisoAberto aborta a rodada com log ilegível (a base decidia); comentário de conta-decidir.cjs:76 contradiz a D3"
+    }
+  ]
 }
