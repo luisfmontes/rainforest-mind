@@ -24,8 +24,110 @@
     "em": "2026-11-12"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-11-12"
+    "status": "ok",
+    "catraca_mutacao": "2026-11-12",
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "a04cafd",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-12T13:20:06.234Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a04cafd",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-12T13:20:06.234Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "a04cafd",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-12T13:20:06.234Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "a04cafd",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-12T13:20:06.234Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fcf6a52",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-12T13:28:22.987Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "596a8ec",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-12T13:38:00.630Z"
+      }
+    ],
+    "em": "2026-11-12",
+    "tarefas_ok": 10,
+    "tarefas": 10,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-vigia-avisa.sh, casos (d1-1) a (d1-4)`"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-decidir.cjs, casos (d3-2) e (d3-3)`"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-vigia-avisa.sh, caso (d2-1)`"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-avisos.cjs, caso (a5) renovacao_falhou some quando o login foi renovado`"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-aviso-sessao.cjs, caso (h2) a segunda chamada da mesma sessão não injeta de novo`"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-vigia-avisa.sh, casos (d4-1) e (d4-2)`"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-aviso-sessao.cjs, caso (e2e-3)`"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "`testa-conta-vigia-avisa.sh, caso (st-1)`"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "só texto e número de versão; o comportamento está medido pelas tarefas 1 a 8, e a falsificação é a coerência do texto com o design e com o código"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "`testa-mod-conta.cjs, a asserção da linha 169 \"troca manual vira aviso com a pasta, a conta e a marca de manual\"`"
+      }
+    ],
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug conta-reserva-avisa",
+    "saida": "exit=0; tarefas 1-8 e 10: vermelho; 9: pulada (n/a)"
   },
   "revisar": {
     "status": "pendente"
