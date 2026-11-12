@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.13.1 — 2026-11-12
+
+- **O aviso de contexto alto não para mais o fluxo.** Quando o `exigir` de um estágio encontra a sessão acima do limiar, o aviso agora manda seguir com o estágio: o autocompact do Claude Code compacta a sessão sozinho quando precisar, e o estado do fluxo está gravado e sobrevive à compactação. A sessão não pede `/compact` ao usuário. Antes ele sugeria "considere /compact ou uma sessão nova", e várias sessões paravam o fluxo oferecendo recomeçar numa sessão nova. O limiar, a medição e o resultado do `exigir` não mudam.
+
 ## 2.13.0 — 2026-11-12
 
 - **A troca automática de conta não trava mais em silêncio (Issue #693).** Uma pasta de configuração sem `.credentials.json` (por exemplo uma `~/.claude-personal` esquecida) fazia o vigia abortar toda rodada, e como a tarefa agendada roda sem janela ninguém via o erro: a conta chegava ao limite e a troca não acontecia. Agora a pasta sem login fica fora da decisão e o vigia decide pela outra. A rodada que ainda abortar por outro motivo é gravada no log de eventos, uma vez por motivo.
