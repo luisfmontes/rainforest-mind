@@ -12,7 +12,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 2.13.1 — 2026-11-12
 
-- **O aviso de contexto alto manda compactar, não parar.** Quando o `exigir` de um estágio encontra a sessão acima do limiar, o aviso agora pede ao usuário um `/compact` e diz para seguir o fluxo depois dele, porque o estado está gravado e sobrevive à compactação. Antes ele sugeria "considere /compact ou uma sessão nova", e várias sessões paravam o fluxo oferecendo recomeçar numa sessão nova. O limiar, a medição e o resultado do `exigir` não mudam.
+- **O aviso de contexto alto não para mais o fluxo.** Quando o `exigir` de um estágio encontra a sessão acima do limiar, o aviso agora manda seguir com o estágio: o autocompact do Claude Code compacta a sessão sozinho quando precisar, e o estado do fluxo está gravado e sobrevive à compactação. A sessão não pede `/compact` ao usuário. Antes ele sugeria "considere /compact ou uma sessão nova", e várias sessões paravam o fluxo oferecendo recomeçar numa sessão nova. O limiar, a medição e o resultado do `exigir` não mudam.
 
 ## 2.13.0 — 2026-11-12
 

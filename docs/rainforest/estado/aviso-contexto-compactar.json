@@ -19,7 +19,7 @@
     "em": "2026-11-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-12",
     "comando": "bash scripts/testa-uso-contexto.sh",
     "saida": "ok: 28   falhou: 0",
@@ -40,7 +40,7 @@
     "em": "2026-11-12"
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "4fce1d31e021c8e6f80d6495689c8e0a78829cfc",
       "caminhos_sujos": []
@@ -60,7 +60,7 @@
     "em": "2026-11-12"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "comando": "bash scripts/testa-uso-contexto.sh && node scripts/conferir-versao.cjs --sem-fetch",
     "saida": "ok: 28   falhou: 0 | ok    versao 2.13.1: 1 commit(s) desde o bump 5ad61aa (teto 5) | grep -c 2.13.1: 1 em cada",
     "sensor_externo": "bash scripts/testa-uso-contexto.sh",
@@ -68,6 +68,14 @@
     "head": "4fce1d31e021c8e6f80d6495689c8e0a78829cfc"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-12"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-12",
+      "de": "verificar",
+      "motivo": "Luís 2026-11-12: não pedir /compact ao usuário; o autocompact compacta sozinho e o fluxo segue"
+    }
+  ]
 }

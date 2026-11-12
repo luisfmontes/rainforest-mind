@@ -68,7 +68,7 @@ echo "== medida (D1, D2) =="
 { usuario; msg 200000; usuario; msg 320000; } > "$TRANSCRITOS/alto.jsonl"
 env -u CLAUDE_CODE_SESSION_ID node scripts/estado.cjs exigir --slug caixa --estagio limpar > "$T/out-base" 2> "$T/err-base"
 rodar alto
-com_aviso "uso acima do limiar avisa com tokens, limiar e estagio" "aviso: contexto em 320 mil tokens (limiar 310 mil). Antes de abrir 'limpar', peça ao usuário um /compact e siga o fluxo depois dele: o estado está gravado e sobrevive à compactação. Não pare o fluxo nem proponha sessão nova por causa deste aviso."
+com_aviso "uso acima do limiar avisa com tokens, limiar e estagio" "aviso: contexto em 320 mil tokens (limiar 310 mil). Siga com 'limpar' normalmente: o autocompact compacta a sessão sozinho quando precisar, e o estado do fluxo está gravado e sobrevive à compactação. Não pare o fluxo, não peça /compact ao usuário nem proponha sessão nova por causa deste aviso."
 if cmp -s "$T/out" "$T/out-base"; then passa "stdout igual ao de sessao sem transcript"; else falha "stdout igual ao de sessao sem transcript" "$(cat "$T/out")"; fi
 
 { msg 320000; msg 309999; } > "$TRANSCRITOS/abaixo.jsonl"
@@ -133,7 +133,7 @@ sem_cfg
 
 echo "== exigir (D4, D5) =="
 rodar alto verificar
-if [ "$RC" = 2 ] && grep -qF "Antes de abrir 'verificar'" "$T/err" && grep -q "RECUSADO\|pre-requisito\|pré-requisito\|recus" "$T/err"; then passa "exigir recusado segue saindo 2 e avisa"
+if [ "$RC" = 2 ] && grep -qF "Siga com 'verificar'" "$T/err" && grep -q "RECUSADO\|pre-requisito\|pré-requisito\|recus" "$T/err"; then passa "exigir recusado segue saindo 2 e avisa"
 else falha "exigir recusado segue saindo 2 e avisa" "exit=$RC stderr=$(cat "$T/err")"; fi
 mv scripts/lib/uso-contexto.cjs "$T/guardada.cjs"
 rodar alto; sem_aviso "sem a lib o exigir sai 0 sem aviso e sem erro"

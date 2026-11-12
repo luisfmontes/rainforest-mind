@@ -78,8 +78,8 @@ function avisoDeContexto(limiar, estagio, env = process.env) {
   if (uso === null || uso < limiar) return null;
   const mil = (n) => Math.round(n / 1000);
   return `aviso: contexto em ${mil(uso)} mil tokens (limiar ${mil(limiar)} mil). `
-    + `Antes de abrir '${estagio}', peça ao usuário um /compact e siga o fluxo depois dele: `
-    + 'o estado está gravado e sobrevive à compactação. Não pare o fluxo nem proponha sessão nova por causa deste aviso.';
+    + `Siga com '${estagio}' normalmente: o autocompact compacta a sessão sozinho quando precisar, `
+    + 'e o estado do fluxo está gravado e sobrevive à compactação. Não pare o fluxo, não peça /compact ao usuário nem proponha sessão nova por causa deste aviso.';
 }
 
 module.exports = { usoDoTranscrito, avisoDeContexto };
