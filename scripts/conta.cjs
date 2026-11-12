@@ -958,6 +958,46 @@ function registrarPastaSaiuDeUso(c) {
   }
 }
 
+// D4 (conta-reserva-avisa): pasta fora de casa cuja conta em uso fica sem dado de uso por 30 min
+// seguidos grava uso_ilegivel uma vez por período. O início do período é estado.pastas[P].semUsoDesde;
+// dado de uso de volta, ou pasta em casa, zera o período. Sem o dado, nem a D3 nem o aviso de
+// limite disparam, e isso só saía no stderr.
+const SEM_USO_AVISAR_MS = 30 * 60 * 1000;
+
+function avisarUsoIlegivel(c, estado, pastas, usos) {
+  const agora = Date.now();
+  let mudou = false;
+  for (const P of Object.keys(pastas)) {
+    const info = estado.pastas[P];
+    const u = usos[info.conta];
+    const legivel = Boolean(u && u.five_hour && u.seven_day);
+    if (info.conta === info.casa || legivel) {
+      if (info.semUsoDesde !== undefined) {
+        delete info.semUsoDesde;
+        mudou = true;
+      }
+      continue;
+    }
+    if (info.semUsoDesde === undefined) {
+      info.semUsoDesde = agora;
+      mudou = true;
+    }
+    if (agora - info.semUsoDesde < SEM_USO_AVISAR_MS) continue; // D4 (conta-reserva-avisa)
+    const ja = lerEventos(c).some(({ ev }) => ev.tipo === 'uso_ilegivel' && ev.pasta === P && ev.em >= info.semUsoDesde);
+    if (ja) continue;
+    const min = Math.floor((agora - info.semUsoDesde) / 60000);
+    registrarEvento(c, {
+      tipo: 'uso_ilegivel',
+      pasta: P,
+      de: info.conta,
+      para: info.casa,
+      motivo: `sem dado de uso de ${NOME[info.conta]} há ${min} min`,
+      manual: info.manual,
+    });
+  }
+  if (mudou) gravarEstado(c, estado);
+}
+
 // D2 (conta-reserva-avisa): a rodada que aborta grava vigia_falhou com a mensagem segura. Não
 // repete: grava só se o último vigia_falhou tem outro motivo, ou se uma rodada que chegou a decidir
 // (vigia-ok) é mais nova que ele. Sem essa checagem, um JSON ruim em estado.json grava um evento
@@ -1026,6 +1066,7 @@ async function vigiarRodada(c) {
     }
     registrarPastaSaiuDeUso(c);
     const usos = await coletarUsos(c, estado);
+    avisarUsoIlegivel(c, estado, pastas, usos);
     const reservas = {};
     for (const conta of CONTAS) {
       const r = reservaPronta(c, conta);

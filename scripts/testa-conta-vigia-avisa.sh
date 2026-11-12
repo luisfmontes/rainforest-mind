@@ -10,6 +10,10 @@
 # e não repete com o mesmo erro; (d2-2) .credentials.json inválido grava outro vigia_falhou sem vazar
 # o texto do arquivo; (d2-3) rodada que decidiu cria vigia-ok e o mesmo erro depois grava de novo;
 # (d2-4) troca automática desligada sai 0 sem criar vigia-ok; (d2-5) essa rodada não toca vigia-ok.
+# Casos D4 (conta-reserva-avisa, tarefa 6): (d4-1) a primeira rodada com uso ilegível de pasta fora
+# de casa grava semUsoDesde e nenhum uso_ilegivel; (d4-2) 29 min sem uso não grava; (d4-3) 31 min
+# grava um, e a rodada seguinte no mesmo período não grava outro; (d4-4) dado de volta zera
+# semUsoDesde; (d4-5) novo período grava o segundo; (d4-6) pasta em casa não grava nada.
 # Tudo em mktemp -d com trap; o servidor é node local, morto no trap pelo PID dele. Nunca toca
 # ~/.claude nem a pasta de dados real.
 set -euo pipefail
@@ -292,6 +296,80 @@ ANTES_D2_5="$(mtime "$CASO/dados/contas/vigia-ok")"
 mudar_automatico "$CASO/dados/contas/estado.json" nao
 rodar d2-5 r2
 afirma "(d2-5) a rodada com a troca desligada não toca o mtime de vigia-ok" test "$(mtime "$CASO/dados/contas/vigia-ok")" = "$ANTES_D2_5"
+
+# Caso D4 (conta-reserva-avisa, tarefa 6): trabalho manual na pessoal com o login da pasta vencido
+# (é o login que loginsDaConta põe primeiro para a conta pessoal: trabalho vem antes de pessoal) e
+# reserva-pessoal vazia, então o uso da pessoal fica ilegível. A casa (team) não entra aqui.
+novo_caso_d4() {
+  CASO="$RAIZ/caso-$1"
+  mkdir -p "$CASO"
+  node "$RAIZ/semear.cjs" caso "$CASO" sim
+  node "$RAIZ/ajustar.cjs" trocado "$CASO"
+  node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas.trabalho.manual=true;e.pastas.trabalho.travouPor=null;fs.writeFileSync(a,JSON.stringify(e))" "$CASO/dados/contas/estado.json"
+  expirar "$CASO/trabalho/.claude/.credentials.json" 1
+}
+# Pasta em casa (team): o login da pasta e a reserva-team vencidos, então o uso da casa fica ilegível.
+novo_caso_d4_casa() {
+  CASO="$RAIZ/caso-$1"
+  mkdir -p "$CASO"
+  node "$RAIZ/semear.cjs" caso "$CASO" sim
+  expirar "$CASO/trabalho/.claude/.credentials.json" 1
+  expirar "$CASO/dados/contas/reserva-team.json" 1
+}
+# expirar <arquivo> <epoch-ms>: põe claudeAiOauth.expiresAt do arquivo.
+expirar() {
+  node -e "const fs=require('fs');const a=process.argv[1];const o=JSON.parse(fs.readFileSync(a,'utf8'));o.claudeAiOauth.expiresAt=Number(process.argv[2]);fs.writeFileSync(a,JSON.stringify(o,null,2)+'\n')" "$1" "$2"
+}
+# definir_sem_uso <pasta> <minutos>: semUsoDesde = agora - minutos, no estado.json do caso.
+definir_sem_uso() {
+  node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas[process.argv[2]].semUsoDesde=Date.now()-Number(process.argv[3])*60000;fs.writeFileSync(a,JSON.stringify(e))" "$CASO/dados/contas/estado.json" "$1" "$2"
+}
+# recuar_eventos: os uso_ilegivel do log passam para 3 h atrás (um período novo começa depois do
+# evento do anterior, como na vida real; a rodada de teste roda em segundos).
+recuar_eventos() {
+  node -e "const fs=require('fs');const a=process.argv[1];const l=fs.readFileSync(a,'utf8').split('\n').filter(Boolean).map((x)=>{const e=JSON.parse(x);if(e.tipo==='uso_ilegivel')e.em=Date.now()-3*3600000;return JSON.stringify(e)});fs.writeFileSync(a,l.join('\n')+'\n')" "$CASO/dados/contas/eventos.jsonl"
+}
+estado_pasta() { node "$RAIZ/ler.cjs" "$CASO/dados/contas/estado.json" "pastas.$1.$2"; }
+numerico() { [[ "$1" =~ ^[0-9]+$ ]]; }
+
+# Os casos D4 usam o mapa base (uso da pessoal legível quando o login volta), não o de D1 a 100%.
+iniciar_servidor "$RAIZ/mapa.json" "$RAIZ/porta-d4.txt"
+
+# (d4-1) primeira rodada: semUsoDesde numérico e nenhum uso_ilegivel.
+novo_caso_d4 d4-1
+rodar d4-1 r1
+afirma "(d4-1) a primeira rodada grava semUsoDesde numérico na trabalho" numerico "$(estado_pasta trabalho semUsoDesde)"
+afirma "(d4-1) a primeira rodada não grava uso_ilegivel" test "$(contar uso_ilegivel)" = 0
+
+# (d4-2) 29 min sem uso: nenhum evento.
+definir_sem_uso trabalho 29
+rodar d4-2 r1
+afirma "(d4-2) com 29 min sem uso não grava uso_ilegivel" test "$(contar uso_ilegivel)" = 0
+
+# (d4-3) 31 min sem uso: um evento; a rodada seguinte, no mesmo período, não grava outro.
+definir_sem_uso trabalho 31
+rodar d4-3 r1
+afirma "(d4-3) com 31 min sem uso grava um uso_ilegivel da trabalho" test "$(contar uso_ilegivel trabalho)" = 1
+rodar d4-3 r2
+afirma "(d4-3) a rodada seguinte, no mesmo período, não grava outro" test "$(contar uso_ilegivel trabalho)" = 1
+
+# (d4-4) o dado de uso volta (o login da pasta volta a valer): semUsoDesde some do estado.
+expirar "$CASO/trabalho/.claude/.credentials.json" 4102444800000
+rodar d4-4 r1
+afirma "(d4-4) com o dado de uso de volta, semUsoDesde some do estado" test "$(estado_pasta trabalho semUsoDesde)" = AUSENTE
+
+# (d4-5) o dado some de novo: o período novo, com 31 min, grava o segundo uso_ilegivel.
+expirar "$CASO/trabalho/.claude/.credentials.json" 1
+recuar_eventos
+definir_sem_uso trabalho 31
+rodar d4-5 r1
+afirma "(d4-5) um período novo grava o segundo uso_ilegivel" test "$(contar uso_ilegivel trabalho)" = 2
+
+# (d4-6) pasta em casa com uso ilegível: nem semUsoDesde nem evento.
+novo_caso_d4_casa d4-6
+rodar d4-6 r1
+afirma "(d4-6) pasta em casa não grava semUsoDesde" test "$(estado_pasta trabalho semUsoDesde)" = AUSENTE
+afirma "(d4-6) pasta em casa não grava uso_ilegivel" test "$(contar uso_ilegivel)" = 0
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi
