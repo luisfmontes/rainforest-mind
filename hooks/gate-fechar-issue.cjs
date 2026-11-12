@@ -304,7 +304,11 @@ function segmentosParaGate(cmd) {
         // D6 (gate-segmentador): forma canonica do heredoc citado vai inteira
         // para `atual` e o interior e recursado; o corpo nao entra no laco.
         const canonico = HEREDOC_CANONICO.exec(cmd.slice(i));
-        if (canonico) {
+        // A primeira linha igual ao delimitador tem de ser a que vem antes do
+        // `)`: um DELIM anterior fecha o heredoc no bash, e o resto executa
+        // (revisao 1 do gate-segmentador).
+        const fimExato = canonico !== null && canonico[0].indexOf("\n" + canonico[1] + "\n") === canonico[0].length - canonico[1].length - 3;
+        if (fimExato) {
           for (const sub of segmentosParaGate(canonico[0].slice(2, -1))) {
             if (sub.trim()) segmentos.push(sub);
           }

@@ -1288,6 +1288,18 @@ COMANDO_WD_4=$'pwsh -Command \'Write-Host "oi"\''
 EXIT_WD_4=$?
 [ $EXIT_WD_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_WD_4)"
 
+# Caso (hc-3): "$(cat <<'EOF'" com EOF falso antes do ")" nao esconde o gh depois → exit 2 (D6 de gate-segmentador, revisao 1)
+echo
+echo "== (hc-3) EOF falso antes do \")\" nao esconde o gh depois → exit 2 =="
+COMANDO_HC_3=$'echo "$(cat <<\'EOF\'\nx\nEOF\necho \'\nEOF\n)\'\ngh issue close 12\necho \')\')"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HC_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hc-3"
+EXIT_HC_3=$?
+[ $EXIT_HC_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC_3)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro
