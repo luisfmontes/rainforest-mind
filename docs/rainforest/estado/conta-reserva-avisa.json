@@ -24,9 +24,8 @@
     "em": "2026-11-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-12",
-    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -72,48 +71,48 @@
       }
     ],
     "em": "2026-11-12",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "tarefas_ok": 16,
+    "tarefas": 16,
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-vigia-avisa.sh, casos (d1-1) a (d1-4)`"
+        "fixture": "testa-conta-vigia-avisa.sh, casos (d1-1) a (d1-4)"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-decidir.cjs, casos (d3-2) e (d3-3)`"
+        "fixture": "testa-conta-decidir.cjs, casos (d3-2) e (d3-3)"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-vigia-avisa.sh, caso (d2-1)`"
+        "fixture": "testa-conta-vigia-avisa.sh, caso (d2-1)"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-avisos.cjs, caso (a5) renovacao_falhou some quando o login foi renovado`"
+        "fixture": "testa-conta-avisos.cjs, caso (a5) renovacao_falhou some quando o login foi renovado"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-aviso-sessao.cjs, caso (h2) a segunda chamada da mesma sessão não injeta de novo`"
+        "fixture": "testa-conta-aviso-sessao.cjs, caso (h2) a segunda chamada da mesma sessão não injeta de novo"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-vigia-avisa.sh, casos (d4-1) e (d4-2)`"
+        "fixture": "testa-conta-vigia-avisa.sh, casos (d4-1) e (d4-2)"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-aviso-sessao.cjs, caso (e2e-3)`"
+        "fixture": "testa-conta-aviso-sessao.cjs, caso (e2e-3)"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "`testa-conta-vigia-avisa.sh, caso (st-1)`"
+        "fixture": "testa-conta-vigia-avisa.sh, caso (st-1)"
       },
       {
         "tarefa": 9,
@@ -123,15 +122,41 @@
       {
         "tarefa": 10,
         "resultado": "vermelho",
-        "fixture": "`testa-mod-conta.cjs, a asserção da linha 169 \"troca manual vira aviso com a pasta, a conta e a marca de manual\"`"
+        "fixture": "testa-mod-conta.cjs, a asserção da linha 169 \"troca manual vira aviso com a pasta, a conta e a marca de manual\""
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-vigia-avisa.sh, caso (f-1)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-vigia-avisa.sh, caso (f-2)"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-avisos.cjs, casos (a10-1) e (a10-3)"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-aviso-sessao.cjs, h1-1 \"vigia_falhou: uma linha com vigia e /conta status\""
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-avisos.cjs, caso (a9-3)"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "n/a",
+        "motivo": "só texto; o comportamento está medido pelas tarefas 11 a 15, e a falsificação é a coerência do texto com a D7 e a D8"
       }
     ],
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug conta-reserva-avisa",
-    "saida": "exit=0; tarefas 1-8 e 10: vermelho; 9: pulada (n/a)",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-12"
-    },
+    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 3: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 6: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: pulada (n/a — só texto e número de versão; o comportamento está medido pelas tarefas 1 a 8, e a falsificação é a coerência do texto com o design e com o código) | tarefa 10: vermelho | tarefa 11: vermelho | tarefa 12: vermelho | tarefa 13: vermelho | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: pulada (n/a — só texto; o comportamento está medido pelas tarefas 11 a 15, e a falsificação é a coerência do texto com a D7 e a D8) | exit=0",
     "reaberturas": 1
   },
   "revisar": {
