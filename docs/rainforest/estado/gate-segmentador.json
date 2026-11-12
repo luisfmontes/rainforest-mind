@@ -18,14 +18,14 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-11",
-    "tarefas_ok": 12,
-    "tarefas": 12,
+    "tarefas_ok": 15,
+    "tarefas": 15,
     "em": "2026-11-11",
     "pendente": "re-rodar node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador e fechar executar ok; depois revisar",
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador",
-    "saida": "exit=0; tarefas 1-5 e 7-11: vermelho; 6 e 12: pulada (n/a)",
+    "saida": "exit=0; tarefas 1-5, 7-11 e 13-15: vermelho; 6 e 12: pulada (n/a)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -86,13 +86,24 @@
         "tarefa": 12,
         "resultado": "n/a",
         "motivo": "mutacao neutra medida: a W2 da segunda camada ja barra"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "cm-7, cm-8, cm-9"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "hs-5, hs-6"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "hs-7"
       }
     ],
-    "reaberturas": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-11"
-    }
+    "reaberturas": 2
   },
   "revisar": {
     "status": "reprovado",
