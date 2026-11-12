@@ -451,6 +451,51 @@ Casos novos (molde acima, todos Bash):
 | cm-3 | `COMANDO_CM_3=$'echo a#b; echo \'x\''` | 0 |
 | cm-4 | `COMANDO_CM_4=$'echo hi # comentario'` | 0 |
 
+### 11. Contrabarra fora de aspas some na remontagem do wrapper (revisão de segurança) [tipo: implementar]
+atende: D8
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 10
+busca:
+- repo | grep -n "function textoAPartir" hooks/lib/tokens-comando.cjs | remonta token sem aspas cru; com espaço dentro ele se parte em várias palavras
+desfecho: estender
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `atual += aspa === null ? cmd[i + 1] : c + cmd[i + 1];`
+  para: `atual += c + cmd[i + 1];`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (cw-5) e (cw-6)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"eval gh\ issue\ close\ 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse (Bash), `eval gh\ issue\ close\ 12` e `bash -c gh\ pr\ merge\ 5` saem 2 e `eval gh\ issue\ view\ 12` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 475 ok, 0 falha(s) ==` com exit 0; por `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh`, `bash hooks/testa-gate-mensagem-commit.sh` e `node hooks/testa-colapso-continuacao.cjs` saindo 0; e pela mutação acima deixando (cw-5) e (cw-6) vermelhos.
+
+Forma prescrita, em `hooks/lib/tokens-comando.cjs`:
+1. No ramo `if (opcoes.contrabarra && c === "\\" ...)` de `tokensComAspas`, a linha `      atual += c + cmd[i + 1];` passa a `      atual += aspa === null ? cmd[i + 1] : c + cmd[i + 1];`, e o comentário do ramo ganha: fora de aspas a contrabarra some (remoção do bash); dentro de aspas duplas o par fica cru para o `desempacota` reduzir (#313).
+2. Em `textoAPartir`, o token sem aspas que tenha espaço passa a ser citado entre aspas simples (aspa simples de dentro vira `'\''`): o `.map` passa a `(t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? `'${t.v.replace(/'/g, "'\\''")}'` : t.v))`. Sem a opção `contrabarra`, token sem aspas nunca tem espaço, então os outros gates não mudam.
+
+Casos novos (molde acima, todos Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| cw-5 | `COMANDO_CW_5=$'eval gh\\ issue\\ close\\ 12'` | 2 |
+| cw-6 | `COMANDO_CW_6=$'bash -c gh\\ pr\\ merge\\ 5'` | 2 |
+| cw-7 | `COMANDO_CW_7=$'eval gh\\ issue\\ view\\ 12'` | 0 |
+
+### 12. Comentário só começa em fronteira não escapada (revisão de segurança) [tipo: implementar]
+atende: D9
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 11
+prova-na-base: verde — a rede W2 da segunda camada já barra `echo \ #; gh issue close 12` sem a guarda; ela é defesa em profundidade da primeira camada
+mutacao: n/a
+  motivo: mutação neutra medida em 2026-11-12: sem a guarda, (cm-5) e (cm-6) continuam 2 porque a W2 de processarSegmento acha o gh na segunda camada; não há comando do mundo que distinga
+pronto quando: com o payload real de PreToolUse (Bash), `echo \ #; gh issue close 12` e `echo \;#x; gh pr merge 5` saem 2 e (cm-1) a (cm-4) mantêm o exit — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 477 ok, 0 falha(s) ==` com exit 0.
+
+Forma prescrita: em `segmentosParaGate`, a condição do D9 `if (aspa === null && c === "#" && (i === 0 || /[\s;&|()]/.test(cmd[i - 1]))) {` passa a `if (aspa === null && c === "#" && (i === 0 || (/[\s;&|()]/.test(cmd[i - 1]) && !escapadaPorContrabarra(cmd, i - 1)))) {`.
+
+Casos novos (molde acima, todos Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| cm-5 | `COMANDO_CM_5=$'echo \\ #; gh issue close 12'` | 2 |
+| cm-6 | `COMANDO_CM_6=$'echo \\;#x; gh pr merge 5'` | 2 |
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`

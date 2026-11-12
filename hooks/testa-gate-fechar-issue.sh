@@ -1396,6 +1396,66 @@ COMANDO_CM_4=$'echo hi # comentario'
 EXIT_CM_4=$?
 [ $EXIT_CM_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CM_4)"
 
+# Caso (cw-5): eval com palavra unica por contrabarra fora de aspas → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-5) eval com gh issue close numa palavra so, por contrabarra → exit 2 =="
+COMANDO_CW_5=$'eval gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-5"
+EXIT_CW_5=$?
+[ $EXIT_CW_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_5)"
+
+# Caso (cw-6): bash -c com palavra unica por contrabarra fora de aspas → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-6) bash -c com gh pr merge numa palavra so, por contrabarra → exit 2 =="
+COMANDO_CW_6=$'bash -c gh\\ pr\\ merge\\ 5'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-6"
+EXIT_CW_6=$?
+[ $EXIT_CW_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_6)"
+
+# Caso (cw-7): eval de leitura numa palavra so → exit 0 (D8 de gate-segmentador)
+echo
+echo "== (cw-7) eval com gh issue view numa palavra so → exit 0 =="
+COMANDO_CW_7=$'eval gh\\ issue\\ view\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_7")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-7"
+EXIT_CW_7=$?
+[ $EXIT_CW_7 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_7)"
+
+# Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
+echo
+echo "== (cm-5) espaco escapado antes do # nao abre comentario → exit 2 =="
+COMANDO_CM_5=$'echo \\ #; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-5"
+EXIT_CM_5=$?
+[ $EXIT_CM_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_5)"
+
+# Caso (cm-6): ponto e virgula escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
+echo
+echo "== (cm-6) ponto e virgula escapado antes do # nao abre comentario → exit 2 =="
+COMANDO_CM_6=$'echo \\;#x; gh pr merge 5'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-6"
+EXIT_CM_6=$?
+[ $EXIT_CM_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_6)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro

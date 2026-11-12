@@ -38,10 +38,12 @@ function tokensComAspas(cmd, opcoes = {}) {
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
     // D8 (gate-segmentador, Issue #689): com `opcoes.contrabarra` (Bash), fora
-    // de aspas simples a contrabarra e o caractere seguinte entram crus no
-    // token e nao abrem, fecham nem separam. Sem a opcao, nada muda.
+    // de aspas simples a contrabarra escapa o caractere seguinte, que nao
+    // abre, fecha nem separa. Fora de aspas a contrabarra some (a remocao que
+    // o bash faz: `gh\ issue` e a palavra `gh issue`); dentro de aspas duplas
+    // o par fica cru para o `desempacota` reduzir (#313). Sem a opcao, nada muda.
     if (opcoes.contrabarra && c === "\\" && aspa !== "'" && i + 1 < cmd.length) {
-      atual += c + cmd[i + 1];
+      atual += aspa === null ? cmd[i + 1] : c + cmd[i + 1];
       i += 1;
       temAlgo = true;
       continue;
@@ -307,7 +309,10 @@ function textoAPartir(toks, i) {
   // duplas (#313), e remontar `'...'` como `"..."` fazia a reducao valer
   // para aspas simples — `bash -c 'gh issue \\<quebra>close 12'` virava
   // `gh issue close 12`, que o bash nao executa (achado da revisao).
-  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : t.v)).join(" ");
+  // Token sem aspas com espaco so nasce da opcao `contrabarra` (`gh\ pr\ merge`
+  // e UMA palavra): sai entre aspas simples para continuar uma palavra so
+  // (D8 de gate-segmentador). Sem a opcao, nada muda.
+  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? `'${t.v.replace(/'/g, "'\\''")}'` : t.v))).join(" ");
 }
 
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------
