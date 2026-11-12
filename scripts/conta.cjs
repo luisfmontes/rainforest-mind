@@ -1007,17 +1007,27 @@ function vigiaOkEm(c) {
   }
 }
 
+// As duas funções engolem o próprio erro: a falha de gravar o evento ou a marca nunca troca a
+// exceção original da rodada, nem transforma em falha uma rodada que decidiu.
 function registrarVigiaFalhou(c, e) {
-  const motivo = msgSegura(e);
-  const falhas = lerEventos(c).map(({ ev }) => ev).filter((ev) => ev.tipo === 'vigia_falhou');
-  const ultima = falhas[falhas.length - 1];
-  const okEm = vigiaOkEm(c);
-  const repetida = ultima !== undefined && ultima.motivo === motivo && !(okEm > ultima.em); // D2 (conta-reserva-avisa)
-  if (!repetida) registrarEvento(c, { tipo: 'vigia_falhou', motivo, manual: false });
+  try {
+    const motivo = msgSegura(e);
+    const falhas = lerEventos(c).map(({ ev }) => ev).filter((ev) => ev.tipo === 'vigia_falhou');
+    const ultima = falhas[falhas.length - 1];
+    const okEm = vigiaOkEm(c);
+    const repetida = ultima !== undefined && ultima.motivo === motivo && !(okEm > ultima.em); // D2 (conta-reserva-avisa)
+    if (!repetida) registrarEvento(c, { tipo: 'vigia_falhou', motivo, manual: false });
+  } catch {
+    // nada: a exceção da rodada é a que sobe
+  }
 }
 
 function marcarVigiaOk(c) {
-  fs.writeFileSync(path.join(c.contas, VIGIA_OK), '');
+  try {
+    fs.writeFileSync(path.join(c.contas, VIGIA_OK), String(Date.now()));
+  } catch {
+    // nada: sem a marca, o vigia_falhou anterior só fica aberto até a próxima rodada que grave
+  }
 }
 
 async function vigiar(c) {

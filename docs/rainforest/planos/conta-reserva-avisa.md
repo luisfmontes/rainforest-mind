@@ -144,6 +144,8 @@ Casos (home temporário como na tarefa 1, `automatico: sim`):
 | d2-4 | antes de qualquer rodada completa `vigia-ok` não existe, e depois de uma rodada que lançou continua não existindo (2) |
 | d2-5 | `automatico: false` com `estado.json` válido, depois de um `vigia_falhou`: a rodada sai 0 com `troca automática desligada` e `vigia-ok` continua inexistente; com `automatico: true`, a rodada seguinte o cria (2) |
 
+Emenda da revisão 1 (achado 1): o código entregue não tinha o `try/catch` que este bloco prescreve em `marcarVigiaOk` e `registrarVigiaFalhou`. O conserto acrescenta os dois e o caso (d2-6) na mesma bateria (vigia-ok como diretório: a rodada que decidiu sai 0 e não grava `vigia_falhou`); mutação de conferência: trocar o comentário do `catch` de `marcarVigiaOk` por `throw new Error('vigia-ok');` deixa (d2-6) vermelho.
+
 ### 4. D5: lib de avisos de conta (leitura do log, problemas abertos, seção) [tipo: implementar]
 atende: D5, D6
 arquivos: `scripts/lib/conta-avisos.cjs`, `scripts/testa-conta-avisos.cjs`
@@ -302,7 +304,7 @@ mutacao:
   bateria: `bash scripts/testa-conta-vigia-avisa.sh`
   fixture: `testa-conta-vigia-avisa.sh, caso (st-1)`
 prova: `bash scripts/testa-conta-vigia-avisa.sh`
-pronto quando: com um home temporário no formato real, a pasta `trabalho` na conta pessoal com `manual: true` e o servidor falso, `node scripts/conta.cjs status` imprime, na linha de `pasta trabalho`, `troca manual (volta se a conta em uso chegar ao limite e a de casa tiver folga)` e não imprime `sem volta automática` em lugar nenhum — provado por `bash scripts/testa-conta-vigia-avisa.sh` terminando em `ok: 37   falhou: 0` com exit 0 (35 + (st-1) com 2 afirmações), e pela mutação acima deixando (st-1) vermelho. Superfície humana: quem lê o `status` vê a condição da volta (conta em uso no limite e casa com folga), que é a informação de que precisa para saber se deve esperar ou trocar na mão; a frase não cita número de limite, que vem do `config.json`.
+pronto quando: com um home temporário no formato real, a pasta `trabalho` na conta pessoal com `manual: true` e o servidor falso, `node scripts/conta.cjs status` imprime, na linha de `pasta trabalho`, `troca manual (volta se a conta em uso chegar ao limite e a de casa tiver folga)` e não imprime `sem volta automática` em lugar nenhum — provado por `bash scripts/testa-conta-vigia-avisa.sh` terminando em `ok: 39   falhou: 0` com exit 0 (35 + (st-1) com 2 afirmações + (d2-6) com 2, da emenda da revisão 1 na tarefa 3), e pela mutação acima deixando (st-1) vermelho. Superfície humana: quem lê o `status` vê a condição da volta (conta em uso no limite e casa com folga), que é a informação de que precisa para saber se deve esperar ou trocar na mão; a frase não cita número de limite, que vem do `config.json`.
 
 ### 9. Versão 2.13.0, README, CHANGELOG e `commands/conta.md` [tipo: docs]
 atende: D1, D2, D3, D4, D5, D6

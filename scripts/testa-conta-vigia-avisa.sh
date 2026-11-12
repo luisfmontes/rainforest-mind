@@ -297,6 +297,14 @@ mudar_automatico "$CASO/dados/contas/estado.json" nao
 rodar d2-5 r2
 afirma "(d2-5) a rodada com a troca desligada não toca o mtime de vigia-ok" test "$(mtime "$CASO/dados/contas/vigia-ok")" = "$ANTES_D2_5"
 
+# (d2-6) vigia-ok que não pode ser gravado (é um diretório): a rodada que decidiu continua saindo 0
+# e não grava vigia_falhou.
+novo_caso_d2 d2-6
+mkdir -p "$CASO/dados/contas/vigia-ok"
+rodar d2-6 r1
+afirma "(d2-6) a rodada que decidiu sai 0 mesmo sem conseguir gravar vigia-ok" test "$RC" -eq 0
+afirma "(d2-6) não grava vigia_falhou" test "$(contar vigia_falhou)" = 0
+
 # Caso D4 (conta-reserva-avisa, tarefa 6): trabalho manual na pessoal com o login da pasta vencido
 # (é o login que loginsDaConta põe primeiro para a conta pessoal: trabalho vem antes de pessoal) e
 # reserva-pessoal vazia, então o uso da pessoal fica ilegível. A casa (team) não entra aqui.
