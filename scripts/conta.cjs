@@ -924,6 +924,40 @@ async function trocar(c, args) {
   }
 }
 
+// D1 (conta-reserva-avisa): pasta sem .credentials.json fica fora da decisão e vira evento. O último
+// evento de credencial da pasta diz em que estado ela está (sem credencial ou com).
+function ultimoDaCredencial(c, P) {
+  const evs = lerEventos(c)
+    .map(({ ev }) => ev)
+    .filter((ev) => ev.pasta === P && (ev.tipo === 'pasta_sem_credencial' || ev.tipo === 'pasta_com_credencial'));
+  return evs[evs.length - 1];
+}
+
+function avisarPastaSemCredencial(c, P) {
+  const u = ultimoDaCredencial(c, P);
+  if (u && u.tipo === 'pasta_sem_credencial') return;
+  registrarEvento(c, { tipo: 'pasta_sem_credencial', pasta: P, motivo: 'sem .credentials.json', manual: false });
+}
+
+function registrarCredencialVoltou(c, P) {
+  const u = ultimoDaCredencial(c, P);
+  if (!u || u.tipo !== 'pasta_sem_credencial') return;
+  registrarEvento(c, { tipo: 'pasta_com_credencial', pasta: P, motivo: '.credentials.json voltou', manual: false });
+}
+
+// Pasta que saiu de pastasAtivas() (renomeada, por exemplo) com um pasta_sem_credencial em aberto:
+// nenhuma rodada volta a vê-la, então o vigia fecha o evento aqui uma vez.
+function registrarPastaSaiuDeUso(c) {
+  const ativas = pastasAtivas();
+  for (const P of Object.keys(CONTA_CLI)) {
+    if (ativas.includes(P)) continue;
+    const u = ultimoDaCredencial(c, P);
+    if (u && u.tipo === 'pasta_sem_credencial') {
+      registrarEvento(c, { tipo: 'pasta_com_credencial', pasta: P, motivo: 'pasta saiu de uso', manual: false });
+    }
+  }
+}
+
 async function vigiar(c) {
   const lock = c.lock;
   fs.mkdirSync(c.contas, { recursive: true });
@@ -943,7 +977,15 @@ async function vigiar(c) {
     await renovarOciosos(c, estado);
 
     const pastas = {};
-    for (const P of pastasAtivas()) pastas[P] = infoPasta(c, estado, P);
+    for (const P of pastasAtivas()) {
+      if (!credDaPasta(c, P)) { // D1 (conta-reserva-avisa)
+        avisarPastaSemCredencial(c, P);
+        continue;
+      }
+      registrarCredencialVoltou(c, P);
+      pastas[P] = infoPasta(c, estado, P);
+    }
+    registrarPastaSaiuDeUso(c);
     const usos = await coletarUsos(c, estado);
     const reservas = {};
     for (const conta of CONTAS) {

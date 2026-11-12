@@ -1,0 +1,233 @@
+#!/bin/bash
+# rainforest-gate: dados-de-exemplo — tokens e identificadores FALSOS; nenhum valor real.
+# Bateria do vigia com pasta sem credencial (conta-reserva-avisa, D1): scripts/conta.cjs.
+# Casos: (d1-1) pasta pessoal sem credencial não derruba a rodada e a decisão da trabalho sai;
+# (d1-2) duas rodadas gravam um só pasta_sem_credencial e nenhum vigia_falhou; (d1-3) a credencial
+# volta e a rodada seguinte grava pasta_com_credencial; (d1-4) a credencial some de novo e status
+# mostra sem credencial; (d1-5) pasta renomeada (fora de pastasAtivas) grava pasta_com_credencial
+# com o motivo 'pasta saiu de uso'.
+# Tudo em mktemp -d com trap; o servidor é node local, morto no trap pelo PID dele. Nunca toca
+# ~/.claude nem a pasta de dados real.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+win() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+RAIZ="$(win "$(mktemp -d)")"
+PIDS=()
+trap 'for p in ${PIDS[@]+"${PIDS[@]}"}; do kill "$p" 2>/dev/null || true; done; rm -rf "$RAIZ"' EXIT
+
+OK=0
+FALHOU=0
+afirma() {
+  local nome="$1"; shift
+  if "$@"; then
+    OK=$((OK + 1)); echo "ok   $nome"
+  else
+    FALHOU=$((FALHOU + 1)); echo "FALHA $nome"
+  fi
+}
+contem() { printf '%s\n' "$1" | grep -qF -- "$2"; }
+ler() { node "$RAIZ/ler.cjs" "$@"; }
+
+# Fixtures: pastas no formato real, reservas e mapa token -> conta, tudo falso.
+cat > "$RAIZ/semear.cjs" <<'JS'
+const fs = require('fs');
+const path = require('path');
+const VIDA = 4102444800000;
+const TOKENS = {
+  'falso-team-pasta': { email: 'team@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000a', uso: 'team' },
+  'falso-team-reserva': { email: 'team@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000a', uso: 'team' },
+  'falso-pessoal-pasta': { email: 'pessoal@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000b', uso: 'pessoal' },
+  'falso-pessoal-reserva': { email: 'pessoal@exemplo.invalid', uuid: '00000000-0000-0000-0000-00000000000b', uso: 'pessoal' },
+};
+const OAUTH = {
+  team: { accountUuid: '00000000-0000-0000-0000-00000000000a', emailAddress: 'team@exemplo.invalid', organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa Team' },
+  pessoal: { accountUuid: '00000000-0000-0000-0000-00000000000b', emailAddress: 'pessoal@exemplo.invalid', organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa Pessoal' },
+};
+function cred(tok, refresh) {
+  return {
+    mcpOAuth: { 'servidor-falso': { accessToken: 'falso-mcp-' + tok, refreshToken: 'falso-mcp-refresh-' + tok, expiresAt: 1, scope: 'a b' } },
+    claudeAiOauth: { accessToken: tok, refreshToken: refresh, expiresAt: VIDA, refreshTokenExpiresAt: VIDA, scopes: ['user:inference', 'user:profile'], subscriptionType: 'max', rateLimitTier: 'default_claude_max_20x' },
+    trustedDeviceToken: 'falso-tdt-' + tok,
+  };
+}
+const escrever = (arq, obj) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n'); };
+const [, , modo, destino, auto] = process.argv;
+if (modo === 'mapa') {
+  escrever(destino, { tokens: TOKENS });
+} else {
+  escrever(path.join(destino, 'trabalho', '.claude', '.credentials.json'), cred('falso-team-pasta', 'falso-refresh-team-pasta'));
+  // Formato real: o .claude.json da pasta padrão mora no home, fora da pasta (~/.claude.json).
+  escrever(path.join(destino, 'trabalho', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
+  escrever(path.join(destino, 'pessoal', '.claude-personal', '.credentials.json'), cred('falso-pessoal-pasta', 'falso-refresh-pessoal-pasta'));
+  escrever(path.join(destino, 'pessoal', '.claude-personal', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.pessoal, projects: {} });
+  escrever(path.join(destino, 'dados', 'contas', 'reserva-team.json'), { claudeAiOauth: cred('falso-team-reserva', 'falso-refresh-team-reserva').claudeAiOauth });
+  escrever(path.join(destino, 'dados', 'contas', 'reserva-pessoal.json'), { claudeAiOauth: cred('falso-pessoal-reserva', 'falso-refresh-pessoal-reserva').claudeAiOauth });
+  escrever(path.join(destino, 'dados', 'contas', 'estado.json'), { automatico: auto === 'sim' });
+}
+JS
+cat > "$RAIZ/ler.cjs" <<'JS'
+const fs = require('fs');
+const [, , arq, campo] = process.argv;
+const o = JSON.parse(fs.readFileSync(arq, 'utf8'));
+const v = campo.split('.').reduce((x, k) => (x == null ? undefined : x[k]), o);
+console.log(v === undefined ? 'AUSENTE' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+JS
+# Conta eventos do log: contar.cjs <eventos> <tipo> [pasta] [motivo]; vazio conta qualquer um.
+cat > "$RAIZ/contar.cjs" <<'JS'
+const fs = require('fs');
+const [, , arq, tipo, pasta, motivo] = process.argv;
+let bruto = '';
+try { bruto = fs.readFileSync(arq, 'utf8'); } catch { bruto = ''; }
+let n = 0;
+for (const linha of bruto.split('\n')) {
+  if (!linha.trim()) continue;
+  let ev;
+  try { ev = JSON.parse(linha); } catch { continue; }
+  if (ev.tipo === tipo && (!pasta || ev.pasta === pasta) && (!motivo || ev.motivo === motivo)) n++;
+}
+console.log(n);
+JS
+cat > "$RAIZ/derivar.cjs" <<'JS'
+const fs = require('fs');
+const [, , entrada, saida, ajuste] = process.argv;
+const m = JSON.parse(fs.readFileSync(entrada, 'utf8'));
+const a = JSON.parse(ajuste);
+for (const [t, extra] of Object.entries(a.tokens || {})) Object.assign(m.tokens[t], extra);
+fs.writeFileSync(saida, JSON.stringify(m));
+JS
+# ajustar.cjs trocado <caso>: põe a pasta trabalho (casa: team) na conta pessoal, com o login da
+# reserva-pessoal; o login dela vai para estacionado-trabalho e a reserva-pessoal fica vazia.
+# reserva-team e estacionado-trabalho ficam com o access token VENCIDO (expiresAt no passado).
+cat > "$RAIZ/ajustar.cjs" <<'JS'
+const fs = require('fs');
+const path = require('path');
+const [, , acao, caso] = process.argv;
+const ler = (a) => JSON.parse(fs.readFileSync(a, 'utf8'));
+const gravar = (a, o) => fs.writeFileSync(a, JSON.stringify(o, null, 2) + '\n');
+const pastaT = path.join(caso, 'trabalho', '.claude');
+const pastaP = path.join(caso, 'pessoal', '.claude-personal');
+const homeT = path.join(caso, 'trabalho');
+const contas = path.join(caso, 'dados', 'contas');
+if (acao === 'trocado') {
+  const passado = Date.now() - 60000;
+  const credT = ler(path.join(pastaT, '.credentials.json'));
+  const resP = ler(path.join(contas, 'reserva-pessoal.json'));
+  gravar(path.join(contas, 'estacionado-trabalho.json'), { claudeAiOauth: { ...credT.claudeAiOauth, expiresAt: passado } });
+  credT.claudeAiOauth = resP.claudeAiOauth;
+  gravar(path.join(pastaT, '.credentials.json'), credT);
+  gravar(path.join(contas, 'reserva-pessoal.json'), {});
+  const resT = ler(path.join(contas, 'reserva-team.json'));
+  resT.claudeAiOauth.expiresAt = passado;
+  gravar(path.join(contas, 'reserva-team.json'), resT);
+  const claudeT = ler(path.join(homeT, '.claude.json'));
+  const oauthTeam = claudeT.oauthAccount;
+  const oauthPessoal = ler(path.join(pastaP, '.claude.json')).oauthAccount;
+  claudeT.oauthAccount = oauthPessoal;
+  gravar(path.join(homeT, '.claude.json'), claudeT);
+  gravar(path.join(contas, 'estado.json'), {
+    automatico: true,
+    pastas: { trabalho: { conta: 'pessoal', manual: false, travouPor: { limite: 'seven_day', resetsAt: new Date(Date.now() - 3600000).toISOString() } } },
+    contas: { team: { email: oauthTeam.emailAddress, oauthAccount: oauthTeam }, pessoal: { email: oauthPessoal.emailAddress, oauthAccount: oauthPessoal } },
+  });
+}
+JS
+
+node "$RAIZ/semear.cjs" mapa "$RAIZ/mapa.json"
+# Pessoal a 100% na semana: o uso da conta pessoal é lido pelos dois tokens dela (o da pasta
+# trabalho depois da troca é o falso-pessoal-reserva; o da pessoal some na fixture).
+LIMITE_D1='{"tokens":{"falso-pessoal-pasta":{"uso7":100,"reset7":"2026-11-20T11:00:00.000Z"},"falso-pessoal-reserva":{"uso7":100,"reset7":"2026-11-20T11:00:00.000Z"}}}'
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-d1.json" "$LIMITE_D1"
+
+# Servidor de teste: porta livre, morto no trap.
+API=""
+iniciar_servidor() { # $1 = mapa token -> conta; $2 = arquivo onde sai a porta
+  RFM_CONTA_SERVIDOR_MAPA="$(win "$1")" \
+  RFM_CONTA_SERVIDOR_CONTROLE="$(win "$RAIZ/segurar")" \
+    node scripts/fixtures/conta/servidor.cjs > "$2" 2> "$RAIZ/servidor-erro.txt" &
+  PIDS+=("$!")
+  for _ in $(seq 1 100); do [ -s "$2" ] && break; sleep 0.1; done
+  API="http://127.0.0.1:$(head -n1 "$2")"
+}
+iniciar_servidor "$RAIZ/mapa-d1.json" "$RAIZ/porta-d1.txt"
+
+cli() {
+  local c="$1"; shift
+  RFM_TEST=1 \
+  RFM_CONTA_PASTA_TRABALHO="$(win "$c/trabalho/.claude")" \
+  RFM_CONTA_PASTA_PESSOAL="$(win "$c/pessoal/.claude-personal")" \
+  RFM_CONTA_CLAUDE_JSON="$(win "$c/trabalho/.claude.json")" \
+  RFM_CONTA_DADOS="$(win "$c/dados")" \
+  RFM_CONTA_API="$API" \
+  node scripts/conta.cjs "$@"
+}
+
+# Caso: trabalho na conta pessoal, manual e sem travouPor; a pessoal SEM .credentials.json (o
+# caso que hoje derruba a rodada). Deixa o diretório em $CASO e a credencial guardada em
+# $RAIZ/cred-pessoal-<nome>.json, para os casos que a devolvem.
+novo_caso_d1() {
+  CASO="$RAIZ/caso-$1"
+  mkdir -p "$CASO"
+  node "$RAIZ/semear.cjs" caso "$CASO" sim
+  node "$RAIZ/ajustar.cjs" trocado "$CASO"
+  node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas.trabalho.manual=true;e.pastas.trabalho.travouPor=null;fs.writeFileSync(a,JSON.stringify(e))" "$CASO/dados/contas/estado.json"
+  cp "$CASO/pessoal/.claude-personal/.credentials.json" "$RAIZ/cred-pessoal-$1.json"
+  rm -f "$CASO/pessoal/.claude-personal/.credentials.json"
+}
+# Uma rodada de vigiar no caso: código de saída em RC, saída em $RAIZ/<caso>-<rodada>.txt.
+rodar() { # $1 = nome do caso; $2 = rótulo da rodada
+  RC=0
+  cli "$CASO" vigiar > "$RAIZ/$1-$2.txt" 2>&1 || RC=$?
+}
+contar() { node "$RAIZ/contar.cjs" "$CASO/dados/contas/eventos.jsonl" "$@"; }
+
+# (d1-1) pessoal sem credencial: a rodada sai 0 e a decisão da pasta que tem credencial sai.
+novo_caso_d1 d1-1
+rodar d1-1 r1
+SAIDA_D1_1="$(cat "$RAIZ/d1-1-r1.txt")"
+afirma "(d1-1) vigiar sai 0 com a pessoal sem credencial" test "$RC" -eq 0
+afirma "(d1-1) a decisão da trabalho sai: avisar trabalho: seven_day de pessoal em 100%" contem "$SAIDA_D1_1" "avisar trabalho: seven_day de pessoal em 100%"
+
+# (d1-2) duas rodadas: um só pasta_sem_credencial da pessoal, nenhum vigia_falhou, e a segunda sai 0.
+novo_caso_d1 d1-2
+rodar d1-2 r1
+rodar d1-2 r2
+afirma "(d1-2) um só pasta_sem_credencial da pessoal depois de duas rodadas" test "$(contar pasta_sem_credencial pessoal)" = 1
+afirma "(d1-2) nenhum vigia_falhou" test "$(contar vigia_falhou)" = 0
+afirma "(d1-2) a segunda rodada sai 0" test "$RC" -eq 0
+
+# (d1-3) a credencial volta: a rodada seguinte grava pasta_com_credencial; a terceira não grava outro.
+novo_caso_d1 d1-3
+rodar d1-3 r1
+cp "$RAIZ/cred-pessoal-d1-3.json" "$CASO/pessoal/.claude-personal/.credentials.json"
+rodar d1-3 r2
+afirma "(d1-3) a rodada seguinte grava um pasta_com_credencial da pessoal" test "$(contar pasta_com_credencial pessoal)" = 1
+rodar d1-3 r3
+afirma "(d1-3) a rodada depois dela não grava outro pasta_com_credencial" test "$(contar pasta_com_credencial pessoal)" = 1
+afirma "(d1-3) o pasta_sem_credencial continua um só" test "$(contar pasta_sem_credencial pessoal)" = 1
+
+# (d1-4) a credencial some de novo: o segundo pasta_sem_credencial, a rodada sai 0 e status diz sem credencial.
+novo_caso_d1 d1-4
+rodar d1-4 r1
+cp "$RAIZ/cred-pessoal-d1-4.json" "$CASO/pessoal/.claude-personal/.credentials.json"
+rodar d1-4 r2
+rm -f "$CASO/pessoal/.claude-personal/.credentials.json"
+rodar d1-4 r3
+ST_D1_4="$(cli "$CASO" status 2>&1 || true)"
+afirma "(d1-4) o segundo pasta_sem_credencial da pessoal" test "$(contar pasta_sem_credencial pessoal)" = 2
+afirma "(d1-4) a rodada sai 0" test "$RC" -eq 0
+afirma "(d1-4) status imprime pasta pessoal: sem credencial" contem "$ST_D1_4" "pasta pessoal: sem credencial"
+
+# (d1-5) pasta renomeada (sai de pastasAtivas) com pasta_sem_credencial em aberto: a rodada grava
+# pasta_com_credencial com o motivo 'pasta saiu de uso', e a seguinte não grava outro.
+novo_caso_d1 d1-5
+rodar d1-5 r1
+mv "$CASO/pessoal/.claude-personal" "$CASO/pessoal/.claude-personal.stub-teste"
+rodar d1-5 r2
+afirma "(d1-5) a rodada com a pasta renomeada sai 0" test "$RC" -eq 0
+afirma "(d1-5) grava pasta_com_credencial da pessoal com o motivo 'pasta saiu de uso'" test "$(contar pasta_com_credencial pessoal 'pasta saiu de uso')" = 1
+rodar d1-5 r3
+afirma "(d1-5) a rodada seguinte não grava outro" test "$(contar pasta_com_credencial pessoal 'pasta saiu de uso')" = 1
+
+echo "ok: $OK   falhou: $FALHOU"
+if [ "$FALHOU" -ne 0 ]; then exit 1; fi
