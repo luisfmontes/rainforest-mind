@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @categoria: bateria
+// rainforest-gate: dados-de-exemplo — tokens FALSOS (prefixo falso-) e identificadores de teste; nenhum valor real.
 // Bateria do hook de sessão dos avisos de conta (hooks/conta-aviso-sessao.cjs; plano
 // conta-reserva-avisa, tarefa 5). Roda o hook de verdade, com o payload no stdin e
 // RFM_CONTA_DADOS apontando para um diretório temporário. Sem rede, sem servidor, sem conta.cjs.
