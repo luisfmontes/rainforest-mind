@@ -711,14 +711,9 @@ depende de: 21
 busca:
 - repo | grep -n "function semContrabarra" hooks/lib/tokens-comando.cjs | a decodificação de `\xHH`, `\u` e octal já existe para o nome de comando; a rede do D3 não a aplicava
 desfecho: estender
-mutacao:
-  arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `const v = ansiC.replace(`
-  para: `const v = String(texto).replace(`
-  bateria: `bash hooks/testa-gate-fechar-issue.sh`
-  timeout: `1200000`
-  fixture: `testa-gate-fechar-issue.sh, casos (ac-1) a (ac-3)`
-prova: `bash hooks/testa-gate-fechar-issue.sh`
+mutacao: n/a
+  motivo: decodificação revogada na 8ª rodada (Q1 B do Luís, 2026-11-12); o código foi removido pela tarefa 24
+prova-na-base: verde — tarefa revogada; o código saiu na tarefa 24
 pronto quando: com o payload real de PreToolUse (Bash), `echo "$(echo ')' ; gh issue $'clo\x73e' 12)"`, `echo "$(echo ')' ; gh issue $'cl\157se' 12)"` e `echo "$(echo ')' ; $'\x67h' issue close 12)"` saem 2 (o bash executa `gh issue close 12` nos três, conferido com o stub), e `echo "$(echo ')' ; echo $'clo\x73e')"` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 512 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (ac-1) vermelho.
 
 Forma prescrita: em `temGhLiteralQueEscreve`, antes de tirar aspas, cada `$'...'` do texto tem `\xHH`, `\uHHHH` e `\UHHHHHHHH` (até 0x10FFFF) e octal de até três dígitos trocados pelo caractere; fora de `$'...'` nada muda.
@@ -730,6 +725,52 @@ depende de: 22
 mutacao: n/a
   motivo: só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3
 pronto quando: o `CHANGELOG.md` tem o mesmo número de linhas da base mais as linhas da entrada `## 2.12.3` (uma ocorrência de `## 2.12.2`, nenhuma linha truncada), e a entrada 2.12.3 diz, pelo comportamento, que a palavra de aspas mistas dentro de `eval`/`bash -c` com `gh` de escrita e o ANSI-C dentro de `"$(...)"` passam a barrar, e nomeia os dois falsos positivos aceitos da emenda do D4 com o contorno — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1`, `git diff --stat e3d7896d -- CHANGELOG.md` mostrando só inserções, e a leitura da entrada contra a D3, a D4 e a D8.
+
+### 24. A rede do D3 volta a não decodificar ANSI-C (revisão 7) [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 23
+busca:
+- repo | git show b4864bbc:hooks/gate-fechar-issue.cjs | a linha `const v = String(texto).replace(` da 6ª rodada, que barrava o caso (r8-1)
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const v = String(texto).replace(/\$(?=["'])/g, "")`
+  para: `const v = String(texto).replace(/\$'((?:[^'\\]|\\[\s\S])*)'/g, (_, c) => "'" + c.replace(/\\u([0-9a-fA-F]{1,4})/g, (__, h) => String.fromCharCode(parseInt(h, 16))) + "'").replace(/\$(?=["'])/g, "")`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, caso (r8-1)`
+prova-na-base: verde — a base (e3d7896) não decodifica e já barra (r8-1); a regressão só existia no HEAD da 7ª rodada, e a prova é a mutação acima, que a reabre
+pronto quando: com o payload real de PreToolUse (Bash), `echo "$(echo ')' ; echo '$' ; gh iss\ue close 12 ; echo 'x')"` sai 2 (o bash executa `gh issue close 12`, conferido pelo revisor 7 com o stub) e `echo "$(echo ')' ; echo $'clo\x73e')"` (ac-4) segue 0; os casos (ac-1), (ac-2), (ac-3) e (ac-5) saem da bateria, porque a base também os deixa passar e a classe fica na Issue #694 — provado por `bash hooks/testa-gate-fechar-issue.sh` com exit 0 e 0 falha(s) e pela mutação acima deixando (r8-1) vermelho.
+
+Forma prescrita: `temGhLiteralQueEscreve` volta à linha da 6ª rodada: `const v = String(texto).replace(/\$(?=["'])/g, "")...`, sem a variável `ansiC`.
+
+### 25. Palavra mista com contrabarra só barra no dialeto do bash (revisão 7) [tipo: implementar]
+atende: D8
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 24
+busca:
+- repo | grep -n "exe === \"cmd\"\|exe === \"pwsh\"\|exe === \"&\"" hooks/lib/tokens-comando.cjs | os wrappers de dialeto PowerShell que o desempacotador conhece (D7)
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const mistaComGh = FERRAMENTA !== "PowerShell" && !wrapperSemContrabarra && `
+  para: `const mistaComGh = `
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (r8-2) a (r8-4)`
+prova-na-base: verde — a base não tem a regra da palavra mista e já deixa passar (r8-2) a (r8-4); a prova é a mutação acima, que volta a barrá-los
+pronto quando: com o payload real de PreToolUse (PowerShell), `& "C:\Microsiga\advpls.exe" appre x.prw -I"C:\Microsiga\includes"`, `cmd /c dir "C:\Program Files"\foo` e `& "C:\Program Files\nodejs\node.exe" --out="C:\x y\z"` saem 0, e os casos (mx-1) a (mx-15) do Bash seguem saindo 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` com exit 0 e 0 falha(s) e pela mutação acima deixando (r8-2) vermelho.
+
+Forma prescrita: em `processarSegmento`, `exeDoWrapper` é `normalizarExecutavel` do token na posição de comando; `mistaComGh` só vale com `FERRAMENTA !== "PowerShell"` e `exeDoWrapper` fora de `cmd`, `pwsh`, `powershell`, `iex`, `invoke-expression` e `&`.
+
+### 26. CHANGELOG da 8ª rodada [tipo: docs]
+atende: D3, D8
+arquivos: `CHANGELOG.md`
+depende de: 25
+mutacao: n/a
+  motivo: só texto; o comportamento está medido pelas tarefas 24 e 25
+pronto quando: a entrada 2.12.3 do `CHANGELOG.md` não diz mais que o ANSI-C dentro de `"$(...)"` barra, cita a Issue #694 para essa classe, e diz que a regra da palavra mista vale só no bash (no PowerShell e em `cmd`/`pwsh` a contrabarra é literal), coerente com as emendas da D3 e da D8 — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1` e pela leitura da entrada contra a D3 e a D8.
 
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9

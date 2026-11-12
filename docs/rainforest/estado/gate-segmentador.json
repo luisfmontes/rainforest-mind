@@ -258,8 +258,13 @@
       {
         "texto": "Q1 A (Luís, 2026-11-12): dentro de eval/bash -c, palavra de aspas mistas com contrabarra que contém gh de escrita é ilegível e barra; a rede do D3 decodifica \\xHH e octal do ANSI-C; CHANGELOG restaurado; achados 4 e 5 como falso positivo aceito",
         "em": "2026-11-12"
+      },
+      {
+        "texto": "Luís 2026-11-12, Q1 B: corrigir só o que deixa a branch pior que a main (tirar a decodificação de ANSI-C, voltando à 6ª rodada; regra da contrabarra só para eval/bash -c no bash); furos preexistentes vão para Issue; revisão 8 aprova se a branch não for mais fraca que a main",
+        "em": "2026-11-12"
       }
-    ]
+    ],
+    "liberado_em": "2026-11-12"
   },
   "verificar": {
     "status": "pendente"

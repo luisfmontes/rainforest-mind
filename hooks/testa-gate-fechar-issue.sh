@@ -1528,10 +1528,25 @@ caso_gate mx-5 2 $'eval "e"\'cho \\"\'"; gh pr merge 5"'
 caso_gate mx-6 2 $'eval "echo"\' \\"oi\''
 caso_gate mx-7 2 $'bash -c "gh issue view 12"\' --json \\"title\\"\''
 caso_gate mx-8 0 $'echo "a"\' \\"; gh issue close 12\''
-caso_gate ac-1 2 $'echo "$(echo \')\' ; gh issue $\'clo\\x73e\' 12)"'
-caso_gate ac-2 2 $'echo "$(echo \')\' ; gh issue $\'cl\\157se\' 12)"'
-caso_gate ac-3 2 $'echo "$(echo \')\' ; $\'\\x67h\' issue close 12)"'
 caso_gate ac-4 0 $'echo "$(echo \')\' ; echo $\'clo\\x73e\')"'
+# Revisao 7 (Q1 B): sem decodificar ANSI-C, um `$'` falso antes do `gh` nao esconde o `issue`.
+caso_gate r8-1 2 $'echo "$(echo \')\' ; echo \'$\' ; gh iss\\ue close 12 ; echo \'x\')"'
+caso_gate_ps() { # $1 rotulo, $2 exit esperado, $3 comando (ferramenta PowerShell)
+  local rot="$1" esp="$2" cmd="$3" ex
+  echo
+  echo "== ($rot) PowerShell exit $esp: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  [ $ex -eq "$esp" ] && test_ok "$rot exit $esp" || test_fail "$rot exit $esp (foi $ex: $(cat "$SBP/err-$rot"))"
+}
+# Revisao 7 (Q1 B): no PowerShell a contrabarra e literal; palavra mista com caminho Windows passa.
+caso_gate_ps r8-2 0 '& "C:\Microsiga\advpls.exe" appre x.prw -I"C:\Microsiga\includes"'
+caso_gate_ps r8-3 0 'cmd /c dir "C:\Program Files"\foo'
+caso_gate_ps r8-4 0 '& "C:\Program Files\nodejs\node.exe" --out="C:\x y\z"'
 # Revisao de seguranca do commit 60835732: o gh fora da palavra mista, e o \U de 8 digitos.
 caso_gate mx-9 2 $'eval "echo"\' \\"; gh\' issue close 12'
 caso_gate mx-10 2 $'eval "echo"\' \\";\' gh issue close 12'
@@ -1542,7 +1557,6 @@ caso_gate mx-13 2 $'eval "echo"\' \\"; gh pr --repo o/r merge 5\''
 # Revisao de seguranca do commit 5513b4d3: ANSI-C montando o gh dentro do wrapper com palavra mista.
 caso_gate mx-14 2 $'eval "echo"\' \\"; \'$\'\\x67h\'\' issue close 12\''
 caso_gate mx-15 2 $'eval "echo"\' \\"; \'$\'\\147h\'\' issue close 12\''
-caso_gate ac-5 2 $'echo "$(echo \')\' ; gh issue $\'clo\\U00000073e\' 12)"'
 
 # Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
 echo

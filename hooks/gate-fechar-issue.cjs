@@ -1487,15 +1487,11 @@ function temGhLiteralQueEscreve(texto) {
   // `$'..'`/`$".."` sao aspas do bash: o `$` colado na aspa sai junto com ela.
   // Aspas, crase e contrabarra SOMEM (nao viram espaco): `c''lose`, `\"close\"`
   // e `-R \"a/b\"` voltam a ser as palavras que o shell ve.
-  // Dentro de `$'...'` o bash decodifica `\xHH`, `\uHHHH` e octal antes de
-  // rodar: `gh issue $'clo\x73e' 12` e `gh issue close 12` (revisao 6 de
-  // gate-segmentador, Q1 A). Decodifica so ali, antes de tirar as aspas.
-  const ansiC = String(texto).replace(/\$'((?:[^'\\]|\\[\s\S])*)'/g, (_, corpo) => "'" + corpo
-    .replace(/\\x([0-9a-fA-F]{1,2})/g, (__, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/\\u([0-9a-fA-F]{1,4})/g, (__, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/\\U([0-9a-fA-F]{1,8})/g, (m, h) => { const c = parseInt(h, 16); return c <= 0x10ffff ? String.fromCodePoint(c) : m; })
-    .replace(/\\([0-7]{1,3})/g, (__, o) => String.fromCharCode(parseInt(o, 8))) + "'");
-  const v = ansiC.replace(/\$(?=["'])/g, "").replace(/["'\x60\\]/g, "").split(/[\s;&|(){}]+/).filter(Boolean);
+  // Sem decodificar `$'...'`: a regex que achava o span casava num `$'` falso
+  // (fim de `'$'`) e `iss\ue` virava `iss`+U+000E, escondendo o `issue` que o
+  // bash executa (revisao 7 de gate-segmentador; Q1 B do Luis, 2026-11-12).
+  // ANSI-C escondendo o `gh` dentro de `"$(...)"` fica na Issue #694.
+  const v = String(texto).replace(/\$(?=["'])/g, "").replace(/["'\x60\\]/g, "").split(/[\s;&|(){}]+/).filter(Boolean);
   const escreve = { issue: ["close", "create", "comment"], pr: ["create", "edit", "merge"] };
   for (let i = 0; i < v.length; i++) {
     if (normalizarExecutavel(v[i]) !== "gh") continue;
@@ -1660,7 +1656,11 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // procura (flag entre substantivo e verbo, chaves, ANSI-C, glob): a palavra
   // mista com contrabarra dentro de wrapper barra SEMPRE, sem procurar `gh`,
   // como `bash -c "$x"` ja barra (falha fechada).
-  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\"));
+  // So no dialeto do bash (revisao 7, Q1 B): no PowerShell e em `cmd /c`,
+  // `pwsh -Command` e `iex` a contrabarra e literal, e `-I"C:\x"` nao esconde nada.
+  const exeDoWrapper = pos === null ? "" : normalizarExecutavel(toksComAspas[pos].v);
+  const wrapperSemContrabarra = ["cmd", "pwsh", "powershell", "iex", "invoke-expression", "&"].includes(exeDoWrapper);
+  const mistaComGh = FERRAMENTA !== "PowerShell" && !wrapperSemContrabarra && interno !== null && depois.some((t) => t.mista && t.v.includes("\\"));
   if (ilegivel || mistaComGh) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).
