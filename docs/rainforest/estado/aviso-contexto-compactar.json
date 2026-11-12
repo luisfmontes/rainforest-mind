@@ -40,32 +40,46 @@
     "em": "2026-11-12"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "4fce1d31e021c8e6f80d6495689c8e0a78829cfc",
+      "head": "03afebe6fd91c6cec8095e218ceb9910364fcce5",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a31c63134f1d92b4a",
+        "agente_id": "adbda2fd1cc25a438",
         "veredito": "ok",
         "em": "2026-11-12",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a31c63134f1d92b4a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-adbda2fd1cc25a438.jsonl"
       }
     ],
     "achados": 0,
     "base": "e5449dd8",
-    "head": "4fce1d31",
-    "em": "2026-11-12"
+    "head": "03afebe6",
+    "em": "2026-11-12",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a31c63134f1d92b4a",
+            "veredito": "ok",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a31c63134f1d92b4a.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "comando": "bash scripts/testa-uso-contexto.sh && node scripts/conferir-versao.cjs --sem-fetch",
-    "saida": "ok: 28   falhou: 0 | ok    versao 2.13.1: 1 commit(s) desde o bump 5ad61aa (teto 5) | grep -c 2.13.1: 1 em cada",
+    "saida": "ok: 28   falhou: 0 | ok versao 2.13.1",
     "sensor_externo": "bash scripts/testa-uso-contexto.sh",
     "em": "2026-11-12",
-    "head": "4fce1d31e021c8e6f80d6495689c8e0a78829cfc"
+    "head": "03afebe6fd91c6cec8095e218ceb9910364fcce5"
   },
   "fechar": {
     "status": "pendente",
