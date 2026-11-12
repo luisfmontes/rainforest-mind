@@ -38,3 +38,15 @@ Nenhum achado reprovado é do D9 nem do here-string; o único do diff é de uma 
 | texto de `gh` passado a `bash` por pipe de `echo` passa | preexistente | Issue #692 |
 
 **Leitura:** a quinta revisão seguida acha furo novo aberto pelo próprio diff, agora na remontagem do D8. O revisor rodou um fuzz (mais de 5000 comandos, bash real com stub) que a bateria não tem; cada rodada só descobre o furo na revisão.
+
+## Sexta reprovação (revisão 6, 2026-11-12)
+
+O fuzz local da quinta rodada, refeito com log por processo, não achou contorno aberto pelo diff em 2.400 casos executados. O revisor 6, com geradores novos (`fuzz2.cjs` g4 e g5, ~12 mil casos), achou duas classes, ambas conferidas pela janela com o bash real e o stub de `gh`:
+
+1. **[alta] Palavra com aspas mistas no `eval`/`bash -c`.** `internoDoEval` e `textoAPartir` decidem a redução de contrabarra pela primeira aspa do token e a aplicam ao token inteiro. `eval -- "echo"' \"; gh issue close 12'` e `eval "eval \"echo\"' \\\"; gh issue close 12'"` passam no HEAD (0) e a base barrava (2). Variantes (`bash -c`, `env bash -c`, `command eval`, `time eval`) já passavam na base, na classe do D8.
+2. **[media] ANSI-C com `\xHH` ou octal dentro de `"$(...)"`.** A rede do D3 tira aspas mas não decodifica: `echo "$(echo ')' ; gh issue $'clo\x73e' 12)"` executa `gh issue close 12` com HEAD 0 e base 0.
+3. **[media] CHANGELOG duplicado** no commit f4044697 (2070 para 4139 linhas, bullet da 2.12.3 truncado). Erro da janela (replace com `$\``), observação plantada.
+4. **[baixa]** texto entre aspas com `gh` de escrita depois de um `"$(...)"` é barrado (D3 usa string como executável).
+5. **[baixa]** `cwd-efetivo` cego à contrabarra, já declarado no CHANGELOG como falso positivo aceito.
+
+Padrão das seis rodadas: cada revisão acha uma construção nova de quoting que a remontagem textual do `eval`/`bash -c` interpreta diferente do bash. Remendar a remontagem converge devagar.
