@@ -958,21 +958,60 @@ function registrarPastaSaiuDeUso(c) {
   }
 }
 
+// D2 (conta-reserva-avisa): a rodada que aborta grava vigia_falhou com a mensagem segura. Não
+// repete: grava só se o último vigia_falhou tem outro motivo, ou se uma rodada que chegou a decidir
+// (vigia-ok) é mais nova que ele. Sem essa checagem, um JSON ruim em estado.json grava um evento
+// por minuto.
+const VIGIA_OK = 'vigia-ok';
+
+function vigiaOkEm(c) {
+  try {
+    return fs.statSync(path.join(c.contas, VIGIA_OK)).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+function registrarVigiaFalhou(c, e) {
+  const motivo = msgSegura(e);
+  const falhas = lerEventos(c).map(({ ev }) => ev).filter((ev) => ev.tipo === 'vigia_falhou');
+  const ultima = falhas[falhas.length - 1];
+  const okEm = vigiaOkEm(c);
+  const repetida = ultima !== undefined && ultima.motivo === motivo && !(okEm > ultima.em); // D2 (conta-reserva-avisa)
+  if (!repetida) registrarEvento(c, { tipo: 'vigia_falhou', motivo, manual: false });
+}
+
+function marcarVigiaOk(c) {
+  fs.writeFileSync(path.join(c.contas, VIGIA_OK), '');
+}
+
 async function vigiar(c) {
+  try {
+    const { codigo, decidiu } = await vigiarRodada(c);
+    if (decidiu) marcarVigiaOk(c);
+    return codigo;
+  } catch (e) {
+    registrarVigiaFalhou(c, e);
+    throw e;
+  }
+}
+
+// Uma rodada. Devolve { codigo, decidiu }: decidiu é true só quando a rodada chegou a decidir.
+async function vigiarRodada(c) {
   const lock = c.lock;
   fs.mkdirSync(c.contas, { recursive: true });
-  if (!pegarTrava(lock)) return sair(0, 'outra rodada em curso');
+  if (!pegarTrava(lock)) return { codigo: sair(0, 'outra rodada em curso'), decidiu: false };
   try {
     const estado = lerEstado(c);
     // Antes da chave: o estado segue o login mesmo com a troca automática desligada (#585).
     await reconciliar(c, estado, true);
-    if (!estado.automatico) return sair(0, 'troca automática desligada: nada a fazer');
+    if (!estado.automatico) return { codigo: sair(0, 'troca automática desligada: nada a fazer'), decidiu: false };
     if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
     // Antes de renovar: renovar um login que está em dois arquivos mata a cópia do outro.
     const duplicadas = credenciaisDuplicadas(c);
     if (duplicadas.length) {
       avisarDuplicadas(c, duplicadas);
-      return sair(1, 'o mesmo login está em dois arquivos: nada movido nem renovado');
+      return { codigo: sair(1, 'o mesmo login está em dois arquivos: nada movido nem renovado'), decidiu: false };
     }
     await renovarOciosos(c, estado);
 
@@ -1041,7 +1080,7 @@ async function vigiar(c) {
       }
     }
     if (!acoes.length) console.log('sem ação');
-    return sair(codigo, codigo ? 'alguma ação não foi feita' : 'rodada concluída');
+    return { codigo: sair(codigo, codigo ? 'alguma ação não foi feita' : 'rodada concluída'), decidiu: true };
   } finally {
     soltarTrava(lock);
   }

@@ -6,6 +6,10 @@
 # volta e a rodada seguinte grava pasta_com_credencial; (d1-4) a credencial some de novo e status
 # mostra sem credencial; (d1-5) pasta renomeada (fora de pastasAtivas) grava pasta_com_credencial
 # com o motivo 'pasta saiu de uso'.
+# Casos D2 (conta-reserva-avisa, tarefa 3): (d2-1) estado.json inválido sai 1, grava um vigia_falhou
+# e não repete com o mesmo erro; (d2-2) .credentials.json inválido grava outro vigia_falhou sem vazar
+# o texto do arquivo; (d2-3) rodada que decidiu cria vigia-ok e o mesmo erro depois grava de novo;
+# (d2-4) troca automática desligada sai 0 sem criar vigia-ok; (d2-5) essa rodada não toca vigia-ok.
 # Tudo em mktemp -d com trap; o servidor é node local, morto no trap pelo PID dele. Nunca toca
 # ~/.claude nem a pasta de dados real.
 set -euo pipefail
@@ -228,6 +232,66 @@ afirma "(d1-5) a rodada com a pasta renomeada sai 0" test "$RC" -eq 0
 afirma "(d1-5) grava pasta_com_credencial da pessoal com o motivo 'pasta saiu de uso'" test "$(contar pasta_com_credencial pessoal 'pasta saiu de uso')" = 1
 rodar d1-5 r3
 afirma "(d1-5) a rodada seguinte não grava outro" test "$(contar pasta_com_credencial pessoal 'pasta saiu de uso')" = 1
+
+# Caso D2 (conta-reserva-avisa): mesmo caso das pastas, com as duas pastas com credencial.
+novo_caso_d2() {
+  CASO="$RAIZ/caso-$1"
+  mkdir -p "$CASO"
+  node "$RAIZ/semear.cjs" caso "$CASO" sim
+  node "$RAIZ/ajustar.cjs" trocado "$CASO"
+  node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas.trabalho.manual=true;e.pastas.trabalho.travouPor=null;fs.writeFileSync(a,JSON.stringify(e))" "$CASO/dados/contas/estado.json"
+}
+# Arquivo corrompido: texto falso que não pode sair em evento nem em saída.
+corromper() { printf '%s' '{ "falso-segredo-xyz' > "$1"; }
+mudar_automatico() { node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.automatico=process.argv[2]==='sim';fs.writeFileSync(a,JSON.stringify(e))" "$1" "$2"; }
+mtime() { node -e "console.log(require('fs').statSync(process.argv[1]).mtimeMs)" "$1"; }
+
+# (d2-1) estado.json com JSON inválido: a rodada sai 1 com 'erro: JSON inválido' (como hoje) e grava
+# um vigia_falhou; a rodada seguinte, com o mesmo erro, não grava outro.
+novo_caso_d2 d2-1
+corromper "$CASO/dados/contas/estado.json"
+rodar d2-1 r1
+afirma "(d2-1) a rodada com estado.json inválido sai 1" test "$RC" -eq 1
+afirma "(d2-1) stderr traz 'erro: JSON inválido'" contem "$(cat "$RAIZ/d2-1-r1.txt")" "erro: JSON inválido"
+rodar d2-1 r2
+afirma "(d2-1) a rodada seguinte, com o mesmo erro, não grava outro vigia_falhou" test "$(contar vigia_falhou '' 'JSON inválido em estado.json')" = 1
+
+# (d2-2) estado válido e .credentials.json da trabalho inválido: um segundo vigia_falhou, e nem o
+# evento nem a saída trazem o texto do arquivo corrompido.
+novo_caso_d2 d2-2
+corromper "$CASO/trabalho/.claude/.credentials.json"
+rodar d2-2 r1
+afirma "(d2-2) grava vigia_falhou com o motivo 'JSON inválido em .credentials.json'" test "$(contar vigia_falhou '' 'JSON inválido em .credentials.json')" = 1
+afirma "(d2-2) nem o evento nem a saída trazem o texto do arquivo corrompido" test "$(cat "$CASO/dados/contas/eventos.jsonl" "$RAIZ/d2-2-r1.txt" | grep -c 'falso-segredo-xyz' || true)" = 0
+
+# (d2-3) rodada com tudo válido sai 0 e cria vigia-ok; o mesmo erro depois dela grava outro evento.
+novo_caso_d2 d2-3
+cp "$CASO/trabalho/.claude/.credentials.json" "$RAIZ/d2-3-cred-bom.json"
+corromper "$CASO/trabalho/.claude/.credentials.json"
+rodar d2-3 r1
+cp "$RAIZ/d2-3-cred-bom.json" "$CASO/trabalho/.claude/.credentials.json"
+rodar d2-3 r2
+afirma "(d2-3) a rodada com tudo válido sai 0" test "$RC" -eq 0
+afirma "(d2-3) a rodada que decidiu cria vigia-ok" test -f "$CASO/dados/contas/vigia-ok"
+corromper "$CASO/trabalho/.claude/.credentials.json"
+rodar d2-3 r3
+afirma "(d2-3) o mesmo erro depois da rodada concluída grava um segundo vigia_falhou de .credentials.json" test "$(contar vigia_falhou '' 'JSON inválido em .credentials.json')" = 2
+
+# (d2-4) troca automática desligada: a rodada sai 0 com a frase e não cria vigia-ok.
+novo_caso_d2 d2-4
+mudar_automatico "$CASO/dados/contas/estado.json" nao
+rodar d2-4 r1
+afirma "(d2-4) a rodada com a troca desligada sai 0" test "$RC" -eq 0
+afirma "(d2-4) a saída diz troca automática desligada" contem "$(cat "$RAIZ/d2-4-r1.txt")" "troca automática desligada"
+afirma "(d2-4) não cria vigia-ok" test ! -e "$CASO/dados/contas/vigia-ok"
+
+# (d2-5) vigia-ok existe de uma rodada que decidiu; a rodada com a troca desligada não o toca.
+novo_caso_d2 d2-5
+rodar d2-5 r1
+ANTES_D2_5="$(mtime "$CASO/dados/contas/vigia-ok")"
+mudar_automatico "$CASO/dados/contas/estado.json" nao
+rodar d2-5 r2
+afirma "(d2-5) a rodada com a troca desligada não toca o mtime de vigia-ok" test "$(mtime "$CASO/dados/contas/vigia-ok")" = "$ANTES_D2_5"
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi
