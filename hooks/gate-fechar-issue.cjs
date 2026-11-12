@@ -283,9 +283,17 @@ function segmentosParaGate(cmd) {
     // D9 (gate-segmentador, Issue #689): comentario de shell fora de aspas vai
     // ate o fim da linha; o apostrofo dele nao abre aspa.
     if (aspa === null && c === "#" && (i === 0 || (/[\s;&|()]/.test(cmd[i - 1]) && !escapadaPorContrabarra(cmd, i - 1)))) {
+      let comentario = "";
       while (i < cmd.length && cmd[i] !== "\n") {
-        atual += cmd[i];
+        comentario += cmd[i];
         i += 1;
+      }
+      atual += comentario;
+      // Falha fechada (revisao 2): o gate nao sabe sempre se o # abre
+      // comentario (`$(true)#`, `${x:-a #b}`); o resto depois de ; & | e
+      // conferido como comando.
+      for (const pedaco of comentario.split(/[;&|]+/).slice(1)) {
+        if (pedaco.trim()) segmentos.push(pedaco);
       }
       i -= 1;
       continue;
@@ -438,7 +446,12 @@ function segmentosParaGate(cmd) {
       if (cmd[k] === "'" || cmd[k] === '"') {
         const aspa = cmd[k];
         k++;
-        while (k < cmd.length && cmd[k] !== aspa) { conteudo += cmd[k]; k++; }
+        while (k < cmd.length && cmd[k] !== aspa) {
+          // Entre aspas duplas a contrabarra escapa ", \, $ e crase, como no
+          // bash (revisao 2 do gate-segmentador).
+          if (aspa === '"' && cmd[k] === '\\' && k + 1 < cmd.length && ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1])) { conteudo += cmd[k + 1]; k += 2; continue; }
+          conteudo += cmd[k]; k++;
+        }
         if (k < cmd.length) k++; // fecha a aspa
       } else {
         // Palavra nua: `\` escapa o caractere seguinte (`gh\ issue\ close`
@@ -1697,7 +1710,7 @@ function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
     for (const linha of corpo.split('\n')) {
       if (!linha.trim()) continue;
       let toks;
-      try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
+      try { toks = tokensComAspas(linha, { contrabarra: FERRAMENTA !== "PowerShell" }); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
       const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
       const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
       const idx = indiceGhComVerbo(valores);

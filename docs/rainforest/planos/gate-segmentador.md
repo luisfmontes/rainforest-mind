@@ -496,6 +496,108 @@ Casos novos (molde acima, todos Bash):
 | cm-5 | `COMANDO_CM_5=$'echo \\ #; gh issue close 12'` | 2 |
 | cm-6 | `COMANDO_CM_6=$'echo \\;#x; gh pr merge 5'` | 2 |
 
+### 13. Comentário falha fechado nos separadores (revisão 2) [tipo: implementar]
+atende: D9
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 12
+busca:
+- repo | grep -n "D9 (gate-segmentador" hooks/gate-fechar-issue.cjs | o ramo do comentario engole ; e && ate a quebra de linha
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `for (const pedaco of comentario.split(/[;&|]+/).slice(1)) {`
+  para: `for (const pedaco of [].slice(1)) {`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (cm-7), (cm-8) e (cm-9)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"echo $(true)#; gh issue close 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse (Bash), `echo $(true)#; gh issue close 12`, `echo ${x:-a #b}; gh issue close 12` e `a=(x)#; gh issue close 12` saem 2, e (cm-1) a (cm-6) mantêm o exit — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 480 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (cm-7), (cm-8) e (cm-9) vermelhos.
+
+Forma prescrita: no ramo do D9, o laço que consome o comentário passa a juntar o texto numa variável `comentario`, que entra em `atual`; depois, cada pedaço do comentário após um `;`, `&` ou `|` vira segmento:
+
+```
+      let comentario = "";
+      while (i < cmd.length && cmd[i] !== "\n") {
+        comentario += cmd[i];
+        i += 1;
+      }
+      atual += comentario;
+      // Falha fechada (revisao 2): o gate nao sabe sempre se o # abre
+      // comentario (`$(true)#`, `${x:-a #b}`); o resto depois de ; & | e
+      // conferido como comando.
+      for (const pedaco of comentario.split(/[;&|]+/).slice(1)) {
+        if (pedaco.trim()) segmentos.push(pedaco);
+      }
+      i -= 1;
+      continue;
+```
+
+Casos novos (molde acima, todos Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| cm-7 | `COMANDO_CM_7=$'echo $(true)#; gh issue close 12'` | 2 |
+| cm-8 | `COMANDO_CM_8=$'echo ${x:-a #b}; gh issue close 12'` | 2 |
+| cm-9 | `COMANDO_CM_9=$'a=(x)#; gh issue close 12'` | 2 |
+
+### 14. Here-string entre aspas duplas reduz a contrabarra (revisão 2) [tipo: implementar]
+atende: D1
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 13
+busca:
+- repo | grep -n "fecha a aspa" hooks/gate-fechar-issue.cjs | a extracao do conteudo do here-string citado para na primeira aspa, escapada ou nao
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1])) { conteudo += cmd[k + 1]; k += 2; continue; }`
+  para: `false) { conteudo += cmd[k + 1]; k += 2; continue; }`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (hs-5) e (hs-6)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"bash <<< "echo \"hi\"; gh issue close 12""}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse (Bash), `bash <<< "echo \\\"; gh issue close 12"` e `bash <<< "echo \"hi\"; gh issue close 12"` saem 2, e `cat <<< "texto \"citado\""` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 483 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (hs-5) e (hs-6) vermelhos.
+
+Forma prescrita: no ramo do `<<<`, o laço de aspa `while (k < cmd.length && cmd[k] !== aspa) { conteudo += cmd[k]; k++; }` passa a:
+
+```
+        while (k < cmd.length && cmd[k] !== aspa) {
+          // Entre aspas duplas a contrabarra escapa ", \, $ e crase, como no
+          // bash (revisao 2 do gate-segmentador).
+          if (aspa === '"' && cmd[k] === '\\' && k + 1 < cmd.length && ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1])) { conteudo += cmd[k + 1]; k += 2; continue; }
+          conteudo += cmd[k]; k++;
+        }
+```
+
+Casos novos (molde acima, todos Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| hs-5 | `COMANDO_HS_5=$'bash <<< "echo \\\\\\"; gh issue close 12"'` | 2 |
+| hs-6 | `COMANDO_HS_6=$'bash <<< "echo \\"hi\\"; gh issue close 12"'` | 2 |
+| hs-8 | `COMANDO_HS_8=$'cat <<< "texto \\"citado\\""'` | 0 |
+
+### 15. Linhas de `TEXTOS_DE_HEREDOC` com a contrabarra do Bash (revisão 2) [tipo: implementar]
+atende: D1, D8
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 14
+busca:
+- repo | grep -n "function verificarTextosDeHeredoc" hooks/gate-fechar-issue.cjs | tokeniza cada linha sem a opcao contrabarra
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `try { toks = tokensComAspas(linha, { contrabarra: FERRAMENTA !== "PowerShell" }); }`
+  para: `try { toks = tokensComAspas(linha); }`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, caso (hs-7)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"cat <<< "echo \\\"; gh issue close 12" | bash"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse (Bash), `cat <<< "echo \\\"; gh issue close 12" | bash` sai 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 484 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (hs-7) vermelho.
+
+Forma prescrita: em `verificarTextosDeHeredoc`, `try { toks = tokensComAspas(linha); }` passa a `try { toks = tokensComAspas(linha, { contrabarra: FERRAMENTA !== "PowerShell" }); }`.
+
+Caso novo (molde acima, Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| hs-7 | `COMANDO_HS_7=$'cat <<< "echo \\\\\\"; gh issue close 12" \| bash'` | 2 |
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
