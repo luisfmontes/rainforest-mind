@@ -941,7 +941,7 @@ function mencoesDeGhRepo(mascarado, segmento) {
  * contém. Sem correspondência, incerto.
  */
 
-function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento, comando) {
+function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento) {
   const s = segmento.trim();
   let itens = mapa.filter((m) => m.seg.trim() === s);
   if (itens.length === 0) itens = mapa.filter((m) => m.seg.includes(s));
@@ -1012,7 +1012,7 @@ function conferirGh(ev, cwdDoEvento, agente) {
   } catch { return; }
 
   for (const segmento of segmentos) {
-    const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento, cmd);
+    const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento);
     // O `--body-file` relativo se lê contra CADA cwd possível do segmento, e os
     // achados se somam: com o segmento repetido, cada ocorrência lê o seu.
     let r = null;
