@@ -751,8 +751,8 @@ function conferirCommit(ev, cwdDoEvento, agente) {
  * em qualquer repositório (design gate-publicacao-gh, D3).
  */
 const VERBOS_GH_TEXTO = {
-  issue: new Set(["create", "comment", "edit"]),
-  pr: new Set(["create", "comment", "edit", "review", "merge"]),
+  issue: new Set(["create", "comment", "edit", "close", "reopen"]),
+  pr: new Set(["create", "comment", "edit", "review", "merge", "close", "reopen"]),
 };
 
 const FLAGS_GH_VALOR = {
@@ -772,10 +772,30 @@ const FLAGS_GH_VALOR = {
     merge: new Set(["-t", "-A"]),
     comment: new Set(),
     review: new Set(),
+    close: new Set(["-c", "--comment"]),
+    reopen: new Set(["-c", "--comment"]),
   },
 };
 
-const ILEGIVEL = /\$\(|\x60/;
+/**
+ * Corpos que o próprio comando carrega: heredoc (bash) e here-string
+ * (PowerShell, `@'...'@` e `@"..."@`). Quando o segmento tem `--body-file`,
+ * eles contam sempre, exista o arquivo ou não: o comando pode reescrever o
+ * arquivo antes do `gh`, ou mandá-lo por stdin (`--body-file -`). Revisão do
+ * fluxo gate-publicacao-gh, 2026-11-13.
+ */
+function corposEmbutidos(cmd) {
+  const { posicoesDeOperadorHeredoc, corpoDeHeredoc } = require("./lib/heredoc.cjs");
+  const saida = [];
+  try {
+    for (const pos of posicoesDeOperadorHeredoc(cmd)) {
+      const h = corpoDeHeredoc(cmd, pos);
+      if (h && h.corpo) saida.push({ origem: "heredoc", texto: h.corpo });
+    }
+  } catch {}
+  for (const m of String(cmd).matchAll(/@(["'])\r?\n([\s\S]*?)\r?\n\1@/g)) saida.push({ origem: "here-string", texto: m[2] });
+  return saida;
+}
 
 /** `owner/repo` do valor de `--repo`, `"?"` quando ilegível, `null` sem valor. */
 function normalizarRepoAlvo(valor) {
@@ -799,7 +819,7 @@ function visibilidadeDoAlvo(ownerRepo) {
  */
 function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const { tokensComAspas } = require("./lib/tokens-comando.cjs");
-  const { normalizarExecutavel, posicoesDeOperadorHeredoc, corpoDeHeredoc } = require("./lib/heredoc.cjs");
+  const { normalizarExecutavel } = require("./lib/heredoc.cjs");
   let toks;
   try { toks = tokensComAspas(segmento).map((t) => t.v); } catch { return null; }
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
@@ -827,6 +847,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
 
   const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
   const textos = [];
+  let embutidosLidos = false;
   for (; i < toks.length; i += 1) {
     const tok = toks[i];
     if (!tok.startsWith("-") || tok === "-") continue;
@@ -836,7 +857,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
     const colado = longa
       ? (igual === -1 ? null : tok.slice(igual + 1))
       : (tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
-    const temValor = longa ? FLAGS_GH_VALOR.longas.has(chave)
+    const temValor = longa ? (FLAGS_GH_VALOR.longas.has(chave) || curtasDoVerbo.has(chave))
       : (FLAGS_GH_VALOR.curtasSempre.has(chave) || curtasDoVerbo.has(chave));
     if (!temValor) continue; // booleana
     let valor = colado;
@@ -846,24 +867,25 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
     if (chave === "--repo" || chave === "-R") { repoValor = valor; continue; }
     const ehTitulo = chave === "--title" || (chave === "-t" && verbo !== "merge");
     const ehSubject = verbo === "merge" && (chave === "--subject" || chave === "-t");
-    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject) {
-      if (!ILEGIVEL.test(valor)) textos.push({ origem: chave, texto: valor });
+    const ehComentario = (verbo === "close" || verbo === "reopen") && (chave === "--comment" || chave === "-c");
+    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject || ehComentario) {
+      // O texto LITERAL do valor conta sempre, com `$(...)` ou crase dentro:
+      // o heredoc de `--body "$(cat <<'EOF' ... EOF)"` e a crase de markdown
+      // estão escritos no comando. Só o que não está no comando (o valor de uma
+      // variável, a saída de um programa) fica sem conferência (D3, emenda).
+      textos.push({ origem: chave, texto: valor });
       continue;
     }
     if (chave === "--body-file" || chave === "-F") {
+      if (!embutidosLidos) { embutidosLidos = true; textos.push(...corposEmbutidos(cmdOriginal)); }
       if (/[$\x60]/.test(valor) || valor === "-") continue;
       let caminho = valor;
       try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(valor); } catch {}
       const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwd, caminho);
       try {
         textos.push({ origem: `${chave} ${valor}`, texto: fs.readFileSync(resolvido, "utf8") });
-      } catch (e) {
-        if (e && e.code === "ENOENT") {
-          for (const pos of posicoesDeOperadorHeredoc(cmdOriginal)) {
-            const h = corpoDeHeredoc(cmdOriginal, pos);
-            if (h && h.corpo) textos.push({ origem: "heredoc", texto: h.corpo });
-          }
-        }
+      } catch {
+        // Ilegível ou inexistente: os corpos embutidos do comando já entraram.
       }
     }
   }
@@ -918,12 +940,16 @@ function mencoesDeGhRepo(mascarado, segmento) {
  * dentro de `"$(...)"` (que `cwdPorSegmento` não separa) herda o cwd de quem o
  * contém. Sem correspondência, incerto.
  */
-function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento) {
+const MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd|popd|chdir|set-location|sl|push-location|pop-location)(?=[\s;&|)]|$)|(?:^|\s)-C(?:\s|$)/i;
+
+function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento, comando) {
   const s = segmento.trim();
   let itens = mapa.filter((m) => m.seg.trim() === s);
   if (itens.length === 0) itens = mapa.filter((m) => m.seg.includes(s));
-  if (itens.length === 0) return [{ cwd: cwdDoEvento, incerto: true }];
-  return itens.map((m) => ({ cwd: m.cwd, incerto: Boolean(m.incerto) }));
+  // Sem correspondência (`{ gh ...; }`, `( gh ... )`, `$(gh ...)`): o cwd só é
+  // incerto quando o comando muda de diretório em algum ponto.
+  if (itens.length === 0) return [{ cwd: cwdDoEvento, incerto: MUDA_DIRETORIO.test(comando) }];
+  return itens.map((m) => ({ cwd: m.cwd, incerto: Boolean(m.incerto) && MUDA_DIRETORIO.test(comando) }));
 }
 
 /**
@@ -963,15 +989,29 @@ function conferirGh(ev, cwdDoEvento, agente) {
     const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
     const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
     const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
-    // A máscara vem antes: sobre heredoc cru, `segmentosParaGate` cola no último
-    // token o último caractere do delimitador (`novo.md` vira `novo.mdF`).
+    const { desempacotarWrapperDeString } = require("./lib/tokens-comando.cjs");
+    // Segmenta o comando CRU. A máscara de heredoc apaga também a linha do
+    // delimitador, e o `segmentosParaGate` perdia todo `gh` das linhas seguintes
+    // (revisão, 2026-11-13). O resíduo do cru (#706: `novo.md` vira `novo.mdF`)
+    // não abre nada: com `--body-file`, os corpos embutidos contam sempre.
     mascarado = mascararCorposDeHeredoc(cmd);
-    segmentos = segmentosParaGate(mascarado);
-    mapa = cwdPorSegmento(mascarado, cwdDoEvento, ev.tool_name === "PowerShell");
+    segmentos = [];
+    const empilhar = (texto, profundidade) => {
+      for (const s of segmentosParaGate(texto)) {
+        segmentos.push(s);
+        if (profundidade >= 4) continue;
+        let w = null;
+        try { w = desempacotarWrapperDeString(s.trim(), { ferramenta: ev.tool_name }); } catch {}
+        // `bash -c "gh ..."`, `sh -c`, `eval`, `powershell -Command`
+        if (w && w.interno) empilhar(w.interno, profundidade + 1);
+      }
+    };
+    empilhar(cmd, 0);
+    mapa = cwdPorSegmento(cmd, cwdDoEvento, ev.tool_name === "PowerShell");
   } catch { return; }
 
   for (const segmento of segmentos) {
-    const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento);
+    const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento, cmd);
     // O `--body-file` relativo se lê contra CADA cwd possível do segmento, e os
     // achados se somam: com o segmento repetido, cada ocorrência lê o seu.
     let r = null;

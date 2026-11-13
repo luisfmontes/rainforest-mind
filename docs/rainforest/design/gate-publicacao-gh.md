@@ -30,6 +30,22 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
 
   Nada disso barra. — porquê: a falha fechada aqui barraria a forma de rotina do PowerShell (`--body-file $f`) em todo repositório, público ou não. O vazamento medido foi `--body-file` com caminho literal, que este design cobre. O resíduo fica nomeado em "Fora de escopo".
 
+- **Emenda de D1 a D3 (revisão 1, 2026-11-13).** O revisor rodou o gate com payload real e achou estas formas saindo 0:
+  - `gh` na linha seguinte a um heredoc de delimitador entre aspas;
+  - heredoc que reescreve um `--body-file` que já existe;
+  - `bash -c`, `sh -c` e `eval`;
+  - `--body "$(cat <<'EOF' ... EOF)"` (a forma canônica de corpo de PR) e crase de markdown no corpo;
+  - here-string do PowerShell;
+  - `close`/`reopen` com `--comment`.
+
+  Daí:
+  - o comando é segmentado **cru**, e os wrappers de string são desempacotados;
+  - o texto **literal** do valor de `--title`/`--body`/`--subject`/`--comment` conta sempre, com `$(...)` ou crase dentro;
+  - quando o segmento tem `--body-file`, todo heredoc e here-string do comando conta, exista o arquivo ou não;
+  - `issue|pr close|reopen --comment` entra no D1.
+
+  O D3 fica só para o que **não está escrito no comando**: valor de variável, saída de programa, arquivo de `--body-file` com variável no caminho sem corpo embutido. Também passa a valer o cwd incerto só quando o comando muda de diretório (`cd`, `pushd`, `Set-Location`, `-C`): `{ gh ...; }` num repositório privado não barra.
+
 - **D4 — Repositório de destino.**
   - **Com `--repo`/`-R`:** com `owner/repo` (ou URL `https://github.com/owner/repo`), a visibilidade é a desse repositório, por `visibilidadeDeUmRepo`.
   - **Sem `--repo`:** é a do repositório git do `cwd`, por `visibilidadeDoRepo(gitTop)`, que já falha fechada quando há qualquer remoto público.

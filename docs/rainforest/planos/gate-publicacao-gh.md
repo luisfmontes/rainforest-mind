@@ -186,10 +186,58 @@ Segunda revisão de segurança (2026-11-13). Menção que não chega ao `gh` lib
 
 Emenda de 2026-11-13, mesma origem da tarefa 4. O `gh` usa `GH_REPO` como `--repo` quando a flag falta, então ele entra na mesma precedência do D4: `--repo` primeiro, depois `GH_REPO`.
 
+### 6. Segmentação crua e wrappers de string [tipo: implementar]
+atende: D1, D2
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 5
+busca:
+- repo | grep -n "function desempacotarWrapperDeString" hooks/lib/tokens-comando.cjs | desempacota bash -c, sh -c, eval e powershell -Command (:841)
+desfecho: compor
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `    empilhar(cmd, 0);`
+  para: `    empilhar(mascarado, 0);`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 gh na linha depois de heredoc com aspas barra"`
+prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse `Bash`, repositório público:
+- `cat > n.md <<'EOF'` + `limpo` + `EOF` + `gh issue create --title termo702 --body x`, em linhas separadas, sai 2;
+- `bash -c "gh issue create --title t --body termo702"`, `sh -c '...'` e `eval "..."` saem 2;
+- `{ gh issue create --title termo702 --body x; }` num repositório privado, sem `cd` no comando, sai 0.
+
+Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+Forma prescrita:
+- `conferirGh` segmenta o comando CRU, por uma função local `empilhar(texto, profundidade)`. Para cada segmento de `segmentosParaGate(texto)`, ela guarda o segmento e, até a profundidade 4, empilha o `interno` de `desempacotarWrapperDeString(seg.trim(), { ferramenta })`.
+- `cwdPorSegmento` roda sobre o comando cru.
+- `cwdsDoSegmentoGh` recebe o comando e só marca `incerto` quando `MUDA_DIRETORIO` casa com ele.
+
+### 7. Texto literal, corpos embutidos e close/reopen --comment [tipo: implementar]
+atende: D1, D2, D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 6
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `      textos.push({ origem: chave, texto: valor });`
+  para: `      if (!/[$\x60]/.test(valor)) textos.push({ origem: chave, texto: valor });`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --body com heredoc em subst de comando barra"`
+prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse, repositório público, saem 2:
+- `--body "$(cat <<'EOF'` + `termo702 aqui` + `EOF` + `)"`;
+- `--body 'veja \`termo702\` aqui'`;
+- `--body-file -` com heredoc;
+- heredoc que reescreve um `--body-file` existente e limpo;
+- here-string do PowerShell com `--body-file`;
+- `gh pr close 5 --comment termo702`;
+- `gh issue reopen 5 -c termo702`.
+
+Saem 0: `gh pr close 5 -c limpo` e `gh pr review 5 -c -b limpo` (`-c` é booleana no `review`). Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
 ### 3. Versão 2.13.3, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 4, 5
+depende de: 1, 2, 4, 5, 6, 7
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:

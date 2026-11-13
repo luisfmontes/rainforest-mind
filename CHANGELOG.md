@@ -12,7 +12,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 2.13.3 — 2026-11-13
 
-- **O gate de publicação passa a conferir o texto de `gh issue` e `gh pr`.** Até aqui ele só via o que virava arquivo versionado (`Write`/`Edit` e `git commit`). O título, o corpo e o comentário de `gh issue create|comment|edit` e `gh pr create|comment|edit|review|merge` saíam sem conferência, e uma Issue pública chegou a sair com um termo da lista privada no corpo (Issue #702). O GitHub guarda o histórico de edição, então corrigir depois não apaga. Agora o gate lê `--title`, `--body`, o `--subject` do merge, o arquivo do `--body-file`/`-F` e o heredoc que cria esse arquivo no mesmo comando, no Bash e no PowerShell. O destino é o `--repo` quando ele vem no comando, e o repositório do diretório quando não vem. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. Corpo que só se resolve na hora (`--body-file $f`, `--body "$(...)"`) não é conferido.
+- **O gate de publicação passa a conferir o texto de `gh issue` e `gh pr`.** Até aqui ele só via o que virava arquivo versionado (`Write`/`Edit` e `git commit`). O título, o corpo e o comentário de `gh issue create|comment|edit` e `gh pr create|comment|edit|review|merge` saíam sem conferência, e uma Issue pública chegou a sair com um termo da lista privada no corpo (Issue #702). O GitHub guarda o histórico de edição, então corrigir depois não apaga. Agora o gate lê `--title`, `--body`, o `--subject` do merge, o `--comment` de `close`/`reopen`, o arquivo do `--body-file`/`-F` e todo heredoc ou here-string do mesmo comando, no Bash, no PowerShell e dentro de `bash -c`/`sh -c`/`eval`. O texto escrito no comando conta mesmo dentro de `"$(...)"`, que é a forma de rotina do corpo de PR. O destino é, nesta ordem:
+  - o `--repo`;
+  - o `GH_REPO` do próprio comando;
+  - o repositório do diretório em que o `gh` roda, que conta o `cd` antes dele;
+  - o `GH_REPO` da sessão.
+
+  Havendo mais de um destino possível, o pior decide. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. O que não está escrito no comando (valor de variável, saída de programa) não é conferido.
 
 ## 2.13.2 — 2026-11-12
 

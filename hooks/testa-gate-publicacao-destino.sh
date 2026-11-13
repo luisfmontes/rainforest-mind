@@ -882,6 +882,26 @@ confere702 "GH_REPO depois do gh nao conta" 2 "" Bash "$R702" 'gh issue create -
 confere702 "PowerShell \$env:GH_REPO publico barra" 2 "" PowerShell "$R702P" '$env:GH_REPO = "dono/publico"; gh issue create --title termo702 --body x'
 GH702="node $SANDBOX_BIN/gh"
 
+# Revisao 1 do fluxo gate-publicacao-gh (2026-11-13): achados com payload real
+confere702 "gh na linha depois de heredoc com aspas barra" 2 "$PUB" Bash "$R702" $'cat > n.md <<\'EOF\'\nlimpo\nEOF\ngh issue create --title termo702 --body x'
+confere702 "heredoc com termo e gh --body-file na linha seguinte barra" 2 "$PUB" Bash "$R702" $'cat > n.md <<\'EOF\'\ntermo702\nEOF\ngh pr create --title t --body-file n.md'
+printf 'texto limpo\n' > "$R702/limpo.md"
+confere702 "heredoc reescreve --body-file existente e limpo barra" 2 "$PUB" Bash "$R702" $'cat > limpo.md <<\'EOF\' && gh issue create --title t --body-file limpo.md\ntermo702 novo\nEOF'
+confere702 "bash -c com gh barra" 2 "$PUB" Bash "$R702" 'bash -c "gh issue create --title t --body termo702"'
+confere702 "sh -c com gh barra" 2 "$PUB" Bash "$R702" "sh -c 'gh pr comment 5 -b termo702'"
+confere702 "eval com gh barra" 2 "$PUB" Bash "$R702" 'eval "gh issue create --title termo702 --body x"'
+confere702 "--body com heredoc em subst de comando barra" 2 "$PUB" Bash "$R702" $'gh pr create --title t --body "$(cat <<\'EOF\'\ntermo702 aqui\nEOF\n)"'
+confere702 "--body com crase de markdown barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body 'veja \`termo702\` aqui'"
+confere702 "--body-file - com heredoc barra" 2 "$PUB" Bash "$R702" $'gh issue create --title t --body-file - <<\'EOF\'\ntermo702\nEOF'
+confere702 "PowerShell here-string com --body-file barra" 2 "$PUB" PowerShell "$R702" $'@\'\ntermo702\n\'@ | Set-Content x.md; gh issue create --title t --body-file x.md'
+confere702 "pr close --comment barra" 2 "$PUB" Bash "$R702" 'gh pr close 5 --comment termo702'
+confere702 "issue reopen -c barra" 2 "$PUB" Bash "$R702" 'gh issue reopen 5 -c termo702'
+confere702 "pr close -c limpo passa" 0 "$PUB" Bash "$R702" 'gh pr close 5 -c limpo'
+confere702 "pr review -c booleana com corpo limpo passa" 0 "$PUB" Bash "$R702" 'gh pr review 5 -c -b limpo'
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "gh entre chaves em cwd privado sem cd passa" 0 "" Bash "$R702P" '{ gh issue create --title termo702 --body x; }'
+GH702="node $SANDBOX_BIN/gh"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
