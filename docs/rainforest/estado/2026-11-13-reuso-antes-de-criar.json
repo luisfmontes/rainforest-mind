@@ -18,10 +18,10 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "tarefas_ok": 12,
+    "tarefas": 12,
     "carimbos": [
       {
         "tarefa": 1,
@@ -141,11 +141,32 @@
         "iteracao": 1,
         "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
         "ts": "2026-11-13T14:36:54.451Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "8acfbbd",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:02:18.037Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "8acfbbd",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:02:18.037Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "fab5e27",
+        "iteracao": 2,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:14:35.006Z"
       }
     ],
     "em": "2026-11-13",
     "comando": "bash scripts/testa-conferir-busca.sh; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-teto-skills.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-conferir-fluxo.sh",
-    "saida": "total=54 vermelhas:[] | ok: 201 falhou: 0 | 21 OK, 0 FALHA | ok: 57 falhou: 0 | ok: 142 falhou: 0",
+    "saida": "total=58 vermelhas:[] | baseline VERDE 206 ok | 21 OK, 0 FALHA | ok: 57 falhou: 0 | ok: 142 falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -196,6 +217,16 @@
         "tarefa": 10,
         "resultado": "n/a",
         "motivo": "tarefa so reescreve doc"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (p)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 22b"
       }
     ]
   },
