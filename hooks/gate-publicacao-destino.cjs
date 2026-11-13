@@ -1113,7 +1113,7 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
   // cru tem: um `gh` perdido depois de outro achado escapava (revisão 4).
   // Contado sobre o texto com `\` + quebra de linha juntos, como o bash e o
   // segmentador leem; qualquer diferença, para mais ou para menos, roda a rede.
-  const nCru = (cmd.replace(/\\\r?\n/g, " ").match(GH_TEXTO_CRU_G) || []).length;
+  const nCru = (juntarContrabarra(cmd).match(GH_TEXTO_CRU_G) || []).length;
   if (ghTextoSegmentos !== nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
 }
 
@@ -1127,7 +1127,15 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
  */
 const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?\b(issue|pr)\s+(create|new|comment|edit|close|reopen|review|merge)\b/i;
 const GH_TEXTO_CRU_G = new RegExp(GH_TEXTO_CRU.source, "gi");
-function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
+/** Junta contrabarra + quebra de linha, como o bash lê. */
+function juntarContrabarra(cmd) {
+  return cmd.replace(/\\\r?\n/g, " ");
+}
+
+function conferirGhPerdido(cmdOriginal, cwdDoEvento, agente, conferirMemo) {
+  // O texto lido pela rede tem contrabarra + quebra juntas, o mesmo da
+  // contagem: `gh \<quebra> issue ...` não escapa dela (revisão de segurança).
+  const cmd = juntarContrabarra(cmdOriginal);
   const m = cmd.match(GH_TEXTO_CRU);
   if (!m) return;
   const res = conferirMemo(cmd);

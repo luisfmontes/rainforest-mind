@@ -948,10 +948,13 @@ confere702 "continuacao do PowerShell com --body-file na linha de baixo barra" 2
 confere702 "gh perdido depois de outro gh achado barra" 2 "$PUB" Bash "$R702" "gh issue close 1 --comment ok; echo it\'s; gh issue comment 3 -F corpo.md"
 confere702 "JID em heredoc do --body-file barra" 2 "$PUB" Bash "$R702" $'cat > n.md <<\'EOF\'\nveja 5511999998888@s.whatsapp.net\nEOF\ngh issue create --title t --body-file n.md'
 mkdir -p "$R702/sp"; printf 'termo702\n' > "$R702/sp/a b.md"
-confere702 "rede le --body-file entre aspas com espaco" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title t --body-file \"sp/a b.md\""GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "rede le --body-file entre aspas com espaco" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title t --body-file \"sp/a b.md\""
+GH702="node $SANDBOX_BIN/gh-por-nome"
 confere702 "crase e quebra dentro de aspas simples no PowerShell nao libera cwd publico" 2 "" PowerShell "$R702" $'gh issue create --title \'a`\n--repo dono/priv\' --body termo702'
-confere702 "contrabarra e quebra no bash com --repo privado de cwd publico barra (falha fechada)" 2 "" Bash "$R702" $'gh \\\nissue create --repo dono/priv --title termo702 --body x'
+confere702 "contrabarra e quebra no bash com --repo privado passa" 0 "" Bash "$R702" $'gh \\\nissue create --repo dono/priv --title termo702 --body x'
 GH702="node $SANDBOX_BIN/gh"
+GH702="node $SANDBOX_BIN/gh"
+confere702 "gh partido por contrabarra e perdido pela segmentacao barra" 2 "$PUB" Bash "$R702" $'echo it\\\'s; gh \\\nissue comment 3 -F corpo.md'
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
