@@ -26,6 +26,8 @@
 #      recuada dentro da classe fica de fora; a Class continua saindo.
 #  21. advpl: Method com parêntese aninhado, retorno composto (as ... Of ...), classe com ponto e
 #      continuação com ; (a linha de baixo junta no lugar do ;; a entrada sai na primeira linha).
+#  22. advpl: cadeia de 3000 linhas com ; termina em menos de 20 s; a definição da linha 1 sai
+#      uma vez, e a juntada para no teto de MAX_CONTINUACAO.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -764,6 +766,19 @@ linha "retorno as ... Of ... entra como Foo:Qux na linha 3" "$T21" "lib/extra.tl
 linha "classe com ponto entra como Foo.Sub:Corge na linha 5" "$T21" "lib/extra.tlpp:5:Foo.Sub:Corge:advpl"
 linha "continuação com ; junta e entra como Foo:Quux na linha 7" "$T21" "lib/extra.tlpp:7:Foo:Quux:advpl"
 nao "nenhuma entrada na linha 8 (continuação)" "$T21" "lib/extra.tlpp:8:"
+
+echo "== 22. advpl: cadeia de 3000 linhas com ; termina em menos de 20 s =="
+# Fixture montada por laço do shell (3000 linhas não cabem no argumento do node). Sem o teto de
+# MAX_CONTINUACAO, a juntada da linha 1 e de cada linha da cadeia cresce até o fim do arquivo.
+FX22="$SBP/fixture-advpl-22"
+mkdir -p "$FX22/lib"
+{ echo 'User Function Grande()'; for _ in $(seq 3000); do echo '  cSql += "x" + ;'; done; echo '  "y"'; } > "$FX22/lib/longo.prw"
+montar_repo "$FX22" || { echo "FALHA: montar_repo advpl 22"; exit 1; }
+timeout 20 node "$CAT" listar --raiz "$(winpath "$FX22")" > "$SBP/c22.json" 2> "$SBP/e22.txt"; EXIT=$?
+saiu "listar do fixture advpl 22 sai 0 em menos de 20 s" "$EXIT" 0
+T22="$(tuplas < "$SBP/c22.json")"
+igual "exatamente uma entrada para lib/longo.prw" "$(grep -c '^lib/longo.prw:' <<<"$T22")" "1"
+linha "Grande entra na linha 1" "$T22" "lib/longo.prw:1:Grande:advpl"
 
 echo
 echo "ok: $ok   falhou: $falhou"

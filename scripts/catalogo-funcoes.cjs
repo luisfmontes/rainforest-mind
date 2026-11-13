@@ -51,6 +51,8 @@ const { baseDoDiff } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achad
 
 const DIRETORIOS_GERADOS = new Set(['node_modules', 'build', 'dist', '.dart_tool', '.git']);
 const MAX_CAMINHO_ASSINATURA = 200;
+const INICIO_ADVPL = /^\s*(?:method|class|(?:static\s+|user\s+)?function)\b/i;
+const MAX_CONTINUACAO = 50;
 
 const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|variacao|novas|separar|conferir> [opções]
   listar   [--raiz <dir>] [--contexto N] [--incluir-testes]
@@ -173,7 +175,7 @@ function definicoesDoArquivo(raiz, rel, contextoN) {
 function juntarContinuacao(linhas, i) {
   let juntada = linhas[i];
   let j = i;
-  while (/;\s*$/.test(juntada) && j + 1 < linhas.length) {
+  while (/;\s*$/.test(juntada) && j + 1 < linhas.length && j - i < MAX_CONTINUACAO) {
     j++;
     juntada = juntada.replace(/\s*;\s*$/, ' ') + linhas[j].trim();
   }
@@ -186,7 +188,7 @@ function definicoesDoTexto(texto, linguagem, contextoN) {
   const conjuntos = ['dart', 'js', 'advpl'].includes(linguagem) ? ['topo', 'metodo'] : ['topo'];
   const achados = [];
   linhas.forEach((linha, i) => {
-    const casavel = linguagem === 'advpl' ? juntarContinuacao(linhas, i) : linha;
+    const casavel = linguagem === 'advpl' && INICIO_ADVPL.test(linha) ? juntarContinuacao(linhas, i) : linha;
     for (const conjunto of conjuntos) {
       const nome = casar(casavel, linguagem, conjunto);
       if (!nome) continue;
