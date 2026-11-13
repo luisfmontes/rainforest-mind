@@ -36,6 +36,12 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
   - **Sem `--repo` e fora de repo git:** passa, porque o `gh` não teria destino.
   - **Valor de `--repo` ilegível** (variável): conta como `desconhecida`.
 
+  - **Emenda de 2026-11-13** (revisões de segurança do commit):
+    - o cwd é o do segmento (`cd` antes do `gh` conta);
+    - o `GH_REPO` vale como o `gh` o usa: prefixo do comando, depois o ambiente da sessão;
+    - menção a `GH_REPO` antes do segmento entra ao lado do cwd, nunca no lugar dele;
+    - com mais de um destino possível, o pior decide.
+
   `privada` passa. `desconhecida` barra, e o filtro de `declaradaPrivada` só vale quando o destino é o repositório do `cwd`. — porquê: é a mesma regra de visibilidade do resto do gate. `--repo` é o caso comum de sessão de cliente abrindo Issue aqui (regra 6), e o `cwd` dela é o repositório privado do cliente.
 
 - **D5 — Achados conferidos: todos os de `conferirConteudo`, sem isenção de marcador.** *(suposição)* O `rainforest-gate: dados-de-exemplo` não dispensa texto de `gh`. — porquê: Issue pública com telefone é tão pública quanto arquivo. O marcador existe para fixture de teste versionada, que não sai por `gh`. Para falso positivo, a saída é a de sempre: `setup.cjs --desligar gate-publicacao` ou `RAINFOREST_GATE_OFF`.

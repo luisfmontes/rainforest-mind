@@ -867,7 +867,11 @@ confere702 "cd para repo publico antes do gh barra" 2 "" Bash "$R702P" "cd $R702
 confere702 "cd para repo privado antes do gh passa" 0 "" Bash "$R702" "cd $R702PE && gh issue create --title termo702 --body x"
 confere702 "cd com variavel antes do gh barra (incerto)" 2 "" Bash "$R702P" 'cd $X && gh issue create --title termo702 --body x'
 confere702 "GH_REPO publico no prefixo barra" 2 "" Bash "$R702P" 'GH_REPO=dono/publico gh issue create --title termo702 --body x'
-confere702 "export GH_REPO privado antes do gh passa" 0 "" Bash "$R702" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "export GH_REPO privado a partir de cwd privado passa" 0 "" Bash "$R702P" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "export GH_REPO privado a partir de cwd publico barra (mencao so aperta)" 2 "" Bash "$R702" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "GH_REPO privado so citado num echo nao libera cwd publico" 2 "" Bash "$R702" 'echo GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "GH_REPO repetido no prefixo, um publico, barra" 2 "" Bash "$R702P" 'GH_REPO=dono/priv GH_REPO=dono/publico gh issue create --title termo702 --body x'
+confere702 "segmento gh repetido em cwd privado e publico barra" 2 "" Bash "$R702P" "cd $R702PE && gh issue create --title termo702 --body x; cd $R702E && gh issue create --title termo702 --body x"
 confere702 "GH_REPO depois do gh nao conta" 2 "" Bash "$R702" 'gh issue create --title termo702 --body x; export GH_REPO=dono/priv'
 confere702 "PowerShell \$env:GH_REPO publico barra" 2 "" PowerShell "$R702P" '$env:GH_REPO = "dono/publico"; gh issue create --title termo702 --body x'
 GH702="node $SANDBOX_BIN/gh"

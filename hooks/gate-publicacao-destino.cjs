@@ -805,7 +805,10 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
   if (iGh === -1) return null;
 
-  let repoValor = repoDoAmbiente(toks.slice(0, iGh), cmdOriginal, segmento);
+  // `GH_REPO=x gh ...` (ou `env GH_REPO=x gh ...`): prefixo do próprio comando.
+  const repoPrefixo = toks.slice(0, iGh).filter((t) => /^GH_REPO=/.test(t))
+    .map((t) => normalizarRepoAlvo(t.slice("GH_REPO=".length)) || "?");
+  let repoValor = null;
   const posicionais = [];
   let i = iGh + 1;
   for (; i < toks.length && posicionais.length < 2; i += 1) {
@@ -864,7 +867,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
       }
     }
   }
-  return { familia, verbo, textos, repoAlvo: normalizarRepoAlvo(repoValor) };
+  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoPrefixo };
 }
 
 function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
@@ -884,58 +887,82 @@ function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) 
 }
 
 /**
- * O `GH_REPO` que vale para o `gh` deste segmento, no lugar de um `--repo`
- * ausente: prefixo do próprio comando (`GH_REPO=o/r gh ...`, `env GH_REPO=...`),
- * atribuição ANTES do segmento (`export GH_REPO=...`, `$env:GH_REPO = ...`) ou o
- * ambiente da sessão. Sem ele, o destino seria lido do cwd e um repositório
- * público passaria como o privado do diretório (revisão de segurança, 2026-11-13).
+ * Todo `GH_REPO` mencionado ANTES do segmento (`export GH_REPO=...`,
+ * `$env:GH_REPO = ...`, ou só citado num `echo`). Quem lê texto de shell não
+ * sabe se a atribuição chega ao `gh` (subshell, `unset`, prefixo de outro
+ * comando), então a menção só pode deixar o gate MAIS rígido: os valores
+ * mencionados entram como destinos possíveis AO LADO do repositório do cwd,
+ * nunca no lugar dele (revisão de segurança, 2026-11-13). Procura até a ÚLTIMA
+ * ocorrência do segmento: com texto repetido, inclui mais menções, que só
+ * apertam.
  */
-function repoDoAmbiente(prefixo, cmdOriginal, segmento) {
-  for (const t of prefixo) {
-    const m = t.match(/^GH_REPO=(.*)$/);
-    if (m) return m[1];
-  }
-  const cmd = String(cmdOriginal);
-  const pos = cmd.indexOf(segmento.trim());
-  const antes = pos === -1 ? cmd : cmd.slice(0, pos);
-  const atribuicoes = [
-    ...antes.matchAll(/(?:^|[\s;&|(])(?:export\s+)?GH_REPO=("[^"]*"|'[^']*'|[^\s;&|]+)/g),
-    ...antes.matchAll(/\$env:GH_REPO\s*=\s*("[^"]*"|'[^']*'|[^\s;&|]+)/gi),
-  ].sort((a, b) => a.index - b.index);
-  if (atribuicoes.length) return atribuicoes[atribuicoes.length - 1][1].replace(/^["']|["']$/g, "");
-  return process.env.GH_REPO || null;
+function mencoesDeGhRepo(mascarado, segmento) {
+  const pos = mascarado.lastIndexOf(segmento.trim());
+  const antes = pos === -1 ? mascarado : mascarado.slice(0, pos);
+  return [
+    ...antes.matchAll(/GH_REPO\s*=\s*("[^"]*"|'[^']*'|[^\s;&|)]*)/gi),
+  ].map((m) => normalizarRepoAlvo(m[1].replace(/^["']|["']$/g, "")) || "?");
 }
 
 /**
- * O cwd em que ESTE segmento roda: `cd outro-repo && gh issue create` publica
- * no repositório do `cd`, não no do evento. Segmento de dentro de `"$(...)"`
- * (que `cwdPorSegmento` não separa) herda o cwd do segmento que o contém; sem
- * correspondência, incerto.
+ * Os cwds em que ESTE segmento pode rodar: `cd outro-repo && gh issue create`
+ * publica no repositório do `cd`, não no do evento. Segmento com texto repetido
+ * no comando casa com TODAS as ocorrências, e todas são conferidas. Segmento de
+ * dentro de `"$(...)"` (que `cwdPorSegmento` não separa) herda o cwd de quem o
+ * contém. Sem correspondência, incerto.
  */
-function cwdDoSegmentoGh(mapa, segmento, cwdDoEvento) {
+function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento) {
   const s = segmento.trim();
-  const item = mapa.find((m) => m.seg.trim() === s) || mapa.find((m) => m.seg.includes(s));
-  return item ? { cwd: item.cwd, incerto: Boolean(item.incerto) } : { cwd: cwdDoEvento, incerto: true };
+  let itens = mapa.filter((m) => m.seg.trim() === s);
+  if (itens.length === 0) itens = mapa.filter((m) => m.seg.includes(s));
+  if (itens.length === 0) return [{ cwd: cwdDoEvento, incerto: true }];
+  return itens.map((m) => ({ cwd: m.cwd, incerto: Boolean(m.incerto) }));
+}
+
+/**
+ * Para onde o `gh` deste segmento pode publicar, em ordem de precedência do
+ * próprio `gh`: `--repo`; senão `GH_REPO` no prefixo do comando (todos, se
+ * repetido); senão o cwd, somado a toda menção de `GH_REPO` antes do segmento;
+ * senão o `GH_REPO` do ambiente da sessão; senão o cwd.
+ */
+function destinosDoSegmentoGh(r, locais, mencoes) {
+  if (r.repoFlag) return [{ repo: r.repoFlag }];
+  if (r.repoPrefixo.length) return r.repoPrefixo.map((v) => ({ repo: v }));
+  if (mencoes.length) return [...mencoes.map((v) => ({ repo: v })), ...locais];
+  if (process.env.GH_REPO) return [{ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" }];
+  return locais;
+}
+
+const PESO_VISIBILIDADE = { privada: 0, "desconhecida-declarada": 1, desconhecida: 2, publica: 3 };
+
+/** Visibilidade de um destino; `null` quando o cwd não é repositório (o `gh` não publicaria). */
+function visibilidadeDoDestino(d) {
+  if (d.repo) return visibilidadeDoAlvo(d.repo);
+  if (d.incerto) return "desconhecida";
+  const gitTop = git(d.cwd, ["rev-parse", "--show-toplevel"]);
+  if (!gitTop) return null;
+  const v = visibilidadeDoRepo(gitTop);
+  return v === "desconhecida" && declaradaPrivada(gitTop) ? "desconhecida-declarada" : v;
 }
 
 function conferirGh(ev, cwdDoEvento, agente) {
   const cmd = ev.tool_input && ev.tool_input.command;
   if (typeof cmd !== "string" || !/\bgh\b/i.test(cmd)) return;
-  let segmentos, mapa;
+  let segmentos, mapa, mascarado;
   try {
     const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
     const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
     const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
     // A máscara vem antes: sobre heredoc cru, `segmentosParaGate` cola no último
     // token o último caractere do delimitador (`novo.md` vira `novo.mdF`).
-    const mascarado = mascararCorposDeHeredoc(cmd);
+    mascarado = mascararCorposDeHeredoc(cmd);
     segmentos = segmentosParaGate(mascarado);
     mapa = cwdPorSegmento(mascarado, cwdDoEvento, ev.tool_name === "PowerShell");
   } catch { return; }
 
   for (const segmento of segmentos) {
-    const local = cwdDoSegmentoGh(mapa, segmento, cwdDoEvento);
-    const r = textosDoSegmentoGh(segmento, cmd, local.cwd);
+    const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento);
+    const r = textosDoSegmentoGh(segmento, cmd, locais[0].cwd);
     if (!r || r.textos.length === 0) continue;
     let achados = [];
     for (const { origem, texto } of r.textos) {
@@ -944,18 +971,16 @@ function conferirGh(ev, cwdDoEvento, agente) {
     }
     if (achados.length === 0) continue;
 
-    const gitTop = git(local.cwd, ["rev-parse", "--show-toplevel"]);
-    const repoAlvo = r.repoAlvo;
-    if (!repoAlvo && local.incerto) {
-      // Não se sabe em que repositório o `gh` roda: falha fechada, como o resto do gate.
-      process.stderr.write(mensagemBloqueioGh(achados, r.familia, r.verbo, Boolean(agente), "desconhecida"));
-      process.exit(2);
+    // Falha fechada: o pior destino possível decide.
+    let pior = null;
+    for (const d of destinosDoSegmentoGh(r, locais, mencoesDeGhRepo(mascarado, segmento))) {
+      const v = visibilidadeDoDestino(d);
+      if (v !== null && (pior === null || PESO_VISIBILIDADE[v] > PESO_VISIBILIDADE[pior])) pior = v;
     }
-    if (!repoAlvo && !gitTop) continue; // sem destino, o gh não publica
-    const vis = repoAlvo ? visibilidadeDoAlvo(repoAlvo) : visibilidadeDoRepo(gitTop);
-    if (vis === "privada") continue;
-    if (vis === "desconhecida" && !repoAlvo && declaradaPrivada(gitTop)) achados = achados.filter((a) => a.id !== "termo-privado");
+    if (pior === null || pior === "privada") continue; // sem destino, ou só privado
+    if (pior === "desconhecida-declarada") achados = achados.filter((a) => a.id !== "termo-privado");
     if (achados.length === 0) continue;
+    const vis = pior === "publica" ? "publica" : "desconhecida";
     process.stderr.write(mensagemBloqueioGh(achados, r.familia, r.verbo, Boolean(agente), vis));
     process.exit(2);
   }

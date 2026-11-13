@@ -113,8 +113,8 @@ busca:
 desfecho: estender
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `const vis = repoAlvo ? visibilidadeDoAlvo(repoAlvo) : visibilidadeDoRepo(gitTop);`
-  para: `const vis = visibilidadeDoRepo(gitTop);`
+  de: `if (r.repoFlag) return [{ repo: r.repoFlag }];`
+  para: `if (false) return [{ repo: r.repoFlag }];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --repo dono/publico a partir de cwd privado barra"`
 prova: `grep -q "function visibilidadeDoAlvo" hooks/gate-publicacao-destino.cjs`
@@ -149,8 +149,8 @@ busca:
 desfecho: compor
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `const local = cwdDoSegmentoGh(mapa, segmento, cwdDoEvento);`
-  para: `const local = { cwd: cwdDoEvento, incerto: false };`
+  de: `const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento);`
+  para: `const locais = [{ cwd: cwdDoEvento, incerto: false }];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd para repo publico antes do gh barra"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
@@ -164,18 +164,22 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 4
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `let repoValor = repoDoAmbiente(toks.slice(0, iGh), cmdOriginal, segmento);`
-  para: `let repoValor = null;`
+  de: `if (r.repoPrefixo.length) return r.repoPrefixo.map((v) => ({ repo: v }));`
+  para: `if (false) return r.repoPrefixo.map((v) => ({ repo: v }));`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO publico no prefixo barra"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse com o dublê `gh-por-nome`, todos com o termo no título:
 - `GH_REPO=dono/publico gh issue create ...` a partir do repositório privado sai 2.
-- `export GH_REPO=dono/priv; gh issue create ...` a partir do público sai 0.
+- `export GH_REPO=dono/priv; gh issue create ...` a partir do privado sai 0. A partir do público sai 2, porque uma menção antes do segmento entra AO LADO do cwd e só aperta: quem lê o texto não sabe se a atribuição chega ao `gh`.
+- `echo GH_REPO=dono/priv; gh issue create ...` a partir do público sai 2.
+- `GH_REPO=dono/priv GH_REPO=dono/publico gh issue create ...` sai 2: com prefixo repetido, o pior destino decide.
 - `gh issue create ...; export GH_REPO=dono/priv` a partir do público sai 2, porque a atribuição depois do `gh` não conta.
 - No PowerShell, `$env:GH_REPO = "dono/publico"; gh issue create ...` a partir do privado sai 2.
 
 Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+Segunda revisão de segurança (2026-11-13). Menção que não chega ao `gh` liberava o cwd público, e segmento de texto repetido usava só a primeira ocorrência. Desde então todos os destinos possíveis são conferidos e o pior decide. A tarefa 4 confere todas as ocorrências do segmento (caso `segmento gh repetido em cwd privado e publico barra`).
 
 Emenda de 2026-11-13, mesma origem da tarefa 4. O `gh` usa `GH_REPO` como `--repo` quando a flag falta, então ele entra na mesma precedência do D4: `--repo` primeiro, depois `GH_REPO`.
 
