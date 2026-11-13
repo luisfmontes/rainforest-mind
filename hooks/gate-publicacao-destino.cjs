@@ -867,7 +867,14 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
       }
     }
   }
-  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoPrefixo };
+  // O prefixo só manda sozinho quando tudo antes do `gh` é atribuição pura
+  // (`A=b gh`, `env A=b gh`): `env -u`, `sudo` e afins podem mudar o ambiente
+  // que chega ao `gh`, e aí o prefixo vira só mais um destino possível.
+  const antesDoGh = toks.slice(0, iGh);
+  const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
+  const prefixoLimpo = antesDoGh.every(ehAtribuicao)
+    || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
+  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoPrefixo, prefixoLimpo };
 }
 
 function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
@@ -927,9 +934,12 @@ function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento) {
  */
 function destinosDoSegmentoGh(r, locais, mencoes) {
   if (r.repoFlag) return [{ repo: r.repoFlag }];
-  if (r.repoPrefixo.length) return r.repoPrefixo.map((v) => ({ repo: v }));
-  if (mencoes.length) return [...mencoes.map((v) => ({ repo: v })), ...locais];
-  if (process.env.GH_REPO) return [{ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" }];
+  const prefixo = r.repoPrefixo.map((v) => ({ repo: v }));
+  if (prefixo.length && r.prefixoLimpo) return prefixo;
+  const ambiente = process.env.GH_REPO ? [{ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" }] : [];
+  // Prefixo com wrapper, ou menção antes do segmento: tudo entra junto, e o pior decide.
+  if (prefixo.length || mencoes.length) return [...prefixo, ...mencoes.map((v) => ({ repo: v })), ...locais, ...ambiente];
+  if (ambiente.length) return ambiente;
   return locais;
 }
 
@@ -962,13 +972,20 @@ function conferirGh(ev, cwdDoEvento, agente) {
 
   for (const segmento of segmentos) {
     const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento);
-    const r = textosDoSegmentoGh(segmento, cmd, locais[0].cwd);
-    if (!r || r.textos.length === 0) continue;
+    // O `--body-file` relativo se lê contra CADA cwd possível do segmento, e os
+    // achados se somam: com o segmento repetido, cada ocorrência lê o seu.
+    let r = null;
     let achados = [];
-    for (const { origem, texto } of r.textos) {
-      const res = conferirConteudo(texto);
-      if (res && res.achados) for (const a of res.achados) achados.push({ ...a, origem });
+    for (const local of locais) {
+      const ri = textosDoSegmentoGh(segmento, cmd, local.cwd);
+      if (!ri) break; // não é `gh` de texto, em cwd nenhum
+      if (!r) r = ri;
+      for (const { origem, texto } of ri.textos) {
+        const res = conferirConteudo(texto);
+        if (res && res.achados) for (const a of res.achados) achados.push({ ...a, origem });
+      }
     }
+    if (!r) continue;
     if (achados.length === 0) continue;
 
     // Falha fechada: o pior destino possível decide.

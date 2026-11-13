@@ -812,7 +812,7 @@ confere702() { # nome, exit esperado, GH_RESPONSE, tool_name, cwd, command
   rm -f "$D702/cache-visibilidade-repo.json"
   local p s rc
   p=$(pay702 "$4" "$(esc "$5")" "$6")
-  s=$(printf '%s' "$p" | env -u GH_REPO HOME="$H702" RFM_ROOT="$D702" GH_RESPONSE="$3" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); rc=$?
+  s=$(printf '%s' "$p" | env -u GH_REPO ${SESSAO_GH_REPO:+GH_REPO="$SESSAO_GH_REPO"} HOME="$H702" RFM_ROOT="$D702" GH_RESPONSE="$3" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); rc=$?
   S702="$s"
   if [ "$rc" = "$2" ]; then ok=$((ok+1)); echo "  ok   702 $1 (exit $rc)"
   else falhou=$((falhou+1)); echo "  FALHA 702 $1: esperava $2, veio $rc"; echo "$s" | sed 's/^/         /' | head -10; fi
@@ -870,6 +870,12 @@ confere702 "GH_REPO publico no prefixo barra" 2 "" Bash "$R702P" 'GH_REPO=dono/p
 confere702 "export GH_REPO privado a partir de cwd privado passa" 0 "" Bash "$R702P" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
 confere702 "export GH_REPO privado a partir de cwd publico barra (mencao so aperta)" 2 "" Bash "$R702" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
 confere702 "GH_REPO privado so citado num echo nao libera cwd publico" 2 "" Bash "$R702" 'echo GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "GH_REPO privado no prefixo libera cwd publico" 0 "" Bash "$R702" 'GH_REPO=dono/priv gh issue create --title termo702 --body x'
+confere702 "GH_REPO privado no prefixo com env -u nao libera cwd publico" 2 "" Bash "$R702" 'env -u X GH_REPO=dono/priv gh issue create --title termo702 --body x'
+SESSAO_GH_REPO=dono/publico confere702 "GH_REPO publico da sessao com mencao privada antes barra" 2 "" Bash "$R702P" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+mkdir -p "$R702P/sub"; printf 'nada
+' > "$R702P/corpo.md"
+confere702 "segmento repetido le o --body-file de cada cwd" 2 "" Bash "$R702P" "cd $R702PE && gh issue create --title t --body-file corpo.md; cd $R702E && gh issue create --title t --body-file corpo.md"
 confere702 "GH_REPO repetido no prefixo, um publico, barra" 2 "" Bash "$R702P" 'GH_REPO=dono/priv GH_REPO=dono/publico gh issue create --title termo702 --body x'
 confere702 "segmento gh repetido em cwd privado e publico barra" 2 "" Bash "$R702P" "cd $R702PE && gh issue create --title termo702 --body x; cd $R702E && gh issue create --title termo702 --body x"
 confere702 "GH_REPO depois do gh nao conta" 2 "" Bash "$R702" 'gh issue create --title termo702 --body x; export GH_REPO=dono/priv'

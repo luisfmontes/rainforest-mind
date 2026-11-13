@@ -164,16 +164,19 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 4
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `if (r.repoPrefixo.length) return r.repoPrefixo.map((v) => ({ repo: v }));`
-  para: `if (false) return r.repoPrefixo.map((v) => ({ repo: v }));`
+  de: `if (prefixo.length && r.prefixoLimpo) return prefixo;`
+  para: `if (false) return prefixo;`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
-  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO publico no prefixo barra"`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO privado no prefixo libera cwd publico"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse com o dublê `gh-por-nome`, todos com o termo no título:
 - `GH_REPO=dono/publico gh issue create ...` a partir do repositório privado sai 2.
 - `export GH_REPO=dono/priv; gh issue create ...` a partir do privado sai 0. A partir do público sai 2, porque uma menção antes do segmento entra AO LADO do cwd e só aperta: quem lê o texto não sabe se a atribuição chega ao `gh`.
 - `echo GH_REPO=dono/priv; gh issue create ...` a partir do público sai 2.
 - `GH_REPO=dono/priv GH_REPO=dono/publico gh issue create ...` sai 2: com prefixo repetido, o pior destino decide.
+- `GH_REPO=dono/priv gh issue create ...` a partir do público sai 0: prefixo de atribuição pura manda sozinho. Com `env -u X GH_REPO=dono/priv gh ...` sai 2, porque wrapper antes do `gh` faz o prefixo virar só mais um destino.
+- Com `GH_REPO=dono/publico` no ambiente da sessão, `export GH_REPO=dono/priv; gh issue create ...` a partir do privado sai 2: o ambiente entra junto das menções.
+- `cd <privado> && gh ... --body-file corpo.md; cd <público> && gh ... --body-file corpo.md`, com o termo só no `corpo.md` do público, sai 2: o arquivo se lê contra cada cwd do segmento repetido (terceira revisão de segurança).
 - `gh issue create ...; export GH_REPO=dono/priv` a partir do público sai 2, porque a atribuição depois do `gh` não conta.
 - No PowerShell, `$env:GH_REPO = "dono/publico"; gh issue create ...` a partir do privado sai 2.
 
