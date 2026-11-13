@@ -126,8 +126,8 @@ criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
   - não separa prosa estranha de referência: uma ocorrência `.ext:N` fora de crase, com
     caractere fora da classe no caminho, pode dar recusa mesmo sem ser caminho
     (`scripts/conferir-busca.cjs:136`). A saída é pôr o caminho entre crases ou, quando a
-    tarefa não cria função, `- catalogo | pulado: <motivo>`, que pula a conferência
-    (`scripts/conferir-busca.cjs:304`).
+    tarefa não cria função, `- catalogo | pulado: <motivo>`. A linha pulada não leva
+    resultado, então não tem referência a conferir (`scripts/conferir-busca.cjs:204`, `:304`).
 
 ## Canal `doc`
 
