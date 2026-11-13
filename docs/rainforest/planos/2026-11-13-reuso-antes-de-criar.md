@@ -169,3 +169,61 @@ mutacao: n/a
 pronto quando: com o checador da tarefa 3, a função `plano_no_formato` da bateria injeta também `- catalogo | pulado: fixture de bateria` logo depois da linha `- repo | fixture de bateria | busca injetada na copia`. Assim os quatro casos que a tarefa 3 deixou vermelhos voltam a fechar: "plano com cobertura fecha", "executar com catraca armada e lista completa fecha", "plano SEM design no disco nao fica preso" e "estado.cjs tambem ignora a cerca ao cruzar a lista". Provado por `bash scripts/testa-conferir-fluxo.sh`, que termina com `falhou: 0` e exit 0. Nenhum caso existente é apagado ou afrouxado.
 
 Emenda de 2026-11-13, durante o `executar`: a tarefa 3 passou a cobrar `busca:` em tarefa que edita código existente, e o `baterias-do-diff` dela não listou esta bateria, cujos planos de fixture fecham o `marcar plano`. A regressão foi achada pela varredura das 15 baterias que fecham plano com fixture. Só esta ficou vermelha. A `testa-estado.sh` passou do teto de 500 s e roda à parte.
+
+Emenda de 2026-11-13, depois da revisão 1 (`VEREDITO: ok` com 5 achados que cabem no PR). As tarefas 8 e 9 dependem da 3, não dividem arquivo e vão em paralelo. A 10 é só doc e vem depois da 9.
+
+### 8. Regex de `Method` cobre parêntese aninhado, retorno composto, classe com ponto e continuação com `;` [tipo: implementar]
+atende: D6
+arquivos: `hooks/lib/definicoes.cjs`, `scripts/catalogo-funcoes.cjs`, `scripts/testa-catalogo-funcoes.sh`
+depende de: 3
+busca:
+- repo | rg -n "advpl" hooks/lib/definicoes.cjs scripts/catalogo-funcoes.cjs | o regex advpl do mapa metodo e o laço de definicoesDoTexto, ambos da tarefa 1
+- catalogo | listar --raiz hooks/lib | estendo a função casar de hooks/lib/definicoes.cjs:72 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:170, sem função nova
+desfecho: estender
+mutacao:
+  arquivo: `hooks/lib/definicoes.cjs`
+  de: `advpl: [/^\s*method\s+(\w+)\s*\(.*\)(?:\s+as\s+[\w.]+(?:\s+of\s+[\w.]+)?)?\s+class\s+([\w.]+)/i],`
+  para: `advpl: [/^\s*method\s+(\w+)\s*\([^)]*\)(?:\s+as\s+\w+)?\s+class\s+(\w+)/i],`
+  bateria: `bash scripts/testa-catalogo-funcoes.sh`
+  fixture: `testa-catalogo-funcoes.sh, caso novo 21 "advpl: Method com parêntese aninhado, retorno composto e classe com ponto"`
+prova: `node -e "process.exit(require('./hooks/lib/definicoes.cjs').casar('Method Baz(a := Array(3)) Class Foo', 'advpl', 'metodo') === 'Foo:Baz' ? 0 : 1)"`
+pronto quando: com um fonte `lib/extra.tlpp` de fixture com as linhas (1) `Method Baz(a := Array(3)) Class Foo`, (2) `    Return`, (3) `Method Qux(a) as Array Of Object Class Foo`, (4) `    Return`, (5) `Method Corge() Class Foo.Sub`, (6) `    Return`, (7) `Method Quux(a, ;`, (8) `    b) Class Foo`, (9) `    Return`, `node scripts/catalogo-funcoes.cjs listar --raiz <fixture>` devolve exatamente quatro entradas para o arquivo: `Foo:Baz` na linha 1, `Foo:Qux` na linha 3, `Foo.Sub:Corge` na linha 5 e `Foo:Quux` na linha 7, e nenhuma na linha 8. O caso 19 (a `SaldoProjeto:calcular` na linha 4) continua passando. Provado por `bash scripts/testa-catalogo-funcoes.sh` terminando em `falhou: 0` e exit 0.
+
+Passos:
+1. Em `hooks/lib/definicoes.cjs`, trocar a linha do `advpl` em `REGRAS.metodo` exatamente pelo texto do `de:` acima. O comentário do topo passa a dizer que o retorno aceita `as <tipo>` e `as <tipo> Of <tipo>`, e que a classe pode ter ponto.
+2. Em `scripts/catalogo-funcoes.cjs`, em `definicoesDoTexto`, só quando `linguagem === 'advpl'`: se a linha termina em `;` (ignorando espaço no fim), junta a seguinte no lugar do `;`, separada por um espaço, enquanto a juntada ainda terminar em `;` e houver linha. O `casar` roda sobre a linha juntada. A entrada sai com o número da **primeira** linha, e a `assinatura` é a linha juntada, cortada como hoje. As linhas de continuação seguem sendo lidas sozinhas no laço, como hoje. Nenhuma delas começa com `Method`, então não casa.
+3. Na bateria, caso novo 21 com a fixture do critério, uma afirmação `linha` por entrada esperada e um `nao` para a linha 8. Atualizar o cabeçalho de casos no topo da bateria.
+
+Nenhum caso afirma sobre o texto do fonte.
+
+### 9. `conferir-busca` lê referência com contrabarra, ignora URL e número com ponto, e confere a linha `catalogo` inteira [tipo: implementar]
+atende: D3
+arquivos: `scripts/conferir-busca.cjs`, `scripts/testa-conferir-busca.sh`
+depende de: 3
+busca:
+- repo | rg -n "RE_URL|RE_CIT|function extrairCitacoes" scripts/conferir-ancoras.cjs | o conferir-ancoras já descarta URL e exige extensão que começa com letra, mas não exporta nada e roda a CLI no topo, então o conserto adota as duas regras sem importar
+- catalogo | listar --raiz scripts | estendo a função problemasDeReferencia de scripts/conferir-busca.cjs:118 e o laço de cmdPlano, sem função nova
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conferir-busca.cjs`
+  de: `const texto = resultado.replace(/https?:\/\/\S+/g, ' ').replace(/\\/g, '/');`
+  para: `const texto = resultado.replace(/https?:\/\/\S+/g, ' ');`
+  bateria: `bash scripts/testa-conferir-busca.sh`
+  fixture: `testa-conferir-busca.sh, caso novo "catalogo (k): src\x.js:3 com contrabarra é aceito como src/x.js:3"`
+prova: `node -e "const s=require('fs').readFileSync('scripts/conferir-busca.cjs','utf8');process.exit(s.includes('campos.slice(1)')?0:1)"`
+pronto quando: com o mesmo repo de fixture da seção 9 da bateria (`src/x.js` com `function soma()` na linha 3), `node scripts/conferir-busca.cjs plano --slug s --plano <arq>` responde assim. (k) Resultado `reaproveito soma de src\x.js:3` → exit 0. (l) Resultado `reaproveito soma de C:\abs\x.js:3` → exit 2, recusa `referência fora do repositório`. (m) Resultado `nada equivalente na versão 10.30:15, v1.2:3 nem em https://host.com:8080/x.js:3` → exit 0. (n) Linha `- catalogo | listar --raiz src | reaproveito soma de src/x.js:4 | adoto` → exit 2, recusa citando `src/x.js:4`. (o) Resultado `reaproveito soma de src/x.js:L3` → exit 0, e com `src/x.js:L4` → exit 2. Os casos (a) a (j) continuam com o mesmo exit. Com nenhuma tarefa cobrada, a mensagem `ok:` diz `ok: nenhuma tarefa de código sem busca:`. Provado por `bash scripts/testa-conferir-busca.sh` terminando em `vermelhas:[]` e exit 0.
+
+Passos:
+1. Em `problemasDeReferencia`, a primeira linha passa a ser exatamente o `de:` acima, e o laço itera `texto.matchAll(REFERENCIA)`. A checagem `/\\$/.test(antes)` e a variável `antes` saem, porque a contrabarra já virou barra.
+2. `REFERENCIA` passa a exigir extensão que começa com letra: `/([\w.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/g`.
+3. Em `cmdPlano`, a chamada passa a ser `problemasDeReferencia(repo, campos.slice(1).join(' | '))`, para conferir todo campo depois do canal, e não só o último.
+4. As duas mensagens `ok: nenhuma tarefa cria caminho novo de código sem busca:` viram `ok: nenhuma tarefa de código sem busca:`.
+5. Na bateria, casos novos (k) a (o) na seção 9, com o cabeçalho atualizado.
+
+### 10. Docs que ainda descrevem o `busca:` antigo [tipo: docs]
+atende: D2, D3
+arquivos: `skills/modo-dev/SKILL.md`, `docs/travas-mecanicas.md`, `skills/plano/references/campo-busca.md`
+depende de: 9
+mutacao: n/a
+  motivo: tarefa só reescreve doc
+pronto quando: com o checador das tarefas 3 e 9, (1) o Degrau 2b de `skills/modo-dev/SKILL.md` diz que toda tarefa de código do plano, nova ou que edita, declara o canal `catalogo`, e que o `repo` é obrigatório só quando cria arquivo; (2) a linha do `scripts/conferir-busca.cjs` em `docs/travas-mecanicas.md` diz o mesmo e cita a conferência de `arquivo:linha` (arquivo existe, dentro do repo, extensão lida pelo catálogo, linha que começa definição); (3) `skills/plano/references/campo-busca.md`, na seção do canal `catalogo`, avisa que o `listar --raiz <pasta>` imprime caminho relativo à pasta, que a referência no plano leva o caminho relativo ao repositório (prefixar a pasta) e que toda referência da linha é conferida, não só a do último campo. Provado por `wc -c skills/modo-dev/SKILL.md` abaixo de 16384, por `bash scripts/testa-teto-skills.sh` com exit 0 e pela leitura das três passagens contra os passos 1 a 4 da tarefa 9.
