@@ -447,24 +447,10 @@ mutacao:
 prova-na-base: verde — emenda da revisão 5: a base já é o código das tarefas 1 a 19, e a prova é a mutação acima
 pronto quando: payload real `Bash`, cwd no repositório privado: `echo it` + contrabarra + `'s; gh issue --repo dono/publico comment 3 --body termo702` sai 2, `echo it` + contrabarra + `'s; gh "issue" create --repo dono/publico --title t --body termo702` sai 2, e `gh issue --repo dono/priv comment 3 --body termo702` sai 0. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
-### 21. Contagem larga fecha o teto da regex da rede [tipo: implementar]
-atende: D3
-arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
-depende de: 20
-mutacao:
-  arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `  if (ghTextoAmplo(juntarContrabarra(cmd)).n > nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
-  para: `  if (false) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
-  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
-  timeout: `900000`
-  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 rede pega gh perdido com mais de 200 caracteres antes da familia"`
-prova-na-base: verde — revisão de segurança da rodada 6: a base já é o código das tarefas 1 a 20, e a prova é a mutação acima
-pronto quando: payload real `Bash`, cwd no repositório privado: `echo it` + contrabarra + `'s; gh $(: <250 letras>) issue --repo dono/publico comment 3 --body termo702` sai 2, o mesmo com `--repo dono/priv` sai 0, e `gh issue` + ` ---a` repetido 40 vezes + ` x` termina em menos de 20 s. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
-
 ### 3. Versão 2.14.1, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:

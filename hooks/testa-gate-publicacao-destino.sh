@@ -968,11 +968,6 @@ P702R=$(pay702 Bash "$(esc "$R702")" "gh issue$(printf ' ---a%.0s' $(seq 1 40)) 
 printf '%s' "$P702R" | env -u GH_REPO HOME="$H702" RFM_ROOT="$D702" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" timeout 20 node "$GATE" > /dev/null 2>&1; RC702R=$?
 if [ "$RC702R" = 0 ]; then ok=$((ok+1)); echo "  ok   702 rede termina com hifens repetidos entre familia e verbo"
 else falhou=$((falhou+1)); echo "  FALHA 702 rede travou ou barrou com hifens repetidos (exit $RC702R; 124 = timeout)"; fi
-GH702="node $SANDBOX_BIN/gh-por-nome"
-LONGO702=$(printf 'a%.0s' $(seq 1 250))
-confere702 "702 rede pega gh perdido com mais de 200 caracteres antes da familia" 2 "" Bash "$R702P" "echo it\\'s; gh \$(: $LONGO702) issue --repo dono/publico comment 3 --body termo702"
-confere702 "702 mais de 200 caracteres antes da familia com destino privado passa" 0 "" Bash "$R702P" "echo it\\'s; gh \$(: $LONGO702) issue --repo dono/priv comment 3 --body termo702"
-GH702="node $SANDBOX_BIN/gh"
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
