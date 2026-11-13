@@ -18,10 +18,10 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 7,
-    "tarefas": 7,
+    "tarefas_ok": 10,
+    "tarefas": 10,
     "carimbos": [
       {
         "tarefa": 1,
@@ -120,36 +120,57 @@
         "iteracao": 2,
         "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
         "ts": "2026-11-13T12:54:15.805Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "4567873",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T14:28:10.846Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "4567873",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T14:28:10.846Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "1ed9198",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T14:36:54.451Z"
       }
     ],
     "em": "2026-11-13",
-    "comando": "node scripts/conferir-mutacao.cjs (re-rodado pela integracao nas tarefas 1, 2 e 3)",
-    "saida": "t1: 185 ok -> 184 ok/1 falha; t2: 194 ok -> 190 ok/4 falhas; t3: total=48 vermelhas:[] -> 6 vermelhas; catraca exit 0 nas tres",
+    "comando": "bash scripts/testa-conferir-busca.sh; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-teto-skills.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-conferir-fluxo.sh",
+    "saida": "total=54 vermelhas:[] | ok: 201 falhou: 0 | 21 OK, 0 FALHA | ok: 57 falhou: 0 | ok: 142 falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-catalogo-funcoes.sh caso 19 advpl Method Class"
+        "fixture": "testa-catalogo-funcoes.sh caso 19"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-catalogo-funcoes.sh caso 20 novas"
+        "fixture": "testa-catalogo-funcoes.sh caso 20"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-busca.sh secao 9 catalogo caso a"
+        "fixture": "testa-conferir-busca.sh catalogo (a)"
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "doc de referencia"
+        "motivo": "tarefa so reescreve doc"
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "instrucao ao revisor"
+        "motivo": "tarefa so reescreve doc"
       },
       {
         "tarefa": 6,
@@ -160,6 +181,21 @@
         "tarefa": 7,
         "resultado": "n/a",
         "motivo": "ajuste de fixture de teste"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 21"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (k)"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve doc"
       }
     ]
   },
