@@ -1019,20 +1019,25 @@ function visibilidadeDoDestino(d) {
   return v === "desconhecida" && declaradaPrivada(gitTop) ? "desconhecida-declarada" : v;
 }
 
-/** Junta a continuação de linha do PowerShell (crase + quebra de linha). */
-function juntarContinuacaoPs(ferramenta, cmd) {
-  return ferramenta === "PowerShell" ? cmd.replace(/\x60\r?\n/g, " ") : cmd;
+/**
+ * Junta a continuação de linha: crase + quebra no PowerShell, contrabarra +
+ * quebra no bash. A leitura juntada é conferida ao lado da crua.
+ */
+function juntarContinuacao(ferramenta, cmd) {
+  return ferramenta === "PowerShell" ? cmd.replace(/\x60\r?\n/g, " ") : juntarContrabarra(cmd);
 }
 
 function conferirGh(ev, cwdDoEvento, agente) {
   const cmdBruto = ev.tool_input && ev.tool_input.command;
-  if (typeof cmdBruto !== "string" || !/\bgh\b/i.test(cmdBruto)) return;
+  if (typeof cmdBruto !== "string") return;
   // Continuação de linha do PowerShell (crase + quebra de linha): o
   // `segmentosParaGate` quebrava ali, e o `--repo`/`--body-file` da linha de
   // baixo ficava num segmento que ninguém lia (revisão 4, 2026-11-13). Juntar
   // pode errar (crase dentro de aspas simples), então as DUAS leituras são
   // conferidas e qualquer uma barra (revisão de segurança do commit).
-  const juntado = juntarContinuacaoPs(ev.tool_name, cmdBruto);
+  const juntado = juntarContinuacao(ev.tool_name, cmdBruto);
+  // A triagem olha as duas leituras: `g\<quebra>h` só vira `gh` juntado.
+  if (!/\bgh\b/i.test(cmdBruto) && !/\bgh\b/i.test(juntado)) return;
   conferirGhLeitura(ev, cmdBruto, cwdDoEvento, agente);
   if (juntado !== cmdBruto) conferirGhLeitura(ev, juntado, cwdDoEvento, agente);
 }
@@ -1127,9 +1132,12 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
  */
 const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?\b(issue|pr)\s+(create|new|comment|edit|close|reopen|review|merge)\b/i;
 const GH_TEXTO_CRU_G = new RegExp(GH_TEXTO_CRU.source, "gi");
-/** Junta contrabarra + quebra de linha, como o bash lê. */
+/**
+ * Junta contrabarra + quebra de linha como o bash: as duas somem, sem espaço
+ * (`termo\<quebra>702` é `termo702` para o bash; revisão de segurança).
+ */
 function juntarContrabarra(cmd) {
-  return cmd.replace(/\\\r?\n/g, " ");
+  return cmd.replace(/\\\r?\n/g, "");
 }
 
 function conferirGhPerdido(cmdOriginal, cwdDoEvento, agente, conferirMemo) {

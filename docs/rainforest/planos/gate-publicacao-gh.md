@@ -383,7 +383,7 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 15
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `  const juntado = juntarContinuacaoPs(ev.tool_name, cmdBruto);`
+  de: `  const juntado = juntarContinuacao(ev.tool_name, cmdBruto);`
   para: `  const juntado = cmdBruto;`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
@@ -403,7 +403,7 @@ mutacao:
   timeout: `900000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 gh perdido depois de outro gh achado barra"`
 prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
-pronto quando: payload real `Bash`, repositório público, `corpo.md` com `termo702`: `gh issue close 1 --comment ok; echo it` + contrabarra + `'s; gh issue comment 3 -F corpo.md` sai 2. A rede roda em qualquer diferença de contagem, contada com contrabarra + quebra juntas; `gh` + contrabarra + quebra + `issue create --repo dono/priv --title termo702 --body x` de um cwd público sai 0, e `echo it` + contrabarra + `'s; gh` + contrabarra + quebra + `issue comment 3 -F corpo.md` sai 2: a rede lê o texto com contrabarra + quebra juntas. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+pronto quando: payload real `Bash`, repositório público, `corpo.md` com `termo702`: `gh issue close 1 --comment ok; echo it` + contrabarra + `'s; gh issue comment 3 -F corpo.md` sai 2. A rede roda em qualquer diferença de contagem, contada com contrabarra + quebra juntas sem espaço, como o bash (a leitura juntada do bash também é conferida: `--title termo` + contrabarra + quebra + `702` sai 2); `gh` + contrabarra + quebra + `issue create --repo dono/priv --title termo702 --body x` de um cwd público sai 0, e `echo it` + contrabarra + `'s; gh` + contrabarra + quebra + `issue comment 3 -F corpo.md` sai 2: a rede lê o texto com contrabarra + quebra juntas. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
 ### 18. Corpo de heredoc e here-string com todos os detectores [tipo: implementar]
 atende: D2

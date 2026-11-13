@@ -955,6 +955,8 @@ confere702 "contrabarra e quebra no bash com --repo privado passa" 0 "" Bash "$R
 GH702="node $SANDBOX_BIN/gh"
 GH702="node $SANDBOX_BIN/gh"
 confere702 "gh partido por contrabarra e perdido pela segmentacao barra" 2 "$PUB" Bash "$R702" $'echo it\\\'s; gh \\\nissue comment 3 -F corpo.md'
+confere702 "termo partido por contrabarra e quebra barra" 2 "$PUB" Bash "$R702" $'gh issue create --title termo\\\n702 --body x'
+confere702 "gh partido por contrabarra e quebra barra" 2 "$PUB" Bash "$R702" $'g\\\nh issue create --title termo702 --body x'
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
