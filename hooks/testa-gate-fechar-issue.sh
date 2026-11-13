@@ -1598,7 +1598,7 @@ EXIT_CM_7=$?
 
 # Caso (cm-8): # dentro de ${...} nao esconde o gh → exit 2 (D9 de gate-segmentador, revisao 2)
 echo
-echo "== (cm-8) # dentro de ${...} nao esconde o gh → exit 2 =="
+echo '== (cm-8) # dentro de ${...} nao esconde o gh → exit 2 =='
 COMANDO_CM_8=$'echo ${x:-a #b}; gh issue close 12'
 (
   export PATH="$SBP/bin:$PATH"

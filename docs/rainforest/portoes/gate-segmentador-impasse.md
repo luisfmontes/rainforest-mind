@@ -80,3 +80,5 @@ Reprovou por **falso positivo novo contra a base**:
 5. **[baixa]** O cabeçalho do caso (cm-8) da bateria dá `bad substitution`.
 
 **Leitura:** a regressão de segurança que motivou as rodadas 2 a 8 está fechada (nenhum contorno novo contra a base). O que sobra é o preço da falha fechada do D3, que existe desde o primeiro desenho.
+
+**Decisão (Q1 A do Luís, 2026-11-13):** aceitar o falso positivo do achado 1, que é o desenho do D3 desde a primeira rodada, e corrigir só o texto (D4, CHANGELOG, D8, cabeçalho do (cm-8), tarefa 27). O achado 2 vai para a Issue #708. A versão sobe no merge com a `origin/main`. Rodada 9: revisão curta do diff desde `05cafcbf`, verificar e fechar.

@@ -772,6 +772,14 @@ mutacao: n/a
   motivo: só texto; o comportamento está medido pelas tarefas 24 e 25
 pronto quando: a entrada 2.12.3 do `CHANGELOG.md` não diz mais que o ANSI-C dentro de `"$(...)"` barra, cita a Issue #694 para essa classe, e diz que a regra da palavra mista vale só no bash (no PowerShell e em `cmd`/`pwsh` a contrabarra é literal), coerente com as emendas da D3 e da D8 — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1` e pela leitura da entrada contra a D3 e a D8.
 
+### 27. Texto da revisão 8: falso positivo aceito, D8 e cabeçalho do (cm-8) [tipo: docs]
+atende: D4, D8
+arquivos: `CHANGELOG.md`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 26
+mutacao: n/a
+  motivo: só texto (Q1 A do Luís, 2026-11-13); nenhum comportamento muda, e o cabeçalho do (cm-8) só troca aspas duplas por simples num echo
+pronto quando: o falso positivo do D3 com aspa qualquer dentro de `"$(...)"` está nomeado com o exemplo `cd "$(dirname "$0")"` no D4 e na entrada do CHANGELOG, a Issue #708 é citada nos dois, a D8 diz aspas duplas onde o código (`textoAPartir` em `hooks/lib/tokens-comando.cjs`) usa duplas, e `bash hooks/testa-gate-fechar-issue.sh 2>&1 | grep -c 'bad substitution'` devolve `0`.
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
