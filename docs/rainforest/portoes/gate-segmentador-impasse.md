@@ -61,3 +61,22 @@ O fuzz r7 da janela (5.400 casos) não achou contorno; o revisor 7, com gerador 
 4. **[alta] [preexistente]** `bash -c "<gh de escrita>" x` (argumento posicional depois do script) passa no HEAD e na base. Fora das Issues #692 e #694.
 
 **Leitura:** sete rodadas, e cada rede nova abre uma classe nova. O que converge é parar de acrescentar decodificação e fechar só as regressões contra a base, mandando as classes preexistentes para Issue.
+
+## Oitava reprovação (revisão 8, 2026-11-12)
+
+Critério desta rodada (Q1 B do Luís): a branch não pode ser mais fraca que a base `e3d7896d`. **Contornos: nenhum novo.** O revisor comparou cerca de 100 casos manuais, um fuzz diferencial de cerca de 2.900 comandos com bash real e um corpus de 9.700 comandos dos transcritos locais. Nenhum caso com HEAD 0 e base 2 em que o bash executasse o `gh`. Os bypasses achados passam também na base: estão nas Issues #692, #694 e #699, e os novos foram para #703 e para um comentário em #694.
+
+Reprovou por **falso positivo novo contra a base**:
+
+1. **[alta] [design] Rede do D3.** Qualquer aspa dentro de `"$(...)"`, seguida de `gh` de escrita no mesmo comando, barra. Exemplos que saem 2 no HEAD e 0 na base, sem nada de errado executado:
+   - `cd "$(dirname "$0")" && gh issue comment 5 --body-file f.md`
+   - `echo "feito: $(git log -1 --format='%h %s')" && gh issue comment 12 --body-file m.txt`
+   - no PowerShell, `$f = "$env:TEMP\b-$(Get-Date -Format 'HHmmss').md"; ...; gh issue create --body-file $f`
+
+   O D4 aceitou esse falso positivo no primeiro desenho, e o CHANGELOG fala em "interior complexo". Só não diz que uma aspa simples qualquer já conta.
+2. **[media] [design] `mistaComGh`** olha todos os tokens depois do wrapper, não só o script. `bash -c 'echo hi' x -I"C:\x"` barra sem nenhum `gh` no comando.
+3. **[media]** A versão 2.12.3 ficou atrás da `origin/main` (2.13.1). Resolve no rebase do `fechar`.
+4. **[baixa]** O texto da D8 descreve aspas simples onde o código usa duplas.
+5. **[baixa]** O cabeçalho do caso (cm-8) da bateria dá `bad substitution`.
+
+**Leitura:** a regressão de segurança que motivou as rodadas 2 a 8 está fechada (nenhum contorno novo contra a base). O que sobra é o preço da falha fechada do D3, que existe desde o primeiro desenho.
