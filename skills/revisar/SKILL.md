@@ -60,6 +60,8 @@ task com vários commits, ou trazem mudança alheia que chegou em paralelo
 na base. Sem diff (branch igual à base, ou `head` inexistente), **não há
 revisão**: pare e reporte em vez de revisar de memória da conversa.
 
+Funções que o diff cria são comparadas com o catálogo do repo; duplicata HIGH reprova: `references/duplicata-das-novas.md`.
+
 ## Achado exige cenário
 
 Achado só sobrevive com `arquivo:linha` e o cenário concreto de falha —

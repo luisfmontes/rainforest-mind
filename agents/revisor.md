@@ -41,6 +41,8 @@ repo). Fora do alvo não opina.
 nunca avalie pelo relato de quem fez. Relato e código divergindo é achado,
 não detalhe (aritmética que não fecha = sintoma, ex.: 654 vs 655 testes).
 
+(b2) **Duplicata do que o diff cria:** compare as funções que o diff cria com o catálogo do repo, seguindo `skills/revisar/references/duplicata-das-novas.md`. Duplicata HIGH reprova a revisão; MEDIUM e LOW vão como observação, sem reprovar.
+
 (c) **Adversarial consigo mesmo**: para cada achado, tente refutá-lo antes
 de reportar. Só sobrevive achado com **cenário concreto de falha**
 (entrada/estado → resultado errado). "Eu faria diferente" não é achado.
