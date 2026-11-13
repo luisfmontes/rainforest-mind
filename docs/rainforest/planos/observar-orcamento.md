@@ -11,7 +11,7 @@ Design: docs/rainforest/design/observar-orcamento.md
 
 ### 1. Um orçamento por execução e teto por chamada [tipo: implementar]
 atende: D1, D2, D3
-arquivos: `scripts/observar.cjs`, `scripts/testa-observar.sh`
+arquivos: `scripts/observar.cjs`, `scripts/testa-observar.sh`, `scripts/testa-memoria-consolidar-pulo.sh`
 depende de: nenhuma
 busca:
 - repo | grep -n "inicioDaPassada\|ORCAMENTO_MS" scripts/observar.cjs | o relógio nasce em processarMarca (:559) e o orçamento só é lido ali (:558, :567)
@@ -66,3 +66,9 @@ Vale por cima da forma prescrita da tarefa 1 onde as duas divergem:
 - O comentário de `processarMarca` volta para junto dela e diz o retorno `'orcamento'`.
 - Bateria: 8.c, 8.d e 8.e com `TESTADOR_ORCAMENTO_MS=2500`, dublê lento de 1500 ms e corte do 8.e abaixo de 3500 ms. Caso novo 8.f: o próprio node como `RFM_CLAUDE_EXECUTAVEL`, com um `--require` que trava só o filho por 40 s; o observar tem de sair em menos de 6000 ms. Conferido à mão: sem o `kill` e com `timeout + 5000` no `spawn`, o 8.f sai vermelho (7626 ms).
 - Com `--sessao`, a chamada passa a ter no máximo o que sobra dos 25 s (antes eram 60 s). É o D2, e vale também para esse modo.
+
+## Emenda da revisão 2
+
+- O piso passa a ser `PISO_CHAMADA_MS = Math.min(7000, Math.floor(ORCAMENTO_MS / 3))`: 7 s no padrão (a latência medida de uma chamada), um terço do orçamento nos testes.
+- O `console.log('processando fatia ...')` sai depois das checagens do piso, logo antes de `chamarComTeto`: a saída só anuncia chamada que acontece.
+- O caso 6 de `scripts/testa-memoria-consolidar-pulo.sh` (o ok conta só as fatias tratadas) usava `TESTADOR_ORCAMENTO_MS=1`, que com a chamada dentro do orçamento não deixa nenhuma fatia rodar. Passa a usar um dublê de 3000 ms e orçamento de 4000 ms: a fatia 1 roda e as outras saem pelo corte entre fatias (`atingido apos 1 fatia(s) de 4`).

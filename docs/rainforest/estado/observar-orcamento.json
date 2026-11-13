@@ -19,7 +19,7 @@
     "em": "2026-11-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-12",
     "comando": "bash scripts/testa-observar.sh",
     "saida": "== resultado: 44 ok, 0 falha(s) ==",
@@ -37,27 +37,47 @@
         "motivo": "só texto e versão"
       }
     ],
-    "em": "2026-11-12"
+    "em": "2026-11-12",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-12"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "936310a331d62ed8bcf8ec65feeadc70c67c3b0e",
+      "head": "013bc459734bdd7d26cede2364707fad03213797",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a78cdc9315dbf58f6",
-        "veredito": "ok",
+        "agente_id": "a9c9af62433b2e7e6",
+        "veredito": "reprovado",
         "em": "2026-11-12",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a78cdc9315dbf58f6.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a9c9af62433b2e7e6.jsonl"
       }
     ],
-    "achados": 0,
+    "achados": 4,
     "base": "969e24b1",
     "head": "936310a3",
-    "em": "2026-11-12"
+    "em": "2026-11-12",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a78cdc9315dbf58f6",
+            "veredito": "ok",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a78cdc9315dbf58f6.jsonl"
+          }
+        ]
+      }
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente",

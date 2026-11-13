@@ -136,7 +136,9 @@ echo "  comando: RFM_ROOT=<caixa> node scripts/memoria.cjs consolidar; texto(s) 
 afirma "30 observações de 2.000 caracteres chegam ao LLM com até 16.000 e gravam resumo" $([ -n "$MAIOR_D" ] && [ "$MAIOR_D" -le 16000 ] && [ "$RESUMOS_D" = 1 ] && [ "$CONSOLIDADAS_D" = 30 ] && echo 0 || echo 1)
 
 # --- 6. observar.cjs: o ok da linha final conta só as fatias tratadas quando o
-# orçamento de tempo corta o resto (TESTADOR_ORCAMENTO_MS=1 força o corte).
+# orçamento de tempo corta o resto. Desde a #701 a chamada conta no orçamento e
+# não abre com menos de um terço dele: orçamento de 4000 ms e dublê de 3000 ms
+# fazem a fatia 1 rodar e as outras ficarem para a próxima sessão.
 CAIXA_F="$BASE/caixa-f"; mkdir -p "$CAIXA_F"
 RFM_ROOT="$CAIXA_F" $MEMORIA iniciar > /dev/null 2>&1
 # O Node cria o transcrito e a marca a partir de RFM_ROOT (o mesmo caminho que
@@ -159,13 +161,19 @@ db.prepare('INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset
   .run('proj-obs', 'sessao', transcrito, 0, new Date().toISOString());
 db.close();
 " > /dev/null 2>&1
-RFM_ROOT="$CAIXA_F" TESTADOR_CHAMAR_LLM="$SRC/scripts/dubliador-llm-ok.cjs" TESTADOR_ORCAMENTO_MS=1 \
+cat > "$CAIXA_F/duble-3s.cjs" <<'DUBLE_3S'
+module.exports.chamarLLM = async (texto) => {
+  await new Promise((r) => setTimeout(r, 3000));
+  return 'resumo de ' + texto.length;
+};
+DUBLE_3S
+RFM_ROOT="$CAIXA_F" TESTADOR_CHAMAR_LLM="$CAIXA_F/duble-3s.cjs" TESTADOR_ORCAMENTO_MS=4000 \
   node --no-warnings "$SRC/scripts/observar.cjs" --sessao sessao --projeto proj-obs > "$CAIXA_F/saida.txt" 2>/dev/null
 SAIDA_F="$(cat "$CAIXA_F/saida.txt")"
 PROCESSADAS_F="$(grep -c '^processando fatia' "$CAIXA_F/saida.txt")"
 OK_F="$(echo "$SAIDA_F" | sed -n 's/^ok: observacao gravada em \([0-9]*\) fatias\{0,1\} para sessao.*$/\1/p')"
 TOTAL_F="$(echo "$SAIDA_F" | sed -n 's/^orcamento de [0-9]*ms atingido apos [0-9]* fatia(s) de \([0-9]*\);.*$/\1/p')"
-echo "  comando: RFM_ROOT=<caixa> TESTADOR_ORCAMENTO_MS=1 node scripts/observar.cjs --sessao sessao --projeto proj-obs; processadas: $PROCESSADAS_F; linha ok: $OK_F de $TOTAL_F"
+echo "  comando: RFM_ROOT=<caixa> TESTADOR_ORCAMENTO_MS=4000 node scripts/observar.cjs --sessao sessao --projeto proj-obs; processadas: $PROCESSADAS_F; linha ok: $OK_F de $TOTAL_F"
 afirma "observar: o ok conta só as fatias tratadas quando o orçamento corta" $([ -n "$OK_F" ] && [ -n "$TOTAL_F" ] && [ "$OK_F" = "$PROCESSADAS_F" ] && [ "$OK_F" -lt "$TOTAL_F" ] && echo 0 || echo 1)
 
 echo

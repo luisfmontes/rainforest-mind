@@ -491,8 +491,10 @@ function debug(msg) {
 // processarMarca para o porquê dos 25 s.
 const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 25000;
 // Abaixo disto não vale subir um processo do modelo: ele seria cortado antes de
-// responder (a latência medida é de 5 a 7 s por chamada).
-const PISO_CHAMADA_MS = 1000;
+// responder e a chamada sairia paga e descartada (a latência medida é de 5 a 7 s
+// por chamada). Um terço do orçamento quando ele é menor, para a bateria, que
+// roda com orçamentos de poucos segundos, ainda chamar o dublê.
+const PISO_CHAMADA_MS = Math.min(7000, Math.floor(ORCAMENTO_MS / 3));
 const ESTOUROU = Symbol('estourou');
 
 // Corta a chamada no que sobra do orçamento. No caminho real é o timer de
@@ -641,7 +643,6 @@ async function processarMarca(conexao, marca, relogio) {
     }
 
     // Chamar LLM
-    console.log(`processando fatia ${i + 1}/${fatias.length} com ${eventos.length} evento(s) (sessao=${marca.sessao})...`);
     const tetoMs = relogio.orcamento - (Date.now() - relogio.inicio);
     if (tetoMs < PISO_CHAMADA_MS) {
       if (i === 0) {
@@ -656,6 +657,7 @@ async function processarMarca(conexao, marca, relogio) {
       );
       break;
     }
+    console.log(`processando fatia ${i + 1}/${fatias.length} com ${eventos.length} evento(s) (sessao=${marca.sessao})...`);
     const observacao = await chamarComTeto(textoDaPassada, tetoMs);
     if (observacao === ESTOUROU) {
       fatiasProcessadas = i;

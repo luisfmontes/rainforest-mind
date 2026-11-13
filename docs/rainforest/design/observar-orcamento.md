@@ -13,7 +13,7 @@ Em 2026-11-12 o `Hook cancelled` de outro plugin coincidiu com o arquivo de esta
 ## Decisões fechadas
 
 - **D1 — Um orçamento por execução.** O relógio começa uma vez, no início da passada (`processarSessao`), e vale para todas as marcas e fatias. Esgotado, a varredura para e as marcas seguintes ficam para a próxima sessão, com a mensagem `orcamento de <N>ms atingido; <k> marca(s) ficam para a proxima sessao`. — porquê: o hook é um processo só e o Claude Code mede o processo; o furo 1 é o maior dos três.
-- **D2 — Cada chamada à LLM recebe como teto o que sobra do orçamento.** `chamarLLM(texto, tetoMs)` usa `Math.min(60000, tetoMs)` como timeout e mata o processo filho quando ele estoura, sem os 5 s a mais. Quem chama corta também o dublê de teste com o mesmo teto (`Promise.race`). Fatia cortada pelo orçamento não é falha da LLM. A passada para com `orcamento de <N>ms atingido durante a fatia <i> (decorrido <d>ms)`, e a marca d'água fica na última fatia gravada. — porquê: os furos 2 e 3; a marca já avança por fatia (D6 da #198), então cortar no meio não perde trabalho.
+- **D2 — Cada chamada à LLM recebe como teto o que sobra do orçamento.** `chamarLLM(texto, tetoMs)` usa `Math.min(60000, tetoMs)` como timeout e mata o processo filho quando ele estoura, sem os 5 s a mais. Quem chama corta também o dublê de teste com o mesmo teto (`Promise.race`). Com menos de `min(7000, orçamento/3)` ms sobrando, a fatia não chama o modelo (a chamada sairia paga e seria cortada antes de responder). Fatia cortada pelo orçamento não é falha da LLM. A passada para com `orcamento de <N>ms atingido durante a fatia <i> (decorrido <d>ms)`, e a marca d'água fica na última fatia gravada. — porquê: os furos 2 e 3; a marca já avança por fatia (D6 da #198), então cortar no meio não perde trabalho.
 - **D3 — O padrão continua 25 s.** `ORCAMENTO_MS` e o `timeout: 30` do `hooks/hooks.json` não mudam. — porquê: os 5 s de folga cobrem abrir o banco e ler o transcrito antes da primeira fatia, número que a #198 já mediu.
 
 ## Avaliado e descartado
@@ -40,6 +40,7 @@ Em 2026-11-12 o `Hook cancelled` de outro plugin coincidiu com o arquivo de esta
 
 ## Pronto quando
 
-Os dois casos rodam `node scripts/observar.cjs` sem `--sessao`, com `TESTADOR_ORCAMENTO_MS=400`:
-- Com duas marcas pendentes de várias fatias cada e um dublê de LLM de 250 ms, a passada para com a mensagem do D1, e a segunda marca fica intocada.
-- Com um dublê que demora 5 s, a passada para durante a primeira fatia com `decorrido` abaixo de 1000 ms, e a marca d'água não sai do lugar.
+Os casos rodam `node scripts/observar.cjs` sem `--sessao`, com `TESTADOR_ORCAMENTO_MS=2500`:
+- Com duas marcas pendentes de várias fatias cada e um dublê de LLM de 1500 ms, a passada para com a mensagem do D1, e a segunda marca fica intocada.
+- Com um dublê que demora 5 s, a passada para durante a primeira fatia com `decorrido` abaixo de 3500 ms, e a marca d'água não sai do lugar.
+- Com um processo de verdade no lugar do `claude`, que trava 40 s, o observar sai em menos de 6000 ms: o filho morreu no corte.
