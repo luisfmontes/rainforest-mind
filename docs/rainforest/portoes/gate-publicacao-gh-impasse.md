@@ -29,3 +29,12 @@ A janela confirmou ainda que `gh issue new` é apelido de `create` (`gh issue cr
 Nenhuma regressão contra a base; URL posicional, apelido `new` e filtro de termo passaram.
 
 **Decisão (modo automático do Luís, 2026-11-13, recomendada):** quinta rodada com 1 a 4 consertados (tarefas 16 a 19), o item 3 restaurando o D2 original para corpo embutido. `xargs -I{}`, `cd` relativo na rede e JID por stdin/variável vão para a #707.
+
+## Revisão 5
+1. **[media]** A rede do `gh` perdido era mais estreita que a gramática: com aspa ímpar antes, `gh issue --repo X comment` e `gh "issue" create` saíam 0.
+2. **[media]** Falso positivo com destino privado e cwd público quando o texto tem termo e cita um `gh issue|pr <verbo>`.
+3. **[media]** Versão atrás da `origin/main` (2.13.3 e 2.14.0 já saíram).
+4. **[baixa]** Caso de crase dentro de aspas simples não discrimina as duas leituras.
+5. **[baixa]** A mutação da tarefa 19 lançava exceção em vez de reverter a leitura.
+
+**Decisão (modo automático do Luís, 2026-11-13, recomendada):** sexta rodada, a última. A branch foi mesclada com a `origin/main` antes; o item 1 se conserta (tarefa 20), o 2 fica como falso positivo aceito e documentado no design, no CHANGELOG e no PR, com contorno rodado; o 3 vira 2.14.1; o 5 troca a mutação; o 4 vai para a #707. A revisão 6 confere o código mesclado e só reprova por contorno ou regressão novos contra o `ea57521d`.

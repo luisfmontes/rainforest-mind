@@ -426,17 +426,30 @@ depende de: 18
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
   de: `    const arq = x[1] || x[2] || x[3];`
-  para: `    const arq = x[3];`
+  para: `    const arq = x[3] || x[2] || "-";`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 rede le --body-file entre aspas com espaco"`
 prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
 pronto quando: payload real `Bash`, repositório público, `sp/a b.md` com `termo702`: `echo it` + contrabarra + `'s; gh issue create --title t --body-file "sp/a b.md"` sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
-### 3. Versão 2.14.1, CHANGELOG e README [tipo: docs]
+### 20. A rede reconhece flag e aspas entre família e verbo [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 19
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `["']?\b(issue|pr)\b["']?(?:\s+-{1,2}[\w-]+(?:=[^\s;|&]*|\s+(?!-)[^\s;|&]+)?)*\s+["']?(create|`
+  para: `\b(issue|pr)\s+(create|`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 rede pega gh perdido com flag entre familia e verbo"`
+prova-na-base: verde — emenda da revisão 5: a base já é o código das tarefas 1 a 19, e a prova é a mutação acima
+pronto quando: payload real `Bash`, cwd no repositório privado: `echo it` + contrabarra + `'s; gh issue --repo dono/publico comment 3 --body termo702` sai 2, `echo it` + contrabarra + `'s; gh "issue" create --repo dono/publico --title t --body termo702` sai 2, e `gh issue --repo dono/priv comment 3 --body termo702` sai 0. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:

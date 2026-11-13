@@ -68,6 +68,14 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
 
   Ficam na Issue #707: `xargs -I{}`, `--body-file` relativo depois de `cd` lido pela rede, e dado sensível que não é termo (JID, telefone) mandado por `printf ... |`, `<<<` ou variável.
 
+- **Emenda da revisão 5 (decidido sem o Luís no modo automático, 2026-11-13).** A branch foi mesclada com a `origin/main` (2.13.3 e 2.14.0, inclusive o segmentador da #711) antes de decidir, e os achados foram medidos de novo no código mesclado:
+  - a rede do `gh` perdido era mais estreita que a gramática do `gh`: com aspa ímpar antes, `gh issue --repo X comment` (flag entre família e verbo) e `gh "issue" create` saíam 0. A regex da rede passa a aceitar aspas em volta da família e do verbo e flags no meio (tarefa 20);
+  - **falso positivo aceito, contra o "destino privado sai 0" do objetivo:** com cwd num repositório público, destino privado (`--repo`, `GH_REPO` no prefixo ou URL), termo privado no texto **e** a menção a um `gh issue|pr <verbo>` dentro do texto (corpo, heredoc, `echo`, comentário), a contagem de `gh` do texto cru passa a da segmentação, a rede roda e soma o cwd público aos destinos: sai 2. As três condições juntas são necessárias (sem termo, ou sem a menção, sai 0). Não se conserta nesta rodada porque descontar a menção dentro de `--body`/heredoc reabre o "`gh` perdido depois de outro": é a rede que pega o `gh` que a segmentação pôs dentro de um corpo por engano. Contornos, rodados com payload real: corpo por `--body-file` (sai 0) ou rodar do diretório do repositório privado (sai 0);
+  - a mutação da tarefa 19 deixa de lançar exceção (`x[3] || x[2] || "-"`), e o caso falha pelo exit, não pelo `catch`;
+  - a versão passa a 2.14.1 (D7), o próximo PATCH acima da `origin/main`.
+
+  Ficam na Issue #707: o caso da bateria de crase dentro de aspas simples, que não discrimina as duas leituras (não há forma conhecida de a junção criar um `--repo` falso fora das aspas), e o here-string do PowerShell com o fechamento indentado.
+
 - **D4 — Repositório de destino.**
   - **Com `--repo`/`-R`:** com `owner/repo` (ou URL `https://github.com/owner/repo`), a visibilidade é a desse repositório, por `visibilidadeDeUmRepo`.
   - **Sem `--repo`:** é a do repositório git do `cwd`, por `visibilidadeDoRepo(gitTop)`, que já falha fechada quando há qualquer remoto público.

@@ -957,6 +957,11 @@ GH702="node $SANDBOX_BIN/gh"
 confere702 "gh partido por contrabarra e perdido pela segmentacao barra" 2 "$PUB" Bash "$R702" $'echo it\\\'s; gh \\\nissue comment 3 -F corpo.md'
 confere702 "termo partido por contrabarra e quebra barra" 2 "$PUB" Bash "$R702" $'gh issue create --title termo\\\n702 --body x'
 confere702 "gh partido por contrabarra e quebra barra" 2 "$PUB" Bash "$R702" $'g\\\nh issue create --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "702 rede pega gh perdido com flag entre familia e verbo" 2 "" Bash "$R702P" $'echo it\\\'s; gh issue --repo dono/publico comment 3 --body termo702'
+confere702 "702 rede pega gh perdido com familia entre aspas" 2 "" Bash "$R702P" $'echo it\\\'s; gh "issue" create --repo dono/publico --title t --body termo702'
+confere702 "702 flag entre familia e verbo com destino privado passa" 0 "" Bash "$R702P" 'gh issue --repo dono/priv comment 3 --body termo702'
+GH702="node $SANDBOX_BIN/gh"
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

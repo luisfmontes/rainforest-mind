@@ -18,7 +18,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   - o repositório do diretório em que o `gh` roda, que conta o `cd` antes dele;
   - o `GH_REPO` da sessão.
 
-  Havendo mais de um destino possível, o pior decide. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. O que o comando não carrega (arquivo lido por caminho com variável, saída de programa) não é conferido. Falso positivo aceito: um termo que só aparece num caminho do mesmo comando (`cd <pasta> && gh issue create ...` com destino público) barra; rode o `gh` num comando separado.
+  Havendo mais de um destino possível, o pior decide. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. O que o comando não carrega (arquivo lido por caminho com variável, saída de programa) não é conferido. Falsos positivos aceitos: com o diretório num repositório público e destino privado, um texto com termo privado que também cita um comando `gh issue` ou `gh pr` (`gh issue create --repo <privado> --body "<termo>: rode gh issue comment 3"`) barra; mande o corpo por `--body-file` ou rode do diretório do repositório privado. E um termo que só aparece num caminho do mesmo comando (`cd <pasta> && gh issue create ...` com destino público) barra; rode o `gh` num comando separado.
 
 ## 2.14.0 — 2026-11-13
 

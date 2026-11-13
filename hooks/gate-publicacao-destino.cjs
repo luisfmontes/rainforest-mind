@@ -1130,7 +1130,9 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
  * do texto: todo `--repo`/`-R`, todo `GH_REPO=`, o `GH_REPO` da sessão e o
  * cwd do evento, incerto se o comando muda de diretório. O pior decide.
  */
-const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?\b(issue|pr)\s+(create|new|comment|edit|close|reopen|review|merge)\b/i;
+// Família e verbo podem vir entre aspas e com flag no meio (`gh "issue" --repo X comment`),
+// como o gh aceita: a rede não pode ser mais estreita que a gramática (revisão 5).
+const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?["']?\b(issue|pr)\b["']?(?:\s+-{1,2}[\w-]+(?:=[^\s;|&]*|\s+(?!-)[^\s;|&]+)?)*\s+["']?(create|new|comment|edit|close|reopen|review|merge)\b/i;
 const GH_TEXTO_CRU_G = new RegExp(GH_TEXTO_CRU.source, "gi");
 /**
  * Junta contrabarra + quebra de linha como o bash: as duas somem, sem espaço
