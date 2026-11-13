@@ -1120,6 +1120,7 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
   // segmentador leem; qualquer diferença, para mais ou para menos, roda a rede.
   const nCru = (juntarContrabarra(cmd).match(GH_TEXTO_CRU_G) || []).length;
   if (ghTextoSegmentos !== nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
+  if (ghTextoAmplo(juntarContrabarra(cmd)).n > nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
 }
 
 /**
@@ -1138,6 +1139,28 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
 // de segurança).
 const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]{0,200}?["']?\b(issue|pr)\b["']?(?:\s+-{1,2}\w[\w-]*(?:=[^\s;|&]*|\s+(?!-)[^\s;|&]+)?)*\s+["']?(create|new|comment|edit|close|reopen|review|merge)\b/i;
 const GH_TEXTO_CRU_G = new RegExp(GH_TEXTO_CRU.source, "gi");
+
+/**
+ * Contagem larga e linear do `gh` de escrita no texto cru: cada `gh` seguido, na
+ * mesma linha e a qualquer distância, de `issue|pr` e depois de um verbo de
+ * escrita. Fecha o teto de 200 caracteres da regex (`gh $(: <longo>) issue comment`):
+ * contando mais que a regex, a rede roda (revisão de segurança). Lê da direita
+ * para a esquerda, uma passada por linha.
+ */
+function ghTextoAmplo(cmd) {
+  let n = 0, familia = null, verbo = null;
+  for (const linha of cmd.split("\n")) {
+    const toks = [...linha.matchAll(/(?:^|[^\w.-])(gh)(?:\.exe)?\b|\b(issue|pr)\b|\b(create|new|comment|edit|close|reopen|review|merge)\b/gi)];
+    let verboDepois = null, famDepois = null;
+    for (let i = toks.length - 1; i >= 0; i--) {
+      const t = toks[i];
+      if (t[3]) verboDepois = t[3].toLowerCase();
+      else if (t[2]) { if (verboDepois) famDepois = { familia: t[2].toLowerCase(), verbo: verboDepois }; }
+      else if (t[1] && famDepois) { n++; familia = famDepois.familia; verbo = famDepois.verbo; }
+    }
+  }
+  return { n, familia, verbo };
+}
 /**
  * Junta contrabarra + quebra de linha como o bash: as duas somem, sem espaço
  * (`termo\<quebra>702` é `termo702` para o bash; revisão de segurança).
@@ -1150,7 +1173,7 @@ function conferirGhPerdido(cmdOriginal, cwdDoEvento, agente, conferirMemo) {
   // O texto lido pela rede tem contrabarra + quebra juntas, o mesmo da
   // contagem: `gh \<quebra> issue ...` não escapa dela (revisão de segurança).
   const cmd = juntarContrabarra(cmdOriginal);
-  const m = cmd.match(GH_TEXTO_CRU);
+  const m = cmd.match(GH_TEXTO_CRU) || (() => { const a = ghTextoAmplo(cmd); return a.n ? [null, a.familia, a.verbo] : null; })();
   if (!m) return;
   const res = conferirMemo(cmd);
   let achados = res && res.achados ? res.achados.filter((a) => a.id === "termo-privado").map((a) => ({ ...a, origem: "comando" })) : [];
