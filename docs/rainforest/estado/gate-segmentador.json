@@ -18,14 +18,14 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-12",
-    "tarefas_ok": 23,
-    "tarefas": 23,
+    "tarefas_ok": 26,
+    "tarefas": 26,
     "em": "2026-11-12",
     "pendente": "re-rodar node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador e fechar executar ok; depois revisar",
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador",
-    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 3: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: vermelho | tarefa 10: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 11: vermelho | tarefa 12: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 13: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: pulada (n/a — remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base) | tarefa 17: vermelho | tarefa 18: vermelho | tarefa 19: vermelho | tarefa 20: vermelho | tarefa 21: vermelho | tarefa 22: vermelho | tarefa 23: pulada (n/a — só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3) | tarefa 6: pulada (n/a — só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10)",
+    "comando": "bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 3: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: vermelho | tarefa 10: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 11: vermelho | tarefa 12: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 13: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: pulada (n/a — remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base) | tarefa 17: vermelho | tarefa 18: vermelho | tarefa 19: vermelho | tarefa 20: vermelho | tarefa 21: vermelho | tarefa 22: pulada (n/a — decodificação revogada na 8ª rodada (Q1 B do Luís, 2026-11-12); o código foi removido pela tarefa 24) | tarefa 23: pulada (n/a — só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3) | tarefa 24: vermelho | tarefa 25: vermelho | tarefa 26: pulada (n/a — só texto; o comportamento está medido pelas tarefas 24 e 25) | tarefa 6: pulada (n/a — só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10) | EXIT=1",
     "mutacao": [
       {
         "tarefa": 1,
@@ -134,20 +134,31 @@
       },
       {
         "tarefa": 22,
-        "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, casos (ac-1) a (ac-3)"
+        "resultado": "n/a",
+        "motivo": "decodificação revogada na 8ª rodada (Q1 B do Luís, 2026-11-12); o código foi removido pela tarefa 24"
       },
       {
         "tarefa": 23,
         "resultado": "n/a",
         "motivo": "só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3"
+      },
+      {
+        "tarefa": 24,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso (r8-1)"
+      },
+      {
+        "tarefa": 25,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (r8-2) a (r8-4)"
+      },
+      {
+        "tarefa": 26,
+        "resultado": "n/a",
+        "motivo": "só texto; o comportamento está medido pelas tarefas 24 e 25"
       }
     ],
-    "reaberturas": 7,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-12"
-    }
+    "reaberturas": 7
   },
   "revisar": {
     "status": "reprovado",
