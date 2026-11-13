@@ -25,7 +25,7 @@ mutacao:
   para: `const conjuntos = ['dart', 'js'].includes(linguagem) ? ['topo', 'metodo'] : ['topo'];`
   bateria: `bash scripts/testa-catalogo-funcoes.sh`
   fixture: `testa-catalogo-funcoes.sh, caso novo "advpl: Method ... Class entra como Classe:metodo"`
-prova: `bash scripts/testa-catalogo-funcoes.sh`
+prova: `node -e "process.exit(require('./hooks/lib/definicoes.cjs').casar('Method a() Class B', 'advpl', 'metodo') === 'B:a' ? 0 : 1)"`
 pronto quando: com um fonte `.tlpp` de fixture que tem `Class SaldoProjeto`, a declaração recuada `Method calcular()` dentro do corpo da classe e, mais abaixo, a implementação `Method calcular(cProj as character) as logical Class SaldoProjeto`, `node scripts/catalogo-funcoes.cjs listar --raiz <fixture>` devolve uma entrada `nome: "SaldoProjeto:calcular"` na linha da implementação e nenhuma na linha da declaração. A entrada `Class SaldoProjeto` continua saindo como hoje. Provado por `bash scripts/testa-catalogo-funcoes.sh` com o caso novo, terminando em exit 0.
 
 Passos:
@@ -50,7 +50,7 @@ mutacao:
   para: `novas.push({ arquivo: rel, ...d });`
   bateria: `bash scripts/testa-catalogo-funcoes.sh`
   fixture: `testa-catalogo-funcoes.sh, caso novo "novas: lista só a definição criada pelo diff"`
-prova: `bash scripts/testa-catalogo-funcoes.sh`
+prova: `node scripts/catalogo-funcoes.cjs novas --raiz . --base HEAD`
 pronto quando: num repo git de fixture cuja base tem `a.js` com `function velha()` e cujo commit seguinte acrescenta `function nova()` em `a.js` e cria `b.tlpp` com `Static Function outra()`, `node scripts/catalogo-funcoes.cjs novas --raiz <fixture> --base <sha da base>` imprime um array JSON com exatamente duas entradas, `nova` (arquivo `a.js`) e `outra` (arquivo `b.tlpp`), cada uma com `arquivo`, `linha`, `nome`, `assinatura` e `linguagem`, ordenadas por arquivo e linha, sem `velha`. Com `--base naoexiste`, sai com exit 1 e o stderr começa com `novas: base não resolvida: naoexiste`. Provado por `bash scripts/testa-catalogo-funcoes.sh` terminando em exit 0.
 
 Passos:
@@ -78,7 +78,7 @@ mutacao:
   para: `const exige = caminhosNovos.length > 0;`
   bateria: `bash scripts/testa-conferir-busca.sh`
   fixture: `testa-conferir-busca.sh, caso novo "catalogo (a): tarefa que só edita arquivo existente sem busca é recusada"`
-prova: `bash scripts/testa-conferir-busca.sh`
+prova: `node -e "process.exit(typeof require('./scripts/catalogo-funcoes.cjs').definicoesDoArquivo === 'function' ? 0 : 1)"`
 pronto quando: com um plano de fixture num repo git onde `src/x.js` existe no HEAD com `function soma()` na linha 3, `node scripts/conferir-busca.cjs plano --slug s --plano <arq>` responde assim:
 (a) tarefa `implementar` com `arquivos: src/x.js` e sem `busca:` → exit 2, recusa citando a tarefa e o canal `catalogo`;
 (b) mesma tarefa com `busca:` contendo só `- catalogo | listar --raiz src | reaproveito soma de src/x.js:3` e `desfecho: adotar` → exit 0;
