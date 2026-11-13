@@ -9,6 +9,7 @@ e quando; aqui ficam o formato da linha, o exemplo e as regras de conferência.
 - Exemplo
 - Linha
 - Canal repo
+- Canal catalogo
 - Canal doc
 - desfecho:
 - Quando conta
@@ -18,15 +19,27 @@ e quando; aqui ficam o formato da linha, o exemplo e as regras de conferência.
 
 ## Exemplo
 
+Tarefa que cria arquivo novo leva `repo` e `catalogo`:
+
 ```
 busca:
 - repo | rg "busca:|search-first" scripts skills | só o varrer.cjs, que olha história do repo, não reuso
+- catalogo | listar --raiz scripts | nada equivalente
 - livro | vigias/livro-de-repos.md "search-first" | ECC skills/search-first é prosa sem checador
 desfecho: construir
 ```
 
 Nesse exemplo a consulta do `repo` tem `|` e vai entre aspas. Sem as aspas, o `|`
 separaria um campo a mais e a linha ficaria sem resultado.
+
+Tarefa que edita arquivo existente (`arquivos: scripts/conferir-busca.cjs`) não leva
+`repo`, e o `catalogo` aponta a função que ela reaproveita:
+
+```
+busca:
+- catalogo | listar --raiz scripts | reaproveito recusar de scripts/conferir-busca.cjs:206
+desfecho: estender
+```
 
 ## Linha
 
@@ -41,12 +54,53 @@ separaria um campo a mais e a linha ficaria sem resultado.
 
 ## Canal `repo`
 
-- Obrigatório. Os outros canais sugeridos: `livro` (`vigias/livro-de-repos.md`),
-  `ideias` (`ideias.jsonl`), `memoria`, `web` e `doc` (seção abaixo).
+- Obrigatório só quando a tarefa cria arquivo de código, isto é, caminho que não existe
+  no HEAD. Tarefa que só edita arquivo existente não precisa dele.
+- Os outros canais sugeridos: `livro` (`vigias/livro-de-repos.md`), `ideias`
+  (`ideias.jsonl`), `memoria`, `web` e `doc` (seção abaixo). O `catalogo` é outro canal:
+  vale em toda tarefa que toca código, e o `repo` não o substitui.
 - `pulado:` não vale para o `repo`: `- repo | pulado: <motivo>` é recusa, mesmo com
   motivo. Quando a busca no repo não acha nada, o resultado diz isso:
   `- repo | rg "..." scripts | nada reaproveitável`.
-- Bloco só com canais `pulado:` (sem `repo` com resultado) é recusa.
+- Tarefa que cria arquivo sem linha `repo` com resultado é recusa, mesmo que os outros
+  canais estejam preenchidos.
+
+## Canal `catalogo`
+
+Toda tarefa que toca código declara este canal. Ele procura função que já existe no
+repositório antes de a tarefa criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
+
+- Forma: `- catalogo | listar --raiz <pasta> | <resultado>`. O resultado diz
+  `reaproveito <nome> de <arquivo>:<linha>` quando acha função equivalente, ou
+  `nada equivalente`.
+- `- catalogo | pulado: <motivo>` vale para tarefa que não cria função, por exemplo uma
+  correção dentro de uma função que já existe. O motivo não pode ser vazio.
+- Conferência: só o resultado é lido, e só quando a linha não é `pulado:`. Toda ocorrência
+  de `arquivo:linha` no resultado é casada com `([\w.\/-]+\.[A-Za-z0-9]+):L?(\d+)`; o `L`
+  antes do número é opcional. Cada referência passa pelas quatro recusas, nesta ordem, e
+  sai com o primeiro motivo que casar:
+  1. fora do repositório: caminho absoluto, com `..` ou com `\` antes;
+  2. extensão que o catálogo não lê. As extensões são as de `EXTENSOES` em
+     `hooks/lib/definicoes.cjs`: `.js`, `.cjs`, `.mjs`, `.ts`, `.tsx`, `.jsx`, `.py`,
+     `.prw`, `.prx`, `.tlpp`, `.ch` e `.dart`;
+  3. arquivo que não existe. O caminho é relativo à raiz do repositório e é lido do disco;
+  4. linha onde não começa definição no arquivo.
+
+  Toda recusa cita `arquivo:linha`.
+- Resultado sem referência (`nada equivalente`, ou texto livre sem `arquivo:linha`) passa
+  sem conferência.
+- Artefato isolado de propósito (D4 do design) vai com `desfecho: construir`. O motivo
+  vai no resultado da linha `catalogo`, por exemplo
+  `isolado de propósito (D4 do design), não reaproveito soma de src/x.js:3`. O checador
+  não interpreta o motivo, mas confere as referências dele: `src/x.js:3` ainda tem de
+  ser início de definição. Também não cruza o `desfecho:` com o resultado: `construir`
+  com `reaproveito` passa.
+- O que o checador **não** faz:
+  - não julga se `nada equivalente` é verdade. Isso é do `revisar` (D7a do design);
+  - não confere se a função citada faz o mesmo que a tarefa cria. Só confere que a linha
+    é início de definição;
+  - não roda o `listar` e não lê a consulta, só confere que ela existe;
+  - não exige as palavras `reaproveito` nem `nada equivalente`.
 
 ## Canal `doc`
 
@@ -92,8 +146,11 @@ Outra palavra é recusa.
 
 ## Quando conta
 
-- Tarefa `implementar` ou sem tipo, cujo `arquivos:` tem caminho que não existe no
-  commit HEAD.
+- Tarefa `implementar` ou sem tipo cujo `arquivos:` tem caminho de código, novo ou já
+  existente no HEAD. Para ela, o bloco vale e leva o canal `catalogo`.
+- Caminho que não existe no HEAD faz a tarefa criar arquivo, e aí ela leva também o canal
+  `repo`.
+- Tipos `docs`, `configurar`, `teste` e `pesquisar` (ou `pesquisa`) ficam fora.
 - Não contam: teste (`testa-*`, `test/` e `tests/` em qualquer pasta, `*.test.*`,
   `*_test.*`, `*.spec.*`), `.md` e glob. Tarefa que cria a própria bateria não paga o
   bloco.
@@ -107,9 +164,12 @@ Outra palavra é recusa.
 
 `node scripts/conferir-busca.cjs plano --slug <slug>`, que o
 `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o
-caminho novo que a disparou e o que falta. O git só é exigido quando alguma tarefa
-`implementar` (ou sem tipo) declara em `arquivos:` um caminho que não é glob, teste nem
-`.md`, novo ou existente, porque é contra o HEAD que se confere se ele é novo. Sem
+primeiro caminho declarado (com `cria` quando é novo e `edita` quando já existe) e o que
+falta. Para as referências do canal `catalogo`, o checador lê só os arquivos citados no
+resultado, com `definicoesDoArquivo` exportada por `scripts/catalogo-funcoes.cjs`. Não
+catalogo o repo inteiro. O git só é exigido quando alguma tarefa `implementar` (ou sem
+tipo) declara em `arquivos:` um caminho que não é glob, teste nem `.md`, novo ou
+existente, porque é contra o HEAD que se confere se ele é novo. Sem
 nenhuma, o checador roda fora de repositório git: sai 0, ou 2 se houver linha `doc`
 inválida (`## Canal \`doc\``). Com alguma e fora de git, sai 69 (`nao-verificavel:`),
 imprimindo antes a recusa da linha `doc` se houver, e o `marcar --estagio plano` trata o
@@ -119,6 +179,9 @@ imprimindo antes a recusa da linha `doc` se houver, e o `marcar --estagio plano`
 
 O padrão vem do ECC `skills/search-first`, que é só prosa ("agent guidance, not an
 executable setup script"). Aqui o "nada encontrado" sem canais é recusa, não atalho.
+
+O canal `catalogo` vem do design `2026-11-13-reuso-antes-de-criar`. Quando o `busca:` só
+cobrava tarefa que cria arquivo, a cópia de função em arquivo que já existia passava.
 
 O canal `doc` enxerta o método do `source-driven-development` do
 `addyosmani/agent-skills` (MIT): a hierarquia de fontes e a marca do que a doc não cobre
