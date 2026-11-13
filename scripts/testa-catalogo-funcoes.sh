@@ -28,6 +28,8 @@
 #      continuação com ; (a linha de baixo junta no lugar do ;; a entrada sai na primeira linha).
 #  22. advpl: cadeia de 3000 linhas com ; termina em menos de 20 s; a definição da linha 1 sai
 #      uma vez, e a juntada para no teto de MAX_CONTINUACAO.
+#  22b. advpl: 2000 Function seguidas, cada uma terminada em ;, terminam em menos de 20 s; cada
+#      uma sai uma vez (2000 entradas), e o teto de MAX_CONTINUACAO limita o custo.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -779,6 +781,18 @@ saiu "listar do fixture advpl 22 sai 0 em menos de 20 s" "$EXIT" 0
 T22="$(tuplas < "$SBP/c22.json")"
 igual "exatamente uma entrada para lib/longo.prw" "$(grep -c '^lib/longo.prw:' <<<"$T22")" "1"
 linha "Grande entra na linha 1" "$T22" "lib/longo.prw:1:Grande:advpl"
+
+echo "== 22b. advpl: 2000 Function seguidas, cada uma terminada em ;, terminam em menos de 20 s =="
+# Teto de MAX_CONTINUACAO: cada uma das 2000 linhas que abrem definição junta no máximo o teto.
+# Sem ele, a juntada de cada linha vai até o fim do arquivo: custo quadrático, passa dos 20 s.
+FX22B="$SBP/fixture-advpl-22b"
+mkdir -p "$FX22B/lib"
+{ for n in $(seq 2000); do echo "Function f$n(a, ;"; done; echo '  b)'; } > "$FX22B/lib/muitas.prw"
+montar_repo "$FX22B" || { echo "FALHA: montar_repo advpl 22b"; exit 1; }
+timeout 20 node "$CAT" listar --raiz "$(winpath "$FX22B")" > "$SBP/c22b.json" 2> "$SBP/e22b.txt"; EXIT=$?
+saiu "listar do fixture advpl 22b sai 0 em menos de 20 s" "$EXIT" 0
+N22B="$(node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{process.stdout.write(String(JSON.parse(s).filter((e)=>e.arquivo==="lib/muitas.prw").length))})' < "$SBP/c22b.json")"
+igual "exatamente 2000 entradas com arquivo lib/muitas.prw" "$N22B" "2000"
 
 echo
 echo "ok: $ok   falhou: $falhou"
