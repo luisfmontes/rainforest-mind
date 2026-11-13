@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.14.0 — 2026-11-13
+
+- **O catálogo de funções passa a enxergar métodos de classe TLPP.** O `scripts/catalogo-funcoes.cjs` lê agora as declarações `Method x() Class Y`, que saem como `Y:x`. Antes ficavam de fora, e num template Protheus real eram 142 métodos sem entrada no catálogo.
+- **Novo subcomando `catalogo-funcoes.cjs novas --base <ref>`.** Lista as funções que o diff cria em relação a uma referência, para ver o que a mudança acrescentou antes de olhar o resto.
+- **O plano cobra a busca em toda tarefa que toca código, não só na que cria arquivo.** O canal `catalogo` do `busca:` passa a ser exigido, e o `conferir-busca` confere cada `arquivo:linha` citado (detalhe em `skills/plano/references/campo-busca.md`). Plano em andamento com tarefa que só edita código existente precisa ganhar a linha `catalogo` (ou `- catalogo | pulado: <motivo>`) para fechar o `marcar plano`.
+- **O `revisar` compara as funções novas com o catálogo do repo.** Uma duplicata HIGH (mesma entrada, mesma saída) reprova a entrega; o resto vira observação (`skills/revisar/references/duplicata-das-novas.md`).
+
 ## 2.13.2 — 2026-11-12
 
 - **A captura de memória no fim da sessão não derruba mais os hooks de outros plugins.** O `observar.cjs`, que resume o transcrito no `SessionEnd`, tinha 25 s de orçamento por sessão pendente e esperava até 60 s por chamada ao modelo. Com várias sessões pendentes ou uma chamada lenta, passava do tempo que o Claude Code dá a todos os hooks de fim de sessão juntos, e os hooks de outros plugins saíam com `Hook cancelled` no meio do trabalho (Issue #701). Agora os 25 s valem para a execução inteira, cada chamada só tem o que sobra deles, e o processo do modelo é encerrado junto com o corte. O que não coube fica para a próxima sessão, como antes.
