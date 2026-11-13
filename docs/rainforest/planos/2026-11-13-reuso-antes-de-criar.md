@@ -264,15 +264,16 @@ busca:
 desfecho: estender
 mutacao:
   arquivo: `scripts/catalogo-funcoes.cjs`
-  de: `const casavel = linguagem === 'advpl' && INICIO_ADVPL.test(linha) ? juntarContinuacao(linhas, i) : linha;`
-  para: `const casavel = linguagem === 'advpl' ? juntarContinuacao(linhas, i) : linha;`
+  de: `while (/;\s*$/.test(juntada) && j + 1 < linhas.length && j - i < MAX_CONTINUACAO) {`
+  para: `while (/;\s*$/.test(juntada) && j + 1 < linhas.length) {`
   bateria: `bash scripts/testa-catalogo-funcoes.sh`
-  fixture: `testa-catalogo-funcoes.sh, caso novo 22 "advpl: cadeia de 3000 linhas com ; termina em menos de 20 s"`
+  fixture: `testa-catalogo-funcoes.sh, caso novo 22b "advpl: 2000 Function seguidas, cada uma terminada em ;, terminam em menos de 20 s"`
 prova: `node -e "const s=require('fs').readFileSync('scripts/catalogo-funcoes.cjs','utf8');process.exit(s.includes('INICIO_ADVPL')?0:1)"`
-pronto quando: com um fonte `lib/longo.prw` de fixture com `User Function Grande()` na linha 1 seguida de 3000 linhas `  cSql += "x" + ;` e uma última `  "y"`, `timeout 20 node scripts/catalogo-funcoes.cjs listar --raiz <fixture>` sai 0 e devolve exatamente uma entrada para o arquivo, `Grande` na linha 1. O caso 21 da tarefa 8 (`Foo:Quux` na linha 7, juntado) continua passando. Provado por `bash scripts/testa-catalogo-funcoes.sh` terminando em `falhou: 0` e exit 0.
+pronto quando: com um fonte `lib/longo.prw` de fixture com `User Function Grande()` na linha 1 seguida de 3000 linhas `  cSql += "x" + ;` e uma última `  "y"`, `timeout 20 node scripts/catalogo-funcoes.cjs listar --raiz <fixture>` sai 0 e devolve exatamente uma entrada para o arquivo, `Grande` na linha 1. Com um fonte `lib/muitas.prw` de 2000 linhas `Function fN(a, ;` (N de 1 a 2000) e uma última `  b)`, `timeout 20 node scripts/catalogo-funcoes.cjs listar --raiz <fixture>` sai 0 e devolve 2000 entradas para o arquivo. O caso 21 da tarefa 8 (`Foo:Quux` na linha 7, juntado) continua passando. Provado por `bash scripts/testa-catalogo-funcoes.sh` terminando em `falhou: 0` e exit 0.
 
 Passos:
 1. Constante nova perto de `MAX_CAMINHO_ASSINATURA`: `const INICIO_ADVPL = /^\s*(?:method|class|(?:static\s+|user\s+)?function)\b/i;` e `const MAX_CONTINUACAO = 50;`.
 2. Em `definicoesDoTexto`, a linha do `casavel` passa a ser exatamente o `de:` acima: só linha que abre definição junta as seguintes.
 3. Em `juntarContinuacao`, o `while` também para quando `j - i >= MAX_CONTINUACAO`.
-4. Caso novo 22 na bateria: monta a fixture do critério com um laço do shell (não colar 3000 linhas no script), roda o `listar` com `timeout 20`, afirma exit 0 e a entrada única. Cabeçalho atualizado.
+4. Emenda da integração: com o teto, o filtro `INICIO_ADVPL` sozinho não muda o tempo nem a contagem, e a mutação dele saiu verde (catraca exit 2). O alvo da mutação passa a ser o teto, que é o que limita o custo quando toda linha abre definição; o caso 22b mede isso. O filtro continua no código, sem mutação própria.
+5. Caso novo 22 na bateria: monta a fixture do critério com um laço do shell (não colar 3000 linhas no script), roda o `listar` com `timeout 20`, afirma exit 0 e a entrada única. Cabeçalho atualizado.
