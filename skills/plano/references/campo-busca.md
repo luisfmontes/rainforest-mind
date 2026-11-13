@@ -76,15 +76,16 @@ criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
   `nada equivalente`.
 - `listar --raiz <pasta>` imprime o caminho **relativo à pasta**: `listar --raiz scripts`
   acha `conferir-busca.cjs`, sem o prefixo `scripts/`. A referência no resultado leva o
-  caminho **relativo ao repositório**, com a pasta na frente: `scripts/conferir-busca.cjs:118`.
+  caminho **relativo ao repositório**, com a pasta na frente: `scripts/conferir-busca.cjs:224`.
   O checador lê o arquivo a partir da raiz do repo, então sem a pasta ele não acha.
 - Caminho com **espaço** vai entre crases, com a referência inteira dentro: ``reaproveito MT100 de `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw:1` ``.
   Sem as crases o espaço corta o caminho e a referência não é conferida inteira. Crase é
   necessária para espaço, `[`, `]` e `$` no caminho (pasta de rota do Next:
   ``reaproveito Page de `app/[id]/page.tsx:1` ``). Acento sozinho não pede crase, porque a classe
-  da referência tem `\p{L}` (`scripts/conferir-busca.cjs:111`). Sem crase, `[`, `]` ou `$` no
-  caminho faz a ocorrência sair como `referência sem crase que o checador não lê por inteiro`,
-  como em `pages/[id].js:99`.
+  da referência (`REFERENCIA` em `scripts/conferir-busca.cjs`) tem `\p{L}`. Caminho só com letras,
+  números, `.`, `/` e `-` não precisa de crase. Sem crase, `[`, `]` ou `$` no caminho faz a
+  ocorrência sair como `referência sem crase que o checador não lê por inteiro`, como em
+  `pages/[id].js:99`.
 - `- catalogo | pulado: <motivo>` vale para tarefa que não cria função, por exemplo uma
   correção dentro de uma função que já existe. O motivo não pode ser vazio.
 - Conferência: só quando a linha não é `pulado:`, toda ocorrência de `arquivo:linha` em
@@ -92,15 +93,15 @@ criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
   `([\p{L}\p{N}_.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)` (com a flag `u`), e a referência
   entre crases (`` `arq:L?n` ``) é casada antes, com espaço no caminho; o `L` antes do número é opcional. A
   contrabarra vale como barra, e URL (`http://` ou `https://`) não conta como referência.
-  Fora de crase, uma ocorrência `.ext:N` com caractere fora da classe no caminho (`[`, `]`, `$`)
-  é recusada antes das quatro, com `referência sem crase que o checador não lê por inteiro: <token>`,
-  e a mensagem manda usar crase. Pontuação `(`, `[`, `"`, `'`, `,` ou `;` colada antes do caminho
-  é aceita (`scripts/conferir-busca.cjs:133`).
+  Fora de crase, uma ocorrência `.ext:N` com caractere fora da classe no caminho (por exemplo
+  `[`, `]` ou `$`) é recusada antes das quatro, com `referência sem crase que o checador não lê por
+  inteiro: <token>`, e a mensagem manda usar crase. Pontuação `(`, `[`, `"`, `'`, `,` ou `;` colada
+  antes do caminho é aceita (conferido em `problemasDeReferencia`).
   Cada referência passa pelas quatro recusas, nesta ordem, e sai com o primeiro motivo
   que casar:
-  1. fora do repositório: caminho absoluto (`/...` ou `C:\...`) ou com segmento `..`. `C:`
-     colado antes de um caminho também sai assim, porque o checador junta os dois
-     (`scripts/conferir-busca.cjs:132`);
+  1. fora do repositório: caminho absoluto (`/...` ou `C:\...`) ou com segmento `..`. `C:\`
+     colado antes do caminho (`C:\Projetos\...`) sai assim também, porque o checador junta os dois
+     em `problemasDeReferencia`. `C:` sem a barra (`C:scripts/...`) sai como `arquivo não existe`;
   2. extensão que o catálogo não lê. As extensões são as de `EXTENSOES` em
      `hooks/lib/definicoes.cjs`: `.js`, `.cjs`, `.mjs`, `.ts`, `.tsx`, `.jsx`, `.py`,
      `.prw`, `.prx`, `.tlpp`, `.ch` e `.dart`;
@@ -123,11 +124,12 @@ criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
   - não roda o `listar`; a consulta não é executada, só é varrida para `arquivo:linha` e
     precisa existir;
   - não exige as palavras `reaproveito` nem `nada equivalente`;
-  - não separa prosa estranha de referência: uma ocorrência `.ext:N` fora de crase, com
-    caractere fora da classe no caminho, pode dar recusa mesmo sem ser caminho
-    (`scripts/conferir-busca.cjs:136`). A saída é pôr o caminho entre crases ou, quando a
-    tarefa não cria função, `- catalogo | pulado: <motivo>`. A linha pulada não leva
-    resultado, então não tem referência a conferir (`scripts/conferir-busca.cjs:204`, `:304`).
+  - não separa prosa de caminho: um token `.ext:N` é conferido como caminho, com ou sem crase.
+    Fora de crase, o que não é caminho limpo (por exemplo `**arquivo.js:1**`) sai como
+    `referência sem crase...`; entre crases, sai como `arquivo não existe`. Crase só resolve
+    caminho real. Para prosa, tire o `.ext:N` dela ou, quando a tarefa não cria função, use
+    `- catalogo | pulado: <motivo>`: a linha pulada não leva resultado, então não tem referência
+    a conferir (campo depois de `pulado:` é recusa, em `lerLinhaBusca`).
 
 ## Canal `doc`
 
