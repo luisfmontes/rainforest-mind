@@ -18,7 +18,7 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-13",
     "tarefas_ok": 12,
     "tarefas": 12,
@@ -233,22 +233,22 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "f63ef4581bfa9d8936f49de7b74648b245299cc6",
+      "head": "1263d9422e2d31e801448cf6c85dbe57c0a868ad",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a5c21af5a19984c1b",
+        "agente_id": "a04cbf111b2286d4c",
         "veredito": "ok",
         "em": "2026-11-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a5c21af5a19984c1b.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a04cbf111b2286d4c.jsonl"
       }
     ],
     "em": "2026-11-13",
-    "achados": 3,
+    "achados": 2,
     "base": "17942d8a6e3ccbefb242eb960ce6cb9ce7a76d71",
-    "head": "f63ef4581bfa9d8936f49de7b74648b245299cc6",
+    "head": "1263d9422e2d31e801448cf6c85dbe57c0a868ad",
     "voltas": [
       {
         "volta": 1,
@@ -259,6 +259,18 @@
             "veredito": "ok",
             "em": "2026-11-13",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-aecc916cd066b4712.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a5c21af5a19984c1b",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a5c21af5a19984c1b.jsonl"
           }
         ]
       }
@@ -282,6 +294,11 @@
       "em": "2026-11-13",
       "de": "revisar",
       "motivo": "revisao rodada 2 aprovou com 3 achados: (1) referencia com espaco ou acento no caminho vira arquivo nao existe; (2) juntarContinuacao cubico em cadeia longa de ;; (3) [id] e $id no nome viram falso vermelho"
+    },
+    {
+      "em": "2026-11-13",
+      "de": "revisar",
+      "motivo": "revisao rodada 3 aprovou com achado media: REFERENCIA com colchete e cifrao le pontuacao como parte do caminho ([src/x.js:3] vira arquivo nao existe); doc de campo-busca afirma que colchete vale sem crase"
     }
   ]
 }

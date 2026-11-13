@@ -178,7 +178,7 @@ arquivos: `hooks/lib/definicoes.cjs`, `scripts/catalogo-funcoes.cjs`, `scripts/t
 depende de: 3
 busca:
 - repo | rg -n "advpl" hooks/lib/definicoes.cjs scripts/catalogo-funcoes.cjs | o regex advpl do mapa metodo e o laço de definicoesDoTexto, ambos da tarefa 1
-- catalogo | listar --raiz hooks/lib | estendo a função casar de hooks/lib/definicoes.cjs:73 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:184, sem função nova
+- catalogo | listar --raiz hooks/lib | estendo a função casar de hooks/lib/definicoes.cjs:73 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:186, sem função nova
 desfecho: estender
 mutacao:
   arquivo: `hooks/lib/definicoes.cjs`
@@ -202,7 +202,7 @@ arquivos: `scripts/conferir-busca.cjs`, `scripts/testa-conferir-busca.sh`
 depende de: 3
 busca:
 - repo | rg -n "RE_URL|RE_CIT|function extrairCitacoes" scripts/conferir-ancoras.cjs | o conferir-ancoras já descarta URL e exige extensão que começa com letra, mas não exporta nada e roda a CLI no topo, então o conserto adota as duas regras sem importar
-- catalogo | listar --raiz scripts | estendo a função problemasDeReferencia de scripts/conferir-busca.cjs:118 e o laço de cmdPlano, sem função nova
+- catalogo | listar --raiz scripts | estendo a função problemasDeReferencia de scripts/conferir-busca.cjs:121 e o laço de cmdPlano, sem função nova
 desfecho: estender
 mutacao:
   arquivo: `scripts/conferir-busca.cjs`
@@ -236,7 +236,7 @@ arquivos: `scripts/conferir-busca.cjs`, `scripts/testa-conferir-busca.sh`, `skil
 depende de: 10
 busca:
 - repo | rg -n "REFERENCIA|function problemasDeReferencia" scripts/conferir-busca.cjs | a regex e a função da tarefa 9
-- catalogo | listar --raiz scripts | estendo a função problemasDeReferencia de scripts/conferir-busca.cjs:118, sem função nova
+- catalogo | listar --raiz scripts | estendo a função problemasDeReferencia de scripts/conferir-busca.cjs:121, sem função nova
 desfecho: estender
 mutacao:
   arquivo: `scripts/conferir-busca.cjs`
@@ -260,7 +260,7 @@ arquivos: `scripts/catalogo-funcoes.cjs`, `scripts/testa-catalogo-funcoes.sh`
 depende de: 8
 busca:
 - repo | rg -n "juntarContinuacao" scripts/catalogo-funcoes.cjs | a função da tarefa 8 e a única chamada dela
-- catalogo | listar --raiz scripts | estendo a função juntarContinuacao de scripts/catalogo-funcoes.cjs:173 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:184, sem função nova
+- catalogo | listar --raiz scripts | estendo a função juntarContinuacao de scripts/catalogo-funcoes.cjs:175 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:186, sem função nova
 desfecho: estender
 mutacao:
   arquivo: `scripts/catalogo-funcoes.cjs`
@@ -277,3 +277,27 @@ Passos:
 3. Em `juntarContinuacao`, o `while` também para quando `j - i >= MAX_CONTINUACAO`.
 4. Emenda da integração: com o teto, o filtro `INICIO_ADVPL` sozinho não muda o tempo nem a contagem, e a mutação dele saiu verde (catraca exit 2). O alvo da mutação passa a ser o teto, que é o que limita o custo quando toda linha abre definição; o caso 22b mede isso. O filtro continua no código, sem mutação própria.
 5. Caso novo 22 na bateria: monta a fixture do critério com um laço do shell (não colar 3000 linhas no script), roda o `listar` com `timeout 20`, afirma exit 0 e a entrada única. Cabeçalho atualizado.
+
+Emenda de 2026-11-13, depois da revisão 3 (`VEREDITO: ok` com um achado médio que é regressão da tarefa 11). As referências `arquivo:linha` das tarefas 8, 9, 11 e 12 foram atualizadas para as linhas de hoje: o código das tarefas seguintes as deslocou.
+
+### 13. `[`, `]` e `$` no caminho só entre crases [tipo: implementar]
+atende: D3
+arquivos: `scripts/conferir-busca.cjs`, `scripts/testa-conferir-busca.sh`, `skills/plano/references/campo-busca.md`
+depende de: 11
+busca:
+- repo | rg -n "const REFERENCIA|const CRASE" scripts/conferir-busca.cjs | as duas regex da tarefa 11
+- catalogo | pulado: só troca a classe de caracteres de uma constante, sem função nova nem alterada
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conferir-busca.cjs`
+  de: `const REFERENCIA = /([\p{L}\p{N}_.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu;`
+  para: `const REFERENCIA = /([\p{L}\p{N}_.\/\[\]$-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu;`
+  bateria: `bash scripts/testa-conferir-busca.sh`
+  fixture: `testa-conferir-busca.sh, caso novo "catalogo (s): [src/x.js:3] com colchete de pontuação é conferido como src/x.js:3"`
+prova: `node -e "const s=require('fs').readFileSync('scripts/conferir-busca.cjs','utf8');process.exit(s.includes('\\\\[\\\\]$')?1:0)"`
+pronto quando: com o repo de fixture da seção 9 da bateria, `node scripts/conferir-busca.cjs plano --slug s --plano <arq>` responde assim. (s) Resultado `reaproveito [src/x.js:3]` → exit 0; resultado `reaproveito [src/x.js:4]` → exit 2, recusa citando `src/x.js:4`, sem colchete. (q) passa a escrever o caminho do Next entre crases, ``reaproveito Page de `app/[id]/page.tsx:1` `` → exit 0. Os demais casos continuam com o mesmo exit. Provado por `bash scripts/testa-conferir-busca.sh` terminando em `vermelhas:[]` e exit 0.
+
+Passos:
+1. Em `scripts/conferir-busca.cjs`, a `REFERENCIA` passa a ser exatamente o `de:` acima: sem `[`, `]` e `$` na classe. Caminho com esses caracteres vai entre crases, como o caminho com espaço. A `CRASE` não muda.
+2. Na bateria, o caso (q) troca a entrada para a forma entre crases e o nome dele diz isso. O que (q) protege é ler `app/[id]/page.tsx`, e a forma entre crases continua lendo. Caso novo (s) com as duas linhas do critério. Cabeçalho atualizado.
+3. Em `campo-busca.md`, linhas ~83-84: `[`, `]`, `$`, espaço e acento no caminho pedem crase. Sem crase, colchete e `$` são pontuação e ficam fora do caminho.
