@@ -903,10 +903,10 @@ COMANDO_CRASE_11=$'echo \\`gh issue close 12\\`'
 EXIT_CRASE_11=$?
 [ $EXIT_CRASE_11 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_11)"
 
-# Caso (crase-12): commit por heredoc citado com crase que cita gh de escrita → exit 2 (D7 de gate-crase:
-# falso positivo aceito, o mesmo do $(gh ...) na base; o contorno e git commit -F arquivo)
+# Caso (crase-12): commit por heredoc canonico que cita gh de escrita em crase → exit 0 (D6 de gate-segmentador:
+# o corpo de heredoc citado e literal; desfaz o falso positivo do D7 de gate-crase)
 echo
-echo "== (crase-12) commit por heredoc citado com crase que cita gh de escrita → exit 2 =="
+echo "== (crase-12) commit por heredoc canonico que cita gh de escrita em crase → exit 0 =="
 COMANDO_CRASE_12=$'git commit -m "$(cat <<\'EOF\'\nfix: gate barra `gh issue close` em crase\nEOF\n)"'
 (
   export PATH="$SBP/bin:$PATH"
@@ -914,7 +914,7 @@ COMANDO_CRASE_12=$'git commit -m "$(cat <<\'EOF\'\nfix: gate barra `gh issue clo
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-crase-12"
 EXIT_CRASE_12=$?
-[ $EXIT_CRASE_12 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_12)"
+[ $EXIT_CRASE_12 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_12)"
 
 # Caso (crase-13): crase dentro de $(...) entre aspas duplas → exit 2 (D6 de gate-crase)
 echo
@@ -963,6 +963,734 @@ COMANDO_CRASE_16=$'git commit -m "$(cat <<\'EOF\'\nfix: ajusta `git log` no text
 ) 2>"$SBP/err-crase-16"
 EXIT_CRASE_16=$?
 [ $EXIT_CRASE_16 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_16)"
+
+# Caso (hs-1): here-string com crase de gh de escrita → exit 2 (D1 de gate-segmentador)
+echo
+echo "== (hs-1) here-string com crase de gh de escrita → exit 2 =="
+COMANDO_HS_1=$'cat <<< `gh issue close 12`'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-1"
+EXIT_HS_1=$?
+[ $EXIT_HS_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_1)"
+
+# Caso (hs-2): here-string com crase dentro de aspas duplas de gh de escrita → exit 2 (D1 de gate-segmentador)
+echo
+echo "== (hs-2) here-string com crase dentro de aspas duplas de gh de escrita → exit 2 =="
+COMANDO_HS_2=$'cat <<< "`gh issue close 12`"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-2"
+EXIT_HS_2=$?
+[ $EXIT_HS_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_2)"
+
+# Caso (hs-3): here-string com $(gh issue close) → exit 2 (D1 de gate-segmentador)
+echo
+echo "== (hs-3) here-string com \$(gh issue close) → exit 2 =="
+COMANDO_HS_3=$'cat <<< $(gh issue close 12)'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-3"
+EXIT_HS_3=$?
+[ $EXIT_HS_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_3)"
+
+# Caso (hs-4): here-string com texto comum entre aspas duplas → exit 0 (D1 de gate-segmentador)
+echo
+echo "== (hs-4) here-string com texto comum entre aspas duplas → exit 0 =="
+COMANDO_HS_4=$'cat <<< "texto comum"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-4"
+EXIT_HS_4=$?
+[ $EXIT_HS_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HS_4)"
+
+# Caso (cb-1): contrabarra fora de aspas escapa a aspa e esconde gh issue close → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-1) Bash: contrabarra fora de aspas escapa aspa e esconde gh issue close → exit 2 =="
+COMANDO_CB_1=$'echo \\"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-1"
+EXIT_CB_1=$?
+[ $EXIT_CB_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_1)"
+
+# Caso (cb-2): contrabarra fora de aspas escapa a aspa simples antes de crase de gh de escrita → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-2) Bash: contrabarra fora de aspas escapa aspa simples antes de crase de gh de escrita → exit 2 =="
+COMANDO_CB_2=$'echo \\\'`gh issue close 12`'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-2"
+EXIT_CB_2=$?
+[ $EXIT_CB_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_2)"
+
+# Caso (cb-3): contrabarra fora de aspas em texto comum com aspas escapadas → exit 0 (D2 de gate-segmentador)
+echo
+echo "== (cb-3) Bash: contrabarra fora de aspas em texto comum com aspas escapadas → exit 0 =="
+COMANDO_CB_3=$'echo \\"oi\\"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-3"
+EXIT_CB_3=$?
+[ $EXIT_CB_3 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CB_3)"
+
+# Caso (cb-4): contrabarra dentro de aspa simples nao escapa, mas a aspa escapada fora dela esconde gh → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-4) Bash: aspa simples com contrabarra final nao escapa, gh issue close depois → exit 2 =="
+COMANDO_CB_4=$'echo \'a\\\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-4"
+EXIT_CB_4=$?
+[ $EXIT_CB_4 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_4)"
+
+# Caso (cb-5): PowerShell, contrabarra fora de aspas e literal (cd C:\x\ ; gh issue close) → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-5) PowerShell: contrabarra fora de aspas e literal, gh issue close depois → exit 2 =="
+COMANDO_CB_5=$'cd C:\\x\\; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-5"
+EXIT_CB_5=$?
+[ $EXIT_CB_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_5)"
+
+# Caso (cb-6): PowerShell, contrabarra antes de aspa dupla e literal (Write-Host "C:\"; gh issue close) → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-6) PowerShell: contrabarra antes de aspa dupla e literal, gh issue close depois → exit 2 =="
+COMANDO_CB_6=$'Write-Host "C:\\"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-6"
+EXIT_CB_6=$?
+[ $EXIT_CB_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_6)"
+
+# Caso (ad-1): aspa dupla com aspa escapada dentro e gh issue close depois → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (ad-1) Bash: aspa dupla com aspa escapada dentro e gh issue close depois → exit 2 =="
+COMANDO_AD_1=$'echo "\\""; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-1"
+EXIT_AD_1=$?
+[ $EXIT_AD_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_1)"
+
+# Caso (ad-2): ANSI-C com aspa escapada e gh issue close depois → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (ad-2) Bash: ANSI-C com aspa escapada e gh issue close depois → exit 2 =="
+COMANDO_AD_2=$'echo $\'\\\'\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-2"
+EXIT_AD_2=$?
+[ $EXIT_AD_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_2)"
+
+# Caso (ad-3): aspas duplas com aspas escapadas e texto comum → exit 0 (D2 de gate-segmentador)
+echo
+echo "== (ad-3) Bash: aspas duplas com aspas escapadas e texto comum → exit 0 =="
+COMANDO_AD_3=$'echo "say \\"oi\\""'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-3"
+EXIT_AD_3=$?
+[ $EXIT_AD_3 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AD_3)"
+
+# Caso (ad-4): ANSI-C com crase de gh de escrita, crase literal → exit 0 (D2 de gate-segmentador)
+echo
+echo "== (ad-4) Bash: ANSI-C com crase de gh de escrita, crase literal → exit 0 =="
+COMANDO_AD_4=$'echo $\'`gh issue close 12`\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-4"
+EXIT_AD_4=$?
+[ $EXIT_AD_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AD_4)"
+
+# Caso (ad-5): ANSI-C com cifrao escapado e aspa escapada antes de gh issue close → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (ad-5) Bash: ANSI-C com cifrao escapado e aspa escapada antes de gh issue close → exit 2 =="
+COMANDO_AD_5=$'echo \\$\'a\\\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-5"
+EXIT_AD_5=$?
+[ $EXIT_AD_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_5)"
+
+# Caso (ad-6): $$ (PID) seguido de aspa simples nao abre ANSI-C → exit 2 (revisao 4 de gate-segmentador)
+echo
+echo "== (ad-6) Bash: \$\$ seguido de aspa simples e gh dentro de bash -c → exit 2 =="
+COMANDO_AD_6=$'echo $$\'\\\'; bash -c \'gh issue close 12\'; echo \'\\\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-6"
+EXIT_AD_6=$?
+[ $EXIT_AD_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_6)"
+
+# Caso (ad-7): $$$ seguido de aspa abre ANSI-C ($$ e $'...') e gh depois → exit 2 (revisao 4 de gate-segmentador)
+echo
+echo "== (ad-7) Bash: \$\$\$ com ANSI-C de aspa escapada e gh issue close depois → exit 2 =="
+COMANDO_AD_7=$'echo $$$\'\\\'\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_7")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-7"
+EXIT_AD_7=$?
+[ $EXIT_AD_7 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_7)"
+
+# Caso (ps-1): "$(...)" com ponto e virgula e aspa simples no interior, gh issue close depois → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-1) Bash: \$(...) com aspa simples no interior e gh issue close depois → exit 2 =="
+COMANDO_PS_1=$'echo "$(echo \')\' ; gh issue close 12)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-1"
+EXIT_PS_1=$?
+[ $EXIT_PS_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_1)"
+
+# Caso (ps-2): "$(...)" com aspa simples no interior e && gh issue close depois → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-2) Bash: \$(...) com aspa simples no interior e && gh issue close depois → exit 2 =="
+COMANDO_PS_2=$'echo "$(echo \')\' && gh issue close 12)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-2"
+EXIT_PS_2=$?
+[ $EXIT_PS_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_2)"
+
+# Caso (ps-3): "$(...)" com aspa simples no interior e gh pr merge depois → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-3) Bash: \$(...) com aspa simples no interior e gh pr merge depois → exit 2 =="
+COMANDO_PS_3=$'echo "$(echo \')\' ; gh pr merge 5)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-3"
+EXIT_PS_3=$?
+[ $EXIT_PS_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_3)"
+
+# Caso (ps-4): "$(...)" com aspa dupla e simples no interior, gh issue close depois do fecho → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-4) Bash: \$(...) com aspa dupla e simples no interior, gh issue close depois do fecho → exit 2 =="
+COMANDO_PS_4=$'echo "$(echo "\'")"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-4"
+EXIT_PS_4=$?
+[ $EXIT_PS_4 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_4)"
+
+# Caso (ps-5): "$(...)" com aspa simples no interior e so echo depois, sem gh de escrita → exit 0 (D3 de gate-segmentador)
+echo
+echo "== (ps-5) Bash: \$(...) com aspa simples no interior e so echo depois, sem gh de escrita → exit 0 =="
+COMANDO_PS_5=$'echo "$(echo \')\' ; echo oi)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-5"
+EXIT_PS_5=$?
+[ $EXIT_PS_5 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_PS_5)"
+
+# Caso (ps-6): commit por heredoc com apostrofo e parenteses soltos no corpo, sem gh → exit 0 (D3 de gate-segmentador)
+echo
+echo "== (ps-6) commit por heredoc com apostrofo e parenteses soltos no corpo, sem gh → exit 0 =="
+COMANDO_PS_6=$'git commit -m "$(cat <<\'EOF\'\ndon\'t ) solto\nEOF\n)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-6"
+EXIT_PS_6=$?
+[ $EXIT_PS_6 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_PS_6)"
+
+# Caso (hc-1): commit por heredoc canonico seguido de gh de comentario → exit 0 (D6 de gate-segmentador)
+echo
+echo "== (hc-1) commit por heredoc canonico seguido de gh issue comment → exit 0 =="
+COMANDO_HC_1=$'git commit -m "$(cat <<\'EOF\'\nfix: ajusta o texto\nEOF\n)" && gh issue comment 5 --body ok'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HC_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hc-1"
+EXIT_HC_1=$?
+[ $EXIT_HC_1 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HC_1)"
+
+# Caso (hc-2): commit por heredoc canonico com aspa no corpo seguido de gh de escrita → exit 2 (D6 de gate-segmentador)
+echo
+echo "== (hc-2) commit por heredoc canonico com aspa no corpo seguido de gh issue close → exit 2 =="
+COMANDO_HC_2=$'git commit -m "$(cat <<\'EOF\'\nfoo " bar\nEOF\n)"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HC_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hc-2"
+EXIT_HC_2=$?
+[ $EXIT_HC_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC_2)"
+
+# Caso (wd-1): bash -c pela PowerShell, aspa escapada dentro do wrapper → exit 2 (D7 de gate-segmentador)
+echo
+echo "== (wd-1) bash -c pela PowerShell com aspa escapada dentro do wrapper → exit 2 =="
+COMANDO_WD_1=$'bash -c \'echo \\"; gh issue close 12\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-1"
+EXIT_WD_1=$?
+[ $EXIT_WD_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_WD_1)"
+
+# Caso (wd-2): bash -c pela PowerShell com aspa escapada e texto comum → exit 0 (D7 de gate-segmentador)
+echo
+echo "== (wd-2) bash -c pela PowerShell com aspa escapada e texto comum → exit 0 =="
+COMANDO_WD_2=$'bash -c \'echo \\"oi\\"\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-2"
+EXIT_WD_2=$?
+[ $EXIT_WD_2 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_WD_2)"
+
+# Caso (wd-3): pwsh -Command pelo Bash com contrabarra literal dentro do wrapper → exit 2 (D7 de gate-segmentador)
+echo
+echo "== (wd-3) pwsh -Command pelo Bash com contrabarra literal dentro do wrapper → exit 2 =="
+COMANDO_WD_3=$'pwsh -Command \'Write-Host "C:\\"; gh issue close 12\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-3"
+EXIT_WD_3=$?
+[ $EXIT_WD_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_WD_3)"
+
+# Caso (wd-4): pwsh -Command pelo Bash com texto comum → exit 0 (D7 de gate-segmentador)
+echo
+echo "== (wd-4) pwsh -Command pelo Bash com texto comum → exit 0 =="
+COMANDO_WD_4=$'pwsh -Command \'Write-Host "oi"\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-4"
+EXIT_WD_4=$?
+[ $EXIT_WD_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_WD_4)"
+
+# Caso (hc-3): "$(cat <<'EOF'" com EOF falso antes do ")" nao esconde o gh depois → exit 2 (D6 de gate-segmentador, revisao 1)
+echo
+echo "== (hc-3) EOF falso antes do \")\" nao esconde o gh depois → exit 2 =="
+COMANDO_HC_3=$'echo "$(cat <<\'EOF\'\nx\nEOF\necho \'\nEOF\n)\'\ngh issue close 12\necho \')\')"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HC_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hc-3"
+EXIT_HC_3=$?
+[ $EXIT_HC_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC_3)"
+
+# Caso (cw-1): bash -c com aspa escapada e gh de escrita dentro → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-1) bash -c com aspa escapada e gh de escrita dentro → exit 2 =="
+COMANDO_CW_1=$'bash -c "echo \\\\\\"; gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-1"
+EXIT_CW_1=$?
+[ $EXIT_CW_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_1)"
+
+# Caso (cw-2): eval com aspa escapada e gh de escrita dentro → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-2) eval com aspa escapada e gh de escrita dentro → exit 2 =="
+COMANDO_CW_2=$'eval "echo \\\\\\"; gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-2"
+EXIT_CW_2=$?
+[ $EXIT_CW_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_2)"
+
+# Caso (cw-3): sh -c com aspa escapada e gh de escrita dentro → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-3) sh -c com aspa escapada e gh de escrita dentro → exit 2 =="
+COMANDO_CW_3=$'sh -c "echo \\\\\\"; gh pr merge 5"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-3"
+EXIT_CW_3=$?
+[ $EXIT_CW_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_3)"
+
+# Caso (cw-4): bash -c com aspa escapada e texto comum → exit 0 (D8 de gate-segmentador)
+echo
+echo "== (cw-4) bash -c com aspa escapada e texto comum → exit 0 =="
+COMANDO_CW_4=$'bash -c "echo \\"oi\\""'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-4"
+EXIT_CW_4=$?
+[ $EXIT_CW_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_4)"
+
+# Caso (cm-3): # no meio de palavra nao e comentario (echo a#b; echo 'x') → exit 0 (D9 de gate-segmentador)
+echo
+echo "== (cm-3) # no meio de palavra nao e comentario → exit 0 =="
+COMANDO_CM_3=$'echo a#b; echo \'x\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-3"
+EXIT_CM_3=$?
+[ $EXIT_CM_3 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CM_3)"
+
+# Caso (cm-4): comentario no fim da linha de comando comum → exit 0 (D9 de gate-segmentador)
+echo
+echo "== (cm-4) comentario no fim da linha de comando comum → exit 0 =="
+COMANDO_CM_4=$'echo hi # comentario'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-4"
+EXIT_CM_4=$?
+[ $EXIT_CM_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CM_4)"
+
+# Caso (cw-5): eval com palavra unica por contrabarra fora de aspas → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-5) eval com gh issue close numa palavra so, por contrabarra → exit 2 =="
+COMANDO_CW_5=$'eval gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-5"
+EXIT_CW_5=$?
+[ $EXIT_CW_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_5)"
+
+# Caso (cw-6): bash -c com palavra unica por contrabarra fora de aspas → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-6) bash -c com gh pr merge numa palavra so, por contrabarra → exit 2 =="
+COMANDO_CW_6=$'bash -c gh\\ pr\\ merge\\ 5'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-6"
+EXIT_CW_6=$?
+[ $EXIT_CW_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_6)"
+
+# Caso (cw-7): eval de leitura numa palavra so → exit 0 (D8 de gate-segmentador)
+echo
+echo "== (cw-7) eval com gh issue view numa palavra so → exit 0 =="
+COMANDO_CW_7=$'eval gh\\ issue\\ view\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_7")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-7"
+EXIT_CW_7=$?
+[ $EXIT_CW_7 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_7)"
+
+# Caso (cw-8): eval com palavra escapada que junta ; e gh pr merge → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-8) eval com palavra escapada que junta ; e gh pr merge → exit 2 =="
+COMANDO_CW_8=$'eval echo\\ x\\;gh pr merge 5'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_8")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-8"
+EXIT_CW_8=$?
+[ $EXIT_CW_8 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_8)"
+
+# Caso (cw-9): eval com ; escapado na palavra seguinte e gh issue close → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-9) eval com ; escapado na palavra seguinte e gh issue close → exit 2 =="
+COMANDO_CW_9=$'eval x \\;\\ gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_9")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-9"
+EXIT_CW_9=$?
+[ $EXIT_CW_9 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_9)"
+
+# Caso (cw-10): eval com apostrofo escapado e gh issue close na mesma palavra → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-10) eval com apostrofo escapado e gh issue close na mesma palavra → exit 2 =="
+COMANDO_CW_10=$'eval echo\\ \\\'x\\\'\\;\\ gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_10")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-10"
+EXIT_CW_10=$?
+[ $EXIT_CW_10 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_10)"
+
+# Caso (cw-11): bash -c com apostrofo escapado e gh issue close na mesma palavra → exit 2 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-11) bash -c com apostrofo escapado e gh issue close na mesma palavra → exit 2 =="
+COMANDO_CW_11=$'bash -c echo\\ \\\'x\\\'\\;\\ gh\\ issue\\ close\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_11")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-11"
+EXIT_CW_11=$?
+[ $EXIT_CW_11 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_11)"
+
+# Caso (cw-12): eval com apostrofo escapado e gh de leitura → exit 0 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-12) eval com apostrofo escapado e gh de leitura → exit 0 =="
+COMANDO_CW_12=$'eval echo\\ \\\'oi\\\'\\;\\ gh\\ issue\\ view\\ 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_12")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-12"
+EXIT_CW_12=$?
+[ $EXIT_CW_12 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_12)"
+
+# Caso (cw-13): bash -c com apostrofo escapado sem gh → exit 0 (revisao 5 de gate-segmentador, D8)
+echo
+echo "== (cw-13) bash -c com apostrofo escapado sem gh → exit 0 =="
+COMANDO_CW_13=$'bash -c echo\\ \\\'oi\\\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_13")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-13"
+EXIT_CW_13=$?
+[ $EXIT_CW_13 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_13)"
+
+# Casos (mx) e (ac): revisao 6 de gate-segmentador (Q1 A). (mx) palavra de aspas mistas com
+# contrabarra dentro de eval/bash -c: o bash reduz cada trecho pela propria aspa, o gate reduzia
+# a palavra inteira pela primeira; com gh que escreve, ilegivel. (ac) a rede do D3 decodifica o
+# ANSI-C ($'\xHH', octal) antes de procurar o gh. Os vizinhos de exit 0 sao legitimos.
+caso_gate() { # $1 rotulo, $2 exit esperado, $3 comando
+  local rot="$1" esp="$2" cmd="$3" ex
+  echo
+  echo "== ($rot) exit $esp: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  [ $ex -eq "$esp" ] && test_ok "$rot exit $esp" || test_fail "$rot exit $esp (foi $ex: $(cat "$SBP/err-$rot"))"
+}
+caso_gate mx-1 2 $'eval "echo"\' \\"; gh issue close 12\''
+caso_gate mx-2 2 $'bash -c "echo"\' \\"; gh issue close 12\''
+caso_gate mx-3 2 $'eval ""\'echo \\"; gh pr merge 5\''
+caso_gate mx-4 2 $'time eval "echo"\' \\"; gh issue close 12\''
+caso_gate mx-5 2 $'eval "e"\'cho \\"\'"; gh pr merge 5"'
+caso_gate mx-6 2 $'eval "echo"\' \\"oi\''
+caso_gate mx-7 2 $'bash -c "gh issue view 12"\' --json \\"title\\"\''
+caso_gate mx-8 0 $'echo "a"\' \\"; gh issue close 12\''
+caso_gate ac-4 0 $'echo "$(echo \')\' ; echo $\'clo\\x73e\')"'
+# Revisao 7 (Q1 B): sem decodificar ANSI-C, um `$'` falso antes do `gh` nao esconde o `issue`.
+caso_gate r8-1 2 $'echo "$(echo \')\' ; echo \'$\' ; gh iss\\ue close 12 ; echo \'x\')"'
+caso_gate_ps() { # $1 rotulo, $2 exit esperado, $3 comando (ferramenta PowerShell)
+  local rot="$1" esp="$2" cmd="$3" ex
+  echo
+  echo "== ($rot) PowerShell exit $esp: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  [ $ex -eq "$esp" ] && test_ok "$rot exit $esp" || test_fail "$rot exit $esp (foi $ex: $(cat "$SBP/err-$rot"))"
+}
+# Revisao 7 (Q1 B): no PowerShell a contrabarra e literal; palavra mista com caminho Windows passa.
+caso_gate_ps r8-2 0 '& "C:\Microsiga\advpls.exe" appre x.prw -I"C:\Microsiga\includes"'
+caso_gate_ps r8-3 0 'cmd /c dir "C:\Program Files"\foo'
+caso_gate_ps r8-4 0 '& "C:\Program Files\nodejs\node.exe" --out="C:\x y\z"'
+# Revisao de seguranca do commit b2db757a: a isencao segue o dialeto do wrapper, nao a ferramenta.
+caso_gate_ps r8-5 2 $'bash -c "echo"\' \\"; gh issue close 12\''
+# Revisao de seguranca do commit 60835732: o gh fora da palavra mista, e o \U de 8 digitos.
+caso_gate mx-9 2 $'eval "echo"\' \\"; gh\' issue close 12'
+caso_gate mx-10 2 $'eval "echo"\' \\";\' gh issue close 12'
+# Revisao de seguranca do commit f06775e7: flag entre substantivo e verbo, e expansao de chaves.
+caso_gate mx-11 2 $'eval "echo"\' \\"; gh issue -R o/r close 12\''
+caso_gate mx-12 2 $'eval "echo"\' \\"; gh issue {close,} 12\''
+caso_gate mx-13 2 $'eval "echo"\' \\"; gh pr --repo o/r merge 5\''
+# Revisao de seguranca do commit 5513b4d3: ANSI-C montando o gh dentro do wrapper com palavra mista.
+caso_gate mx-14 2 $'eval "echo"\' \\"; \'$\'\\x67h\'\' issue close 12\''
+caso_gate mx-15 2 $'eval "echo"\' \\"; \'$\'\\147h\'\' issue close 12\''
+
+# Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
+echo
+echo "== (cm-5) espaco escapado antes do # nao abre comentario → exit 2 =="
+COMANDO_CM_5=$'echo \\ #; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-5"
+EXIT_CM_5=$?
+[ $EXIT_CM_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_5)"
+
+# Caso (cm-6): ponto e virgula escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
+echo
+echo "== (cm-6) ponto e virgula escapado antes do # nao abre comentario → exit 2 =="
+COMANDO_CM_6=$'echo \\;#x; gh pr merge 5'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-6"
+EXIT_CM_6=$?
+[ $EXIT_CM_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_6)"
+
+# Caso (cm-7): $(true)# no meio da palavra nao esconde o gh → exit 2 (D9 de gate-segmentador, revisao 2)
+echo
+echo "== (cm-7) $(true)# no meio da palavra nao esconde o gh → exit 2 =="
+COMANDO_CM_7=$'echo $(true)#; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_7")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-7"
+EXIT_CM_7=$?
+[ $EXIT_CM_7 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_7)"
+
+# Caso (cm-8): # dentro de ${...} nao esconde o gh → exit 2 (D9 de gate-segmentador, revisao 2)
+echo
+echo '== (cm-8) # dentro de ${...} nao esconde o gh → exit 2 =='
+COMANDO_CM_8=$'echo ${x:-a #b}; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_8")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-8"
+EXIT_CM_8=$?
+[ $EXIT_CM_8 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_8)"
+
+# Caso (cm-9): # depois de array nao esconde o gh → exit 2 (D9 de gate-segmentador, revisao 2)
+echo
+echo "== (cm-9) # depois de array nao esconde o gh → exit 2 =="
+COMANDO_CM_9=$'a=(x)#; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_9")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-9"
+EXIT_CM_9=$?
+[ $EXIT_CM_9 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_9)"
+
+# Caso (hs-5): here-string de interpretador com aspa escapada nao esconde o gh → exit 2 (D1 de gate-segmentador, revisao 2)
+echo
+echo "== (hs-5) here-string de interpretador com aspa escapada nao esconde o gh → exit 2 =="
+COMANDO_HS_5=$'bash <<< "echo \\\\\\"; gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-5"
+EXIT_HS_5=$?
+[ $EXIT_HS_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_5)"
+
+# Caso (hs-6): here-string de interpretador com aspas escapadas balanceadas → exit 2 (D1 de gate-segmentador, revisao 2)
+echo
+echo "== (hs-6) here-string de interpretador com aspas escapadas balanceadas → exit 2 =="
+COMANDO_HS_6=$'bash <<< "echo \\"hi\\"; gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-6"
+EXIT_HS_6=$?
+[ $EXIT_HS_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_6)"
+
+# Caso (hs-8): here-string de texto com aspas escapadas → exit 0 (D1 de gate-segmentador, revisao 2)
+echo
+echo "== (hs-8) here-string de texto com aspas escapadas → exit 0 =="
+COMANDO_HS_8=$'cat <<< "texto \\"citado\\""'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_8")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-8"
+EXIT_HS_8=$?
+[ $EXIT_HS_8 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HS_8)"
+
+# Caso (hs-7): here-string para cat canalizado ao bash com aspa escapada → exit 2 (D8 de gate-segmentador, revisao 2)
+echo
+echo "== (hs-7) here-string para cat canalizado ao bash com aspa escapada → exit 2 =="
+COMANDO_HS_7=$'cat <<< "echo \\\\\\"; gh issue close 12" | bash'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_7")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-7"
+EXIT_HS_7=$?
+[ $EXIT_HS_7 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_7)"
+
+# Caso (hs-9): here-string de palavra nua com aspa colada nao esconde o gh → exit 2 (D1 de gate-segmentador, revisao 2)
+echo
+echo "== (hs-9) here-string de palavra nua com aspa colada nao esconde o gh → exit 2 =="
+COMANDO_HS_9=$'bash <<< echo\\ x";gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_9")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-9"
+EXIT_HS_9=$?
+[ $EXIT_HS_9 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_9)"
+
+# Caso (hs-10): here-string de palavra com trechos citados colados → exit 2 (D1 de gate-segmentador, revisao 2)
+echo
+echo "== (hs-10) here-string de palavra com trechos citados colados → exit 2 =="
+COMANDO_HS_10=$'bash <<< \'echo x\'"; gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_10")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-10"
+EXIT_HS_10=$?
+[ $EXIT_HS_10 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_10)"
 
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
