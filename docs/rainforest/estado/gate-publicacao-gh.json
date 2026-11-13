@@ -19,12 +19,12 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 15,
-    "tarefas": 15,
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-publicacao-gh; node scripts/conferir-mutacao.cjs (tarefa 15)",
-    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 6: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: vermelho | tarefa 10: vermelho | tarefa 11: vermelho | tarefa 12: vermelho | tarefa 13: vermelho | tarefa 14: vermelho | tarefa 15: mutante sobreviveu | tarefa 3: pulada (n/a — tarefa só de texto e número de versão, sem comportamento a inverter) | EXIT=1 || reexecução da tarefa 15 com a fixture nova: conferir-mutacao vermelha (exit 1), confirmada em duas rodadas",
+    "tarefas_ok": 19,
+    "tarefas": 19,
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-publicacao-gh",
+    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 6: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: vermelho | tarefa 10: vermelho | tarefa 11: vermelho | tarefa 12: vermelho | tarefa 13: vermelho | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: vermelho | tarefa 17: vermelho | tarefa 18: vermelho | tarefa 19: vermelho | tarefa 3: pulada (n/a — tarefa só de texto e número de versão, sem comportamento a inverter) | EXIT=0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -59,7 +59,7 @@
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 --body com heredoc em subst de comando barra\""
+        "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 printf em pipe para -F - barra\""
       },
       {
         "tarefa": 8,
@@ -100,14 +100,30 @@
         "tarefa": 15,
         "resultado": "vermelho",
         "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 issue new com e-mail no corpo barra\""
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 continuacao do PowerShell com --repo publico na linha de baixo barra\""
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 gh perdido depois de outro gh achado barra\""
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 JID em heredoc do --body-file barra\""
+      },
+      {
+        "tarefa": 19,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 rede le --body-file entre aspas com espaco\""
       }
     ],
     "em": "2026-11-13",
-    "reaberturas": 4,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-13"
-    }
+    "reaberturas": 4
   },
   "revisar": {
     "status": "reprovado",
