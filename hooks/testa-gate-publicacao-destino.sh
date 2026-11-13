@@ -934,6 +934,7 @@ confere702 "URL com %2e no caminho falha fechada" 2 "" Bash "$R702P" 'gh issue c
 GH702="node $SANDBOX_BIN/gh"
 confere702 "issue new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh issue new --title termo702 --body x'
 confere702 "pr new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh pr new --title t --body termo702'
+confere702 "issue new com e-mail no corpo barra" 2 "$PUB" Bash "$R702" "gh issue new --title t --body 'fale com fulano@empresa.com.br'"
 confere702 "--body-file com caminho de home passa" 0 "$PUB" Bash "$R702" 'gh pr create --title Fix --body-file C:/Users/Fulano/AppData/Local/Temp/x/body.md'
 confere702 "--author-email no merge passa" 0 "$PUB" Bash "$R702" 'gh pr merge 5 --squash --author-email fulano@empresa.com.br'
 confere702 "e-mail no valor de --body ainda barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body 'fale com fulano@empresa.com.br'"

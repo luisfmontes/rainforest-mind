@@ -373,9 +373,9 @@ mutacao:
   para: `const APELIDOS_GH = {};`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
-  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 issue new e apelido de create e barra"`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 issue new com e-mail no corpo barra"`
 prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
-pronto quando: payload real, repositório público: `gh issue new --title termo702 --body x` e `gh pr new --title t --body termo702` saem 2 (`gh issue create --help` lista `ALIASES: gh issue new`). Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+pronto quando: payload real, repositório público: `gh issue new --title termo702 --body x` e `gh pr new --title t --body termo702` saem 2 (`gh issue create --help` lista `ALIASES: gh issue new`), e `gh issue new --title t --body 'fale com fulano@empresa.com.br'` sai 2 pelo detector de e-mail, que a rede do `gh` perdido não aplica: sem o apelido, só o termo privado seria pego. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
 ### 3. Versão 2.13.3, CHANGELOG e README [tipo: docs]
 atende: D7
