@@ -272,24 +272,24 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "840d4bd0a0e5682ce253ab55b97f5735638154c0",
+      "head": "a21bbfa699e078c7b9d0fcb93b48a0e2416059b3",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ac8d22639e93768f2",
+        "agente_id": "a6a69cbc2d1e4fc70",
         "veredito": "ok",
         "em": "2026-11-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-ac8d22639e93768f2.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a6a69cbc2d1e4fc70.jsonl"
       }
     ],
     "em": "2026-11-13",
-    "achados": 1,
+    "achados": 3,
     "base": "17942d8a6e3ccbefb242eb960ce6cb9ce7a76d71",
-    "head": "840d4bd0a0e5682ce253ab55b97f5735638154c0",
+    "head": "a21bbfa699e078c7b9d0fcb93b48a0e2416059b3",
     "voltas": [
       {
         "volta": 1,
@@ -336,6 +336,18 @@
             "veredito": "ok",
             "em": "2026-11-13",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a6472f32bbe91595f.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac8d22639e93768f2",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-ac8d22639e93768f2.jsonl"
           }
         ]
       }

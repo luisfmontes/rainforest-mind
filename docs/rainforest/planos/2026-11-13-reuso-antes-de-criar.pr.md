@@ -28,8 +28,9 @@ Versão 2.14.0 (MINOR: contrato novo do `busca:`).
   **Depois:** `node scripts/conferir-busca.cjs plano --slug zerar-issues-9` sai 2. Este plano sai 0 com `ok: 9 tarefa(s) com caminho de código, todas com busca: e desfecho:`.
 - **Referência inventada:** `reaproveito soma de src/x.js:4` (linha que não é definição) → exit 2. `pages/[nada].tsx:99` sem crase → exit 2 pedindo crase. `` `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw:1` `` entre crases → conferida inteira.
 - **Catraca de mutação:** vermelha nas 9 tarefas com alvo, rodada de novo pela integração e pelo `marcar verificar ok`.
-- **Baterias:** as 48 que o diff toca saíram 0, entre elas `testa-estado` (337 ok), `testa-saude` (94 ok), `testa-conferir-busca` (total=68 vermelhas:[]) e `testa-catalogo-funcoes` (206 ok).
-- Cinco revisões independentes, todas `VEREDITO: ok`. Os achados de cada uma foram consertados neste PR (tarefas 8 a 15).
+- **Baterias:** as 48 que o `baterias-do-diff` listou antes da tarefa 16 saíram 0, entre elas `testa-saude` (94 ok), `testa-estado-reabrir` (97 ok), `testa-conferir-busca` (total=68 vermelhas:[]) e `testa-catalogo-funcoes` (206 ok). A `testa-estado.sh` (337 ok) rodou à parte, porque o `marcar plano` dela chama o `conferir-busca`.
+- **CI:** a primeira rodada deste PR ficou vermelha em `testa-plugin-codex.sh`, porque a âncora binária do corpo de `skills/modo-dev/SKILL.md` não acompanhou a tarefa 10. A tarefa 16 re-mediu a âncora (+233 bytes, só o Degrau 2b), e a bateria sai 0.
+- Seis revisões independentes, todas `VEREDITO: ok`. Os achados de cada uma foram consertados neste PR (tarefas 8 a 16).
 
 ## Perigo de merge
 
