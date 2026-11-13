@@ -37,7 +37,7 @@ Tarefa que edita arquivo existente (`arquivos: scripts/conferir-busca.cjs`) não
 
 ```
 busca:
-- catalogo | listar --raiz scripts | reaproveito recusar de scripts/conferir-busca.cjs:205
+- catalogo | listar --raiz scripts | reaproveito recusar de scripts/conferir-busca.cjs:224
 desfecho: estender
 ```
 
