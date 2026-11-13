@@ -18,7 +18,7 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-13",
     "tarefas_ok": 15,
     "tarefas": 15,
@@ -267,7 +267,7 @@
     ]
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "840d4bd0a0e5682ce253ab55b97f5735638154c0",
       "caminhos_sujos": []
@@ -337,7 +337,7 @@
     ]
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "em": "2026-11-13",
     "comando": "node scripts/conferir-busca.cjs plano --slug 2026-11-13-reuso-antes-de-criar; node scripts/catalogo-funcoes.cjs novas --raiz . --base 17942d8a; bash scripts/testa-conferir-busca.sh; bash scripts/testa-catalogo-funcoes.sh; 48 baterias de baterias-do-diff",
     "saida": "ok: 9 tarefa(s) com busca | 3 novas | total=68 vermelhas:[] | ok: 206 falhou: 0 | 48/48 exit 0 (estado 337, reabrir 97, saude 94)",
@@ -368,6 +368,11 @@
       "em": "2026-11-13",
       "de": "revisar",
       "motivo": "revisao rodada 4: falso verde de referencia com colchete ou cifrao sem crase (pages/[id].js:99 passa sem conferencia); recusa sem dica de crase; doc diz que acento pede crase; CHANGELOG nao cita tarefas 8 a 13"
+    },
+    {
+      "em": "2026-11-13",
+      "de": "verificar",
+      "motivo": "CI do PR 710: testa-plugin-codex.sh vermelho, ancora binaria do corpo de modo-dev em contrato-plugin-codex.cjs nao acompanhou a tarefa 10 (15164 bytes sha256 0bb8052f...)"
     }
   ],
   "decididos": [

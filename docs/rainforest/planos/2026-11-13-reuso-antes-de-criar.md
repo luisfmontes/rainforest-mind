@@ -349,3 +349,13 @@ depende de: 14
 mutacao: n/a
   motivo: tarefa só reescreve doc
 pronto quando: com o código das tarefas 8 a 14, (1) `campo-busca.md`, na seção do canal `catalogo`, diz que crase é necessária para espaço, `[`, `]` e `$` no caminho, e que acento sozinho não pede crase. Diz também que, fora de crase, `.ext:N` que o checador não lê por inteiro é recusada com a dica da crase. Em "o que o checador não faz", registra que prosa estranha pode dar recusa e que a saída é crase ou `pulado:`. (2) A entrada 2.14.0 do `CHANGELOG.md` cita as variantes de `Method` (parêntese aninhado, `as X Of Y`, classe com ponto, continuação com `;`, com teto de 50 linhas) e a regra das referências (linha `catalogo` inteira, contrabarra, URL ignorada, crase). Provado pela leitura das duas passagens contra `scripts/conferir-busca.cjs` (`problemasDeReferencia`) e `scripts/catalogo-funcoes.cjs` (`juntarContinuacao`, `MAX_CONTINUACAO`), com a linha de código que sustenta cada afirmação.
+
+Emenda de 2026-11-13, depois do CI do PR #710: o shard 1 ficou vermelho em `scripts/testa-plugin-codex.sh`. A âncora binária do corpo de `skills/modo-dev/SKILL.md` em `scripts/contrato-plugin-codex.cjs` não acompanhou a tarefa 10. As varreduras locais não pegaram porque o `baterias-do-diff` não liga `modo-dev/SKILL.md` a essa bateria.
+
+### 16. Âncora binária do corpo de `modo-dev` re-medida [tipo: teste]
+atende: D2
+arquivos: `scripts/contrato-plugin-codex.cjs`
+depende de: 10
+mutacao: n/a
+  motivo: re-medição de âncora; o comportamento da bateria (divergiu → vermelho) já existe e foi o que acusou a mudança no CI
+pronto quando: com o corpo de `skills/modo-dev/SKILL.md` que a tarefa 10 deixou, `bash scripts/testa-plugin-codex.sh` imprime `ok ancora corpo modo-dev: 15164 bytes sha256 0bb8052fbadc56addbf9ac484ecc0b479f8e5c23a0727339c456c552981cf1d4` e sai 0. O comentário acima da âncora registra que o fluxo reuso-antes-de-criar (tarefa 10) mudou o Degrau 2b de propósito.
