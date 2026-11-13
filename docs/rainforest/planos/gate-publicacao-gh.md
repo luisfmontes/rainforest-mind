@@ -279,7 +279,7 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 8
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `  if (ghTextoSegmentos < nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
+  de: `  if (ghTextoSegmentos !== nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   para: `  if (false) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
@@ -383,13 +383,13 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 15
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `  const cmd = juntarContinuacaoPs(ev.tool_name, cmdBruto);`
-  para: `  const cmd = cmdBruto;`
+  de: `  const juntado = juntarContinuacaoPs(ev.tool_name, cmdBruto);`
+  para: `  const juntado = cmdBruto;`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 continuacao do PowerShell com --repo publico na linha de baixo barra"`
 prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
-pronto quando: payload real de PreToolUse `PowerShell`: de um cwd privado, `gh issue create --title "Fix"` + crase + quebra + `--repo dono/publico --body "termo702"` sai 2 e o mesmo com `--repo dono/priv` sai 0; de um cwd público, `gh issue create --title "Fix"` + crase + CRLF + `--body-file corpo.md` (com `termo702`) sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+pronto quando: payload real de PreToolUse `PowerShell`: de um cwd privado, `gh issue create --title "Fix"` + crase + quebra + `--repo dono/publico --body "termo702"` sai 2 e o mesmo com `--repo dono/priv` sai 0; de um cwd público, `gh issue create --title "Fix"` + crase + CRLF + `--body-file corpo.md` (com `termo702`) sai 2. As duas leituras, com e sem a junção, são conferidas e qualquer uma barra: crase e quebra dentro de aspas simples com `--repo dono/priv` não libera um cwd público (revisão de segurança do commit). Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
 ### 17. A rede roda quando a segmentação acha menos gh que o texto [tipo: implementar]
 atende: D1, D3
@@ -397,13 +397,13 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 16
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `  if (ghTextoSegmentos < nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
+  de: `  if (ghTextoSegmentos !== nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   para: `  if (ghTextoSegmentos === 0) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 gh perdido depois de outro gh achado barra"`
 prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
-pronto quando: payload real `Bash`, repositório público, `corpo.md` com `termo702`: `gh issue close 1 --comment ok; echo it` + contrabarra + `'s; gh issue comment 3 -F corpo.md` sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+pronto quando: payload real `Bash`, repositório público, `corpo.md` com `termo702`: `gh issue close 1 --comment ok; echo it` + contrabarra + `'s; gh issue comment 3 -F corpo.md` sai 2. A rede roda em qualquer diferença de contagem, contada com contrabarra + quebra juntas; `gh` + contrabarra + quebra + `issue create --repo dono/priv --title termo702 --body x` de um cwd público sai 2 (falso positivo aceito: a leitura crua perde o `gh` e a rede soma o cwd). Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
 ### 18. Corpo de heredoc e here-string com todos os detectores [tipo: implementar]
 atende: D2

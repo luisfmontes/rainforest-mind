@@ -1029,8 +1029,15 @@ function conferirGh(ev, cwdDoEvento, agente) {
   if (typeof cmdBruto !== "string" || !/\bgh\b/i.test(cmdBruto)) return;
   // Continuação de linha do PowerShell (crase + quebra de linha): o
   // `segmentosParaGate` quebrava ali, e o `--repo`/`--body-file` da linha de
-  // baixo ficava num segmento que ninguém lia (revisão 4, 2026-11-13).
-  const cmd = juntarContinuacaoPs(ev.tool_name, cmdBruto);
+  // baixo ficava num segmento que ninguém lia (revisão 4, 2026-11-13). Juntar
+  // pode errar (crase dentro de aspas simples), então as DUAS leituras são
+  // conferidas e qualquer uma barra (revisão de segurança do commit).
+  const juntado = juntarContinuacaoPs(ev.tool_name, cmdBruto);
+  conferirGhLeitura(ev, cmdBruto, cwdDoEvento, agente);
+  if (juntado !== cmdBruto) conferirGhLeitura(ev, juntado, cwdDoEvento, agente);
+}
+
+function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
   let segmentos, mascarado;
   try {
     const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
@@ -1104,8 +1111,10 @@ function conferirGh(ev, cwdDoEvento, agente) {
   }
   // A rede roda quando a segmentação achou menos `gh` de texto do que o texto
   // cru tem: um `gh` perdido depois de outro achado escapava (revisão 4).
-  const nCru = (cmd.match(GH_TEXTO_CRU_G) || []).length;
-  if (ghTextoSegmentos < nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
+  // Contado sobre o texto com `\` + quebra de linha juntos, como o bash e o
+  // segmentador leem; qualquer diferença, para mais ou para menos, roda a rede.
+  const nCru = (cmd.replace(/\\\r?\n/g, " ").match(GH_TEXTO_CRU_G) || []).length;
+  if (ghTextoSegmentos !== nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
 }
 
 /**
