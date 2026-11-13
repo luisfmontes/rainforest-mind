@@ -203,14 +203,14 @@ prova-na-base: verde — emenda da revisão 1: a base já é o código das taref
 pronto quando: payload real de PreToolUse `Bash`, repositório público:
 - `cat > n.md <<'EOF'` + `limpo` + `EOF` + `gh issue create --title termo702 --body x`, em linhas separadas, sai 2;
 - `bash -c "gh issue create --title t --body termo702"`, `sh -c '...'` e `eval "..."` saem 2;
-- `{ gh issue create --title termo702 --body x; }` num repositório privado, sem `cd` no comando, sai 0.
+- `{ gh issue create --title termo702 --body x; }` num repositório privado sai 2. O `cwdPorSegmento` marca grupo como incerto, e esse é o preço aceito da falha fechada.
 
 Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
 Forma prescrita:
 - `conferirGh` segmenta o comando CRU, por uma função local `empilhar(texto, profundidade)`. Para cada segmento de `segmentosParaGate(texto)`, ela guarda o segmento e, até a profundidade 4, empilha o `interno` de `desempacotarWrapperDeString(seg.trim(), { ferramenta })`.
 - `cwdPorSegmento` roda sobre o comando cru.
-- `cwdsDoSegmentoGh` recebe o comando e só marca `incerto` quando `MUDA_DIRETORIO` casa com ele.
+- `cwdsDoSegmentoGh` repassa o `incerto` do `cwdPorSegmento` sem reinterpretar.
 
 ### 7. Texto literal, corpos embutidos e close/reopen --comment [tipo: implementar]
 atende: D1, D2, D3

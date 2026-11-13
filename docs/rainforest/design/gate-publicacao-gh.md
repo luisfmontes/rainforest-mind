@@ -44,7 +44,7 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
   - quando o segmento tem `--body-file`, todo heredoc e here-string do comando conta, exista o arquivo ou não;
   - `issue|pr close|reopen --comment` entra no D1.
 
-  O D3 fica só para o que **não está escrito no comando**: valor de variável, saída de programa, arquivo de `--body-file` com variável no caminho sem corpo embutido. Também passa a valer o cwd incerto só quando o comando muda de diretório (`cd`, `pushd`, `Set-Location`, `-C`): `{ gh ...; }` num repositório privado não barra.
+  O D3 fica só para o que **não está escrito no comando**: valor de variável, saída de programa, arquivo de `--body-file` com variável no caminho sem corpo embutido. O cwd incerto segue o que o `cwdPorSegmento` diz. Grupo `{ gh ...; }` ou `( gh ... )` com termo num repositório privado barra: é falso positivo aceito, porque a regex que o evitava deixava passar `cd` que o `cwdPorSegmento` resolve e ela não.
 
 - **D4 — Repositório de destino.**
   - **Com `--repo`/`-R`:** com `owner/repo` (ou URL `https://github.com/owner/repo`), a visibilidade é a desse repositório, por `visibilidadeDeUmRepo`.

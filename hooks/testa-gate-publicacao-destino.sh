@@ -899,7 +899,7 @@ confere702 "issue reopen -c barra" 2 "$PUB" Bash "$R702" 'gh issue reopen 5 -c t
 confere702 "pr close -c limpo passa" 0 "$PUB" Bash "$R702" 'gh pr close 5 -c limpo'
 confere702 "pr review -c booleana com corpo limpo passa" 0 "$PUB" Bash "$R702" 'gh pr review 5 -c -b limpo'
 GH702="node $SANDBOX_BIN/gh-por-nome"
-confere702 "gh entre chaves em cwd privado sem cd passa" 0 "" Bash "$R702P" '{ gh issue create --title termo702 --body x; }'
+confere702 "gh entre chaves em cwd privado barra (cwd incerto, falso positivo aceito)" 2 "" Bash "$R702P" '{ gh issue create --title termo702 --body x; }'
 GH702="node $SANDBOX_BIN/gh"
 
 echo

@@ -940,16 +940,17 @@ function mencoesDeGhRepo(mascarado, segmento) {
  * dentro de `"$(...)"` (que `cwdPorSegmento` não separa) herda o cwd de quem o
  * contém. Sem correspondência, incerto.
  */
-const MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd|popd|chdir|set-location|sl|push-location|pop-location)(?=[\s;&|)]|$)|(?:^|\s)-C(?:\s|$)/i;
 
 function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento, comando) {
   const s = segmento.trim();
   let itens = mapa.filter((m) => m.seg.trim() === s);
   if (itens.length === 0) itens = mapa.filter((m) => m.seg.includes(s));
-  // Sem correspondência (`{ gh ...; }`, `( gh ... )`, `$(gh ...)`): o cwd só é
-  // incerto quando o comando muda de diretório em algum ponto.
-  if (itens.length === 0) return [{ cwd: cwdDoEvento, incerto: MUDA_DIRETORIO.test(comando) }];
-  return itens.map((m) => ({ cwd: m.cwd, incerto: Boolean(m.incerto) && MUDA_DIRETORIO.test(comando) }));
+  // Sem correspondência, incerto. O `incerto` vem do `cwdPorSegmento`, que
+  // resolve `"cd"`, `cd` e `builtin cd`; uma regex por cima dele deixava
+  // passar o que ele marcou (revisão de segurança, 2026-11-13). Preço aceito:
+  // `{ gh ...; }` com termo num repositório privado barra.
+  if (itens.length === 0) return [{ cwd: cwdDoEvento, incerto: true }];
+  return itens.map((m) => ({ cwd: m.cwd, incerto: Boolean(m.incerto) }));
 }
 
 /**
