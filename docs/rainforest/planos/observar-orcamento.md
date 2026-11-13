@@ -22,7 +22,7 @@ mutacao:
   para: `const inicioDaPassada = Date.now();`
   bateria: `bash scripts/testa-observar.sh`
   fixture: `testa-observar.sh, caso 8.d (duas marcas dividem um orçamento)`
-prova: `bash scripts/testa-observar.sh`
+prova: `grep -q "const inicioDaPassada = relogio.inicio;" scripts/observar.cjs`
 pronto quando: com `TESTADOR_ORCAMENTO_MS=400` e `node scripts/observar.cjs` sem `--sessao`: (8.d) duas marcas pendentes de várias fatias cada e um dublê de 250 ms: a saída traz `marca(s) ficam para a proxima sessao` e a segunda marca processada fica com `offset_processado` igual ao de antes; (8.e) uma marca e um dublê que espera 5000 ms: a saída traz `atingido durante a fatia 1 (decorrido <d>ms)` com `<d>` menor que 1000, nenhuma observação gravada e `offset_processado` 0; (8.c, ajustado) dublê de 250 ms e orçamento de 400 ms numa marca: uma observação gravada, marca intermediária e `orcamento de 400ms atingido` na saída — provado por `bash scripts/testa-observar.sh` com `falhou: 0` e exit 0.
 
 Forma prescrita:
