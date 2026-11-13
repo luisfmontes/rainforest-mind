@@ -107,7 +107,7 @@ function existeNoHead(repo, caminho) {
   return r.status === 0;
 }
 
-/** Referência `arquivo:linha` dentro do resultado de uma linha `catalogo`. A regex é a do design. */
+/** Referência `arquivo:linha` sem crase: lê no caminho só letras, números, `_`, `.`, `/` e `-`. */
 const REFERENCIA = /([\p{L}\p{N}_.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu;
 
 /** Referência inteira entre crases: caminho com espaço e acento (`Ponto de Entrada/...`). */
@@ -122,12 +122,23 @@ function problemasDeReferencia(repo, resultado) {
   const texto = resultado.replace(/https?:\/\/\S+/g, ' ').replace(/\\/g, '/');
   const refs = [];
   const resto = texto.replace(CRASE, (_, arq, lin) => { refs.push([arq, lin]); return ' '; });
-  for (const m of resto.matchAll(REFERENCIA)) refs.push([m[1], m[2]]);
   const problemas = [];
+  const soltas = [];
+  let fim = 0;
+  for (const m of resto.matchAll(REFERENCIA)) {
+    const antes = resto.slice(fim, m.index);
+    const prefixo = antes.slice(antes.search(/\S*$/));
+    fim = m.index + m[0].length;
+    if (/^[A-Za-z]:$/.test(prefixo)) { refs.push([prefixo + m[1], m[2]]); continue; }
+    if (/^[(\["',;]*$/.test(prefixo)) refs.push([m[1], m[2]]);
+    else soltas.push(prefixo + m[0]);
+  }
+  for (const m of resto.replace(REFERENCIA, ' ').matchAll(SOLTA)) soltas.push(m[0]);
+  for (const t of soltas) problemas.push(`referência sem crase que o checador não lê por inteiro: ${t}; caminho com espaço, \`[\`, \`]\` ou \`$\` vai entre crases`);
   for (const [arquivo, lin] of refs) {
     const linha = Number(lin);
     const ref = `${arquivo}:${linha}`;
-    if (/^\//.test(arquivo) || /(^|\/)\.\.(\/|$)/.test(arquivo)) {
+    if (/^(\/|[A-Za-z]:\/)/.test(arquivo) || /(^|\/)\.\.(\/|$)/.test(arquivo)) {
       problemas.push(`referência fora do repositório: ${ref}`);
       continue;
     }
@@ -145,6 +156,9 @@ function problemasDeReferencia(repo, resultado) {
   }
   return problemas;
 }
+
+/** Ocorrência `arquivo:linha` sem crase, com o que vier colado antes dela. */
+const SOLTA = /\S*\.[A-Za-z][A-Za-z0-9]*:L?\d+/gu;
 
 // ================================================================ Linhas do bloco
 

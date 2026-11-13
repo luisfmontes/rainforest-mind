@@ -10,7 +10,7 @@
 # A referencia `arquivo:linha` do resultado `catalogo` le contrabarra (Windows), ignora
 # URL e so aceita extensao que comeca com letra; e confere cada campo da linha, nao so o
 # ultimo. Caminho com espaço, acento, colchetes e `$` entre crases; sem crase, colchete e `$`
-# são pontuação e ficam fora do caminho. Secao 9, casos (k) a (s).
+# são pontuação e ficam fora do caminho. Secao 9, casos (k) a (u).
 #
 # Fixture: repositorio git temporario montado AQUI, com um unico arquivo commitado
 # (scripts/existente.cjs). Planos sao escritos por `tarefa`, um bloco por tarefa,
@@ -404,6 +404,31 @@ if CHK plano --slug t --plano "$P" 2>&1 | grep -q -- '\[src/x\.js'; then
 else
   printf '  ok    catalogo (s): saída de [src/x.js:4] sem [src/x.js\n'
 fi
+
+# catalogo (t): colchete ou `$` no caminho sem crase é recusado, com a dica da crase no
+# próprio problema. Os cinco caminhos do design: pages/[id].js, pages/[...slug].tsx,
+# pages/[nada].tsx, lib/Foo$Bar.js e app/[id]/page.tsx, todos com `:99` ou `:1` e sem crase.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito Edit de pages/[id].js:99' 'desfecho: adotar'; } > "$P"
+caso "catalogo (t): reaproveito Edit de pages/[id].js:99 sem crase é recusado pedindo crase" 2 'sem crase que o checador não lê por inteiro: pages/\[id\]\.js:99' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito Edit de pages/[...slug].tsx:99' 'desfecho: adotar'; } > "$P"
+caso "catalogo (t): pages/[...slug].tsx:99 sem crase é recusado pedindo crase" 2 'sem crase que o checador não lê por inteiro: pages/\[\.\.\.slug\]\.tsx:99' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito Edit de pages/[nada].tsx:99' 'desfecho: adotar'; } > "$P"
+caso "catalogo (t): pages/[nada].tsx:99 sem crase é recusado pedindo crase" 2 'sem crase que o checador não lê por inteiro: pages/\[nada\]\.tsx:99' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito Edit de lib/Foo$Bar.js:1' 'desfecho: adotar'; } > "$P"
+caso "catalogo (t): lib/Foo\$Bar.js:1 sem crase é recusado pedindo crase" 2 'sem crase que o checador não lê por inteiro: lib/Foo\$Bar\.js:1' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito Page de app/[id]/page.tsx:1' 'desfecho: adotar'; } > "$P"
+caso "catalogo (t): app/[id]/page.tsx:1 sem crase é recusado pedindo crase" 2 'sem crase que o checador não lê por inteiro: app/\[id\]/page\.tsx:1' CHK plano --slug t --plano "$P"
+
+# catalogo (u): referências separadas por vírgula e entre parênteses são pontuação, não sobra nada.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3,src/x.js:3' 'desfecho: adotar'; } > "$P"
+caso "catalogo (u): reaproveito soma de src/x.js:3,src/x.js:3 passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma (src/x.js:3)' 'desfecho: adotar'; } > "$P"
+caso "catalogo (u): reaproveito soma (src/x.js:3) passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
