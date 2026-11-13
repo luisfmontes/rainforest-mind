@@ -354,12 +354,12 @@
     ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-11-13",
-    "comando": "node scripts/conferir-busca.cjs plano --slug 2026-11-13-reuso-antes-de-criar; node scripts/catalogo-funcoes.cjs novas --raiz . --base 17942d8a; bash scripts/testa-conferir-busca.sh; bash scripts/testa-catalogo-funcoes.sh; 48 baterias de baterias-do-diff",
-    "saida": "ok: 9 tarefa(s) com busca | 3 novas | total=68 vermelhas:[] | ok: 206 falhou: 0 | 48/48 exit 0 (estado 337, reabrir 97, saude 94)",
-    "sensor_externo": "bash scripts/testa-conferir-busca.sh",
-    "head": "840d4bd0a0e5682ce253ab55b97f5735638154c0"
+    "comando": "bash scripts/testa-plugin-codex.sh; bash scripts/testa-conferir-busca.sh; node scripts/conferir-busca.cjs plano --slug 2026-11-13-reuso-antes-de-criar",
+    "saida": "ok ancora corpo modo-dev: 15164 bytes sha256 0bb8052f..., exit 0 | total=68 vermelhas:[] | ok: 9 tarefa(s); 48 baterias do diff verdes na rodada anterior, codigo de producao inalterado desde ela",
+    "sensor_externo": "bash scripts/testa-plugin-codex.sh",
+    "head": "c4efb9f551b064ba79b03fa6beddafa86a6fbdfc"
   },
   "fechar": {
     "status": "pendente",
