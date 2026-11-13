@@ -18,18 +18,10 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 7,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "7 fixture do conferir-fluxo",
-        "desde": "2026-11-13T15:30:00Z",
-        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d"
-      }
-    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -130,7 +122,46 @@
         "ts": "2026-11-13T12:54:15.805Z"
       }
     ],
-    "em": "2026-11-13"
+    "em": "2026-11-13",
+    "comando": "node scripts/conferir-mutacao.cjs (re-rodado pela integracao nas tarefas 1, 2 e 3)",
+    "saida": "t1: 185 ok -> 184 ok/1 falha; t2: 194 ok -> 190 ok/4 falhas; t3: total=48 vermelhas:[] -> 6 vermelhas; catraca exit 0 nas tres",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 19 advpl Method Class"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 20 novas"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh secao 9 catalogo caso a"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "doc de referencia"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "instrucao ao revisor"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "versao e changelog"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "ajuste de fixture de teste"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
