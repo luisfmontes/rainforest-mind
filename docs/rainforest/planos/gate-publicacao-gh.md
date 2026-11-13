@@ -313,13 +313,13 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 10
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `    if (!tok.startsWith("-")) { if (!repoUrl) repoUrl = repoDaUrlGh(tok); continue; }`
-  para: `    if (!tok.startsWith("-")) continue;`
+  de: `  return r.repoUrl ? [...base, { repo: r.repoUrl }] : base;`
+  para: `  return base;`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 URL de Issue publica a partir de cwd privado barra"`
 prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
-pronto quando: payload real de PreToolUse `Bash`, cwd num repositório privado: `gh issue comment https://github.com/dono/publico/issues/3 --body termo702` e `gh pr merge https://github.com/dono/publico/pull/5 --squash --body termo702` saem 2; de um cwd público, `gh issue comment https://github.com/dono/priv/issues/3 --body termo702` sai 0. A rede da tarefa 9 também soma a URL aos destinos. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+pronto quando: payload real de PreToolUse `Bash`, cwd num repositório privado: `gh issue comment https://github.com/dono/publico/issues/3 --body termo702` e `gh pr merge https://github.com/dono/publico/pull/5 --squash --body termo702` saem 2; a URL soma aos destinos e nunca os substitui (revisão de segurança do commit): de um cwd público, `gh issue comment https://github.com/dono/priv/issues/3 --body termo702` e `gh issue create --label https://github.com/dono/priv/issues/1 --title termo702 --body x` saem 2; de um cwd privado, `gh issue comment https://github.com/dono/priv/issues/3 --body termo702` sai 0. Só o primeiro posicional depois do verbo, com `https://`, conta como URL. A rede da tarefa 9 também soma a URL aos destinos. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
 ### 12. Só o termo privado olha o comando inteiro [tipo: implementar]
 atende: D2

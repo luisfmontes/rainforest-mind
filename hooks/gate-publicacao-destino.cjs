@@ -760,7 +760,7 @@ const APELIDOS_GH = { new: "create" };
 
 /** `owner/repo` de uma URL de Issue ou PR do GitHub, ou null. */
 function repoDaUrlGh(valor) {
-  const m = String(valor || "").match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/(?:issues|pull)\/\d+/i);
+  const m = String(valor || "").match(/^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/(?:issues|pull)\/\d+(?:[\/?#]\S*)?$/i);
   return m ? `${m[1]}/${m[2]}` : null;
 }
 
@@ -835,6 +835,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const verbo = APELIDOS_GH[posicionais[1]] || posicionais[1];
   if (!VERBOS_GH_TEXTO[familia] || !VERBOS_GH_TEXTO[familia].has(verbo)) return null;
   let repoUrl = null;
+  let viuPosicional = false;
 
   const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
   // O comando inteiro conta como texto (Q2 A do Luís, 2026-11-13): valor de
@@ -847,7 +848,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   for (; i < toks.length; i += 1) {
     const tok = toks[i];
     // `gh issue comment <URL>` publica no repositório da URL, não no do cwd (revisão 3).
-    if (!tok.startsWith("-")) { if (!repoUrl) repoUrl = repoDaUrlGh(tok); continue; }
+    if (!tok.startsWith("-")) { if (!viuPosicional) { viuPosicional = true; repoUrl = repoDaUrlGh(tok); } continue; }
     if (tok === "-") continue;
     const longa = tok.startsWith("--");
     const igual = tok.indexOf("=");
@@ -889,8 +890,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
   const prefixoLimpo = antesDoGh.every(ehAtribuicao)
     || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
-  const repoFlag = repoUrl || normalizarRepoAlvo(repoValor);
-  return { familia, verbo, textos, repoFlag, repoPrefixo, prefixoLimpo };
+  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoUrl, repoPrefixo, prefixoLimpo };
 }
 
 function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
@@ -954,6 +954,14 @@ function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento) {
  * senão o `GH_REPO` do ambiente da sessão; senão o cwd.
  */
 function destinosDoSegmentoGh(r, locais, mencoes) {
+  const base = destinosSemUrl(r, locais, mencoes);
+  // A URL posicional SOMA aos destinos, nunca os substitui: um token que o
+  // gate lê como URL sem que o `gh` o leia assim não pode liberar um destino
+  // público (revisão de segurança do commit, 2026-11-13). O pior decide.
+  return r.repoUrl ? [...base, { repo: r.repoUrl }] : base;
+}
+
+function destinosSemUrl(r, locais, mencoes) {
   if (r.repoFlag) return [{ repo: r.repoFlag }];
   const prefixo = r.repoPrefixo.map((v) => ({ repo: v }));
   if (prefixo.length && r.prefixoLimpo) return prefixo;
@@ -1080,7 +1088,7 @@ function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
   }
   if (achados.length === 0) return;
   const destinos = [];
-  for (const x of cmd.matchAll(/(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/[\w.-]+\/(?:issues|pull)\/\d+/gi)) destinos.push({ repo: repoDaUrlGh(x[0]) || "?" });
+  for (const x of cmd.matchAll(/https?:\/\/(?:www\.)?github\.com\/[\w.-]+\/[\w.-]+\/(?:issues|pull)\/\d+/gi)) destinos.push({ repo: repoDaUrlGh(x[0]) || "?" });
   for (const x of cmd.matchAll(/(?:--repo[=\s]+|(?:^|\s)-R\s*=?\s*)["']?([^\s"';|&]+)/gi)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   for (const x of cmd.matchAll(/\bGH_REPO\s*=\s*["']?([^\s"';|&]*)/g)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   if (process.env.GH_REPO) destinos.push({ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" });

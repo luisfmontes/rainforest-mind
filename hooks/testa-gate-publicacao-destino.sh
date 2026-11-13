@@ -923,7 +923,9 @@ GH702="node $SANDBOX_BIN/gh"
 GH702="node $SANDBOX_BIN/gh-por-nome"
 confere702 "URL de Issue publica a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue comment https://github.com/dono/publico/issues/3 --body termo702'
 confere702 "URL de PR publico a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh pr merge https://github.com/dono/publico/pull/5 --squash --body termo702'
-confere702 "URL de Issue privada a partir de cwd publico passa" 0 "" Bash "$R702" 'gh issue comment https://github.com/dono/priv/issues/3 --body termo702'
+confere702 "URL de Issue privada a partir de cwd publico barra (a URL soma, o pior decide)" 2 "" Bash "$R702" 'gh issue comment https://github.com/dono/priv/issues/3 --body termo702'
+confere702 "URL privada em valor de flag nao libera cwd publico" 2 "" Bash "$R702" 'gh issue create --label https://github.com/dono/priv/issues/1 --title termo702 --body x'
+confere702 "URL privada de Issue a partir de cwd privado passa" 0 "" Bash "$R702P" 'gh issue comment https://github.com/dono/priv/issues/3 --body termo702'
 GH702="node $SANDBOX_BIN/gh"
 confere702 "issue new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh issue new --title termo702 --body x'
 confere702 "pr new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh pr new --title t --body termo702'
