@@ -19,10 +19,10 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 19,
-    "tarefas": 19,
+    "tarefas_ok": 20,
+    "tarefas": 20,
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-publicacao-gh",
     "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 6: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: vermelho | tarefa 10: vermelho | tarefa 11: vermelho | tarefa 12: vermelho | tarefa 13: vermelho | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: vermelho | tarefa 17: vermelho | tarefa 18: vermelho | tarefa 19: vermelho | tarefa 3: pulada (n/a — tarefa só de texto e número de versão, sem comportamento a inverter) | EXIT=0",
     "mutacao": [
@@ -120,14 +120,15 @@
         "tarefa": 19,
         "resultado": "vermelho",
         "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 rede le --body-file entre aspas com espaco\""
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, seção \"#702\", caso \"702 rede pega gh perdido com flag entre familia e verbo\""
       }
     ],
     "em": "2026-11-13",
-    "reaberturas": 5,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-13"
-    }
+    "reaberturas": 5
   },
   "revisar": {
     "status": "reprovado",
