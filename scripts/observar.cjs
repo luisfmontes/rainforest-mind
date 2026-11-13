@@ -291,7 +291,7 @@ function formatarParaLLM(eventos) {
 
 // Chamada à LLM isolada atrás de função para permitir mock em testes.
 // Retorna promise com observação (string) ou null se falhar.
-async function chamarLLM(textoDaPassada) {
+async function chamarLLM(textoDaPassada, tetoMs = 60000) {
   // Permitir mock via variável de ambiente (testes)
   if (process.env.TESTADOR_CHAMAR_LLM) {
     try {
@@ -331,9 +331,13 @@ async function chamarLLM(textoDaPassada) {
   const prompt = `Resuma a seguinte interação em uma observação curta (1-2 frases):\n\n${textoDaPassada}`;
 
   return new Promise((resolve) => {
-    const timeout = 60000; // 60 segundos
+    // #701: o teto é o que sobra do orçamento da execução, nunca mais que 60 s,
+    // e o filho morre junto com o timer (antes sobrevivia 5 s a mais).
+    const timeout = Math.min(60000, tetoMs);
+    let child = null;
     const timer = setTimeout(() => {
-      console.error('AVISO: chamada à LLM expirou (timeout 60s)');
+      console.error(`AVISO: chamada à LLM expirou (timeout ${timeout}ms)`);
+      if (child) child.kill();
       resolve(null);
     }, timeout);
 
@@ -343,7 +347,7 @@ async function chamarLLM(textoDaPassada) {
       // nome de ferramenta e sai com exit 1 — medido em 2026-08-20, com
       // `Permission deny rule "responda" matches no known tool`. Mesma armadilha
       // do `--mcp-config`. Não reordene.
-      const child = spawn(executavel, [
+      child = spawn(executavel, [
         prompt,
         '-p',
         '--model', 'claude-haiku-4-5-20251001',
@@ -353,7 +357,7 @@ async function chamarLLM(textoDaPassada) {
       ], {
         cwd: tempDir,
         windowsHide: true,
-        timeout: timeout + 5000,
+        timeout,
       });
 
       let stdout = '';
@@ -481,7 +485,27 @@ function debug(msg) {
 // Processa uma marca d'água específica: lê, formata, passa à LLM, grava observação.
 // Com fatiamento: se o texto é maior que TETO_ARGUMENTO, divide em múltiplas chamadas.
 // Retorna true se processou com sucesso, false se pulou ou falhou.
-async function processarMarca(conexao, marca) {
+// #701: orçamento por EXECUÇÃO, não por marca. Ver o comentário longo dentro de
+// processarMarca para o porquê dos 25 s.
+const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 25000;
+const ESTOUROU = Symbol('estourou');
+
+// Corta a chamada (inclusive a do dublê de teste) no que sobra do orçamento. O
+// `+ 1000` faz o timer daqui sempre vencer o de chamarLLM, para o corte sair
+// como orçamento e não como "LLM retornou null".
+async function chamarComTeto(texto, tetoMs) {
+  let timer;
+  try {
+    return await Promise.race([
+      chamarLLM(texto, tetoMs + 1000),
+      new Promise((resolve) => { timer = setTimeout(() => resolve(ESTOUROU), tetoMs); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function processarMarca(conexao, marca, relogio) {
   // Calcular a janela: ler a partir de offset_processado (até onde foi processado).
   // Tarefa 12 (D14): offset_processado é o ponto já processado.
   // marca.offset é offset_visto (tamanho do arquivo no Stop/SessionEnd).
@@ -555,8 +579,8 @@ async function processarMarca(conexao, marca) {
   // digerido, e isso é preferível a ser morto no meio e levar os irmãos junto.
   // `TESTADOR_ORCAMENTO_MS` existe para a bateria conseguir estourar o orçamento
   // sem esperar 25 s de verdade — mesmo papel do `TESTADOR_CHAMAR_LLM`.
-  const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 25000;
-  const inicioDaPassada = Date.now();
+  const inicioDaPassada = relogio.inicio;
+  let parouPorOrcamento = false;
   let ultimoOffsetProcessado = marca.offset_processado;
   // Fatias que a passada de fato tratou: menos que fatias.length quando o
   // orçamento corta o resto (a linha final de contagem diz só essas).
@@ -564,10 +588,11 @@ async function processarMarca(conexao, marca) {
 
   for (let i = 0; i < fatias.length; i++) {
     const decorrido = Date.now() - inicioDaPassada;
-    if (i > 0 && decorrido > ORCAMENTO_MS) {
+    if (i > 0 && decorrido > relogio.orcamento) {
       fatiasProcessadas = i;
+      parouPorOrcamento = true;
       console.log(
-        `orcamento de ${ORCAMENTO_MS}ms atingido apos ${i} fatia(s) de ${fatias.length}; ` +
+        `orcamento de ${relogio.orcamento}ms atingido apos ${i} fatia(s) de ${fatias.length}; ` +
         `o resto fica para a proxima sessao (marca em ${ultimoOffsetProcessado})`
       );
       break;
@@ -608,7 +633,30 @@ async function processarMarca(conexao, marca) {
 
     // Chamar LLM
     console.log(`processando fatia ${i + 1}/${fatias.length} com ${eventos.length} evento(s) (sessao=${marca.sessao})...`);
-    const observacao = await chamarLLM(textoDaPassada);
+    const tetoMs = relogio.orcamento - (Date.now() - relogio.inicio);
+    if (tetoMs <= 0) {
+      if (i === 0) {
+        console.log(`orcamento de ${relogio.orcamento}ms atingido antes da marca ${marca.sessao}`);
+        return 'orcamento';
+      }
+      fatiasProcessadas = i;
+      parouPorOrcamento = true;
+      console.log(
+        `orcamento de ${relogio.orcamento}ms atingido apos ${i} fatia(s) de ${fatias.length}; ` +
+        `o resto fica para a proxima sessao (marca em ${ultimoOffsetProcessado})`
+      );
+      break;
+    }
+    const observacao = await chamarComTeto(textoDaPassada, tetoMs);
+    if (observacao === ESTOUROU) {
+      fatiasProcessadas = i;
+      parouPorOrcamento = true;
+      console.log(
+        `orcamento de ${relogio.orcamento}ms atingido durante a fatia ${i + 1} ` +
+        `(decorrido ${Date.now() - relogio.inicio}ms); marca em ${ultimoOffsetProcessado}`
+      );
+      break;
+    }
     debug(`observacao da LLM: ${observacao ? observacao.substring(0, 50) : 'null'}`);
 
     if (!observacao) {
@@ -653,7 +701,7 @@ async function processarMarca(conexao, marca) {
 
   const pluralFatias = fatiasProcessadas > 1 ? 'fatias' : 'fatia';
   console.log(`ok: observacao gravada em ${fatiasProcessadas} ${pluralFatias} para sessao ${marca.sessao}`);
-  return true;
+  return parouPorOrcamento ? 'orcamento' : true;
 }
 
 // Função principal: processa sessão e grava observação.
@@ -675,6 +723,7 @@ async function processarSessao(sessao, projeto) {
     return; // Degradação: tenta novamente depois
   }
 
+  const relogio = { inicio: Date.now(), orcamento: ORCAMENTO_MS };
   try {
     // Modo 1: sessão e projeto informados — processar aquela marca específica
     if (sessao && projeto) {
@@ -690,7 +739,7 @@ async function processarSessao(sessao, projeto) {
         return;
       }
 
-      await processarMarca(conexao, marca);
+      await processarMarca(conexao, marca, relogio);
     }
     // Modo 2: sem argumentos — processar TODAS as marcas com pendência
     else {
@@ -703,9 +752,15 @@ async function processarSessao(sessao, projeto) {
       }
 
       console.log(`encontradas ${marcas.length} marca(s) com pendencia`);
-      for (const marca of marcas) {
+      let anterior = null;
+      for (let idx = 0; idx < marcas.length; idx++) {
+        const marca = marcas[idx];
+        if (idx > 0 && (anterior === 'orcamento' || Date.now() - relogio.inicio > relogio.orcamento)) {
+          console.log(`orcamento de ${relogio.orcamento}ms atingido; ${marcas.length - idx} marca(s) ficam para a proxima sessao`);
+          break;
+        }
         debug(`processando marca: sessao=${marca.sessao}, projeto=${marca.projeto}`);
-        await processarMarca(conexao, marca);
+        anterior = await processarMarca(conexao, marca, relogio);
       }
     }
   } finally {

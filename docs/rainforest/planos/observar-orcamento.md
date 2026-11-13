@@ -18,8 +18,8 @@ busca:
 desfecho: estender
 mutacao:
   arquivo: `scripts/observar.cjs`
-  de: `const inicioDaPassada = relogio.inicio;`
-  para: `const inicioDaPassada = Date.now();`
+  de: `if (idx > 0 && (anterior === 'orcamento' ||`
+  para: `if (false && (anterior === 'orcamento' ||`
   bateria: `bash scripts/testa-observar.sh`
   fixture: `testa-observar.sh, caso 8.d (duas marcas dividem um orçamento)`
 prova: `grep -q "const inicioDaPassada = relogio.inicio;" scripts/observar.cjs`
