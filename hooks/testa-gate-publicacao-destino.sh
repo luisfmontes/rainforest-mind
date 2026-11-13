@@ -789,5 +789,77 @@ done
 if printf '%s' "$S419" | grep -q "visibilidade-repo"; then falhou=$((falhou+1)); echo "    FALHA remoto GitHub: a mensagem sugere 'visibilidade-repo'"; else ok=$((ok+1)); echo "    ok   remoto GitHub: mensagem nao sugere 'visibilidade-repo'"; fi
 
 echo
+echo "== (#702) texto de gh issue/gh pr em repositorio publico =="
+# Lista privada de teste com termo SINTETICO, em HOME de caixa de areia.
+H702="$RAIZ/home702"; mkdir -p "$H702/.rainforest"
+printf '%s\n' "termo702" > "$H702/.rainforest/termos-proibidos.txt"
+D702="$RAIZ/dados702"; mkdir -p "$D702"
+mk702() { # dir, url do remoto
+  git init -q "$1"; git -C "$1" config user.email t@t; git -C "$1" config user.name t; git -C "$1" config commit.gpgsign false
+  echo x > "$1/ok.md"; git -C "$1" add ok.md; git -C "$1" commit -qm base
+  git -C "$1" remote add origin "$2"
+}
+R702="$RAIZ/r702"; mk702 "$R702" "https://github.com/dono/publico.git"
+R702P="$RAIZ/r702p"; mk702 "$R702P" "https://github.com/dono/priv.git"
+printf 'corpo com termo702 no meio\n' > "$R702/corpo.md"
+printf 'rainforest-gate: dados-de-exemplo\nlinha com termo702\n' > "$R702/corpo2.md"
+CORPO_ABS="$(esc "$R702")/corpo.md"
+pay702() { # tool_name, cwd, command
+  node -e 'const [t,c,cmd]=process.argv.slice(1);console.log(JSON.stringify({cwd:c,hook_event_name:"PreToolUse",tool_name:t,tool_input:{command:cmd}}))' "$1" "$2" "$3"
+}
+GH702="node $SANDBOX_BIN/gh"
+confere702() { # nome, exit esperado, GH_RESPONSE, tool_name, cwd, command
+  rm -f "$D702/cache-visibilidade-repo.json"
+  local p s rc
+  p=$(pay702 "$4" "$(esc "$5")" "$6")
+  s=$(printf '%s' "$p" | env HOME="$H702" RFM_ROOT="$D702" GH_RESPONSE="$3" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); rc=$?
+  S702="$s"
+  if [ "$rc" = "$2" ]; then ok=$((ok+1)); echo "  ok   702 $1 (exit $rc)"
+  else falhou=$((falhou+1)); echo "  FALHA 702 $1: esperava $2, veio $rc"; echo "$s" | sed 's/^/         /' | head -10; fi
+}
+PUB='{"isPrivate":false}'; PRIV='{"isPrivate":true}'
+
+# Tarefa 1
+confere702 "issue create --body-file com termo em repo publico barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file corpo.md'
+if printf '%s' "$S702" | grep -q "\[termo-privado\]" && printf '%s' "$S702" | grep -q "Comando: gh issue create"; then ok=$((ok+1)); echo "  ok   702 mensagem cita [termo-privado] e Comando: gh issue create"
+else falhou=$((falhou+1)); echo "  FALHA 702 mensagem sem [termo-privado] ou sem Comando:"; echo "$S702" | head -10; fi
+confere702 "issue create --body-file em repo privado passa" 0 "$PRIV" Bash "$R702" 'gh issue create --title t --body-file corpo.md'
+confere702 "--body com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body "x termo702"'
+confere702 "--title com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title "termo702" --body x'
+confere702 "-F com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t -F corpo.md'
+confere702 "--body-file= com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file=corpo.md'
+confere702 "--body-file com caminho absoluto barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body-file $CORPO_ABS"
+confere702 "heredoc que cria o --body-file barra" 2 "$PUB" Bash "$R702" $'cat > novo.md <<\'EOF\' && gh pr create --title t --body-file novo.md\nx termo702\nEOF'
+confere702 "issue comment --body-file barra" 2 "$PUB" Bash "$R702" 'gh issue comment 5 --body-file corpo.md'
+confere702 "pr comment -b barra" 2 "$PUB" Bash "$R702" 'gh pr comment 5 -b termo702'
+confere702 "pr merge --squash --body barra" 2 "$PUB" Bash "$R702" 'gh pr merge 5 --squash --body termo702'
+confere702 "pr merge -s --body barra (-s e booleana)" 2 "$PUB" Bash "$R702" 'gh pr merge 5 -s --body termo702'
+confere702 "pr merge -t (subject) barra" 2 "$PUB" Bash "$R702" 'gh pr merge 5 -t termo702'
+confere702 "pr review --comment -b barra" 2 "$PUB" Bash "$R702" 'gh pr review 5 --comment -b termo702'
+confere702 "issue edit --title barra" 2 "$PUB" Bash "$R702" 'gh issue edit 5 --title termo702'
+confere702 "marcador dados-de-exemplo nao isenta corpo de gh" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file corpo2.md'
+confere702 "PowerShell com --body-file barra" 2 "$PUB" PowerShell "$R702" 'gh issue create --title t --body-file corpo.md'
+confere702 "issue view passa" 0 "$PUB" Bash "$R702" 'gh issue view 12'
+confere702 "pr list passa" 0 "$PUB" Bash "$R702" 'gh pr list'
+confere702 "--body-file com variavel passa (ilegivel)" 0 "$PUB" Bash "$R702" 'gh issue create --title t --body-file $f'
+confere702 "--body com subst de comando passa (ilegivel)" 0 "$PUB" Bash "$R702" 'gh issue create --title t --body "$(cat x)"'
+confere702 "texto limpo passa" 0 "$PUB" Bash "$R702" 'gh issue create --title ok --body limpo'
+confere702 "termo so no caminho do cd passa" 0 "$PUB" Bash "$R702" 'cd /pasta/termo702 && gh issue create --title ok --body limpo'
+: > "$GH_INVOCATIONS"
+confere702 "issue view nao consulta visibilidade" 0 "$PUB" Bash "$R702" 'gh issue view 12'
+if grep -q "repo" "$GH_INVOCATIONS"; then falhou=$((falhou+1)); echo "  FALHA 702 issue view consultou gh repo view: $(tr '\n' ' ' < "$GH_INVOCATIONS")"
+else ok=$((ok+1)); echo "  ok   702 issue view sem invocacao de repo view"; fi
+
+# Tarefa 2: destino pelo --repo, com o duble que responde pelo nome
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "--repo dono/publico a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo dono/publico --title termo702 --body x'
+confere702 "-R dono/priv a partir de cwd publico passa" 0 "" Bash "$R702" 'gh issue create -R dono/priv --title termo702 --body x'
+confere702 "--repo= fora de repo git barra" 2 "" Bash "$FORA" 'gh issue create --repo=dono/publico --title termo702 --body x'
+confere702 "sem --repo fora de repo git passa" 0 "" Bash "$FORA" 'gh issue create --title termo702 --body x'
+confere702 "--repo com URL a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo https://github.com/dono/publico --title termo702 --body x'
+confere702 "--repo com variavel a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo $R --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

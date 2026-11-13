@@ -472,7 +472,13 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemoto
     `  que a edição não gravou. Separe: 'git add', verifique com 'git show :<arquivo>',\n` +
     `  depois 'git commit'.\n\n`;
 
-  const saidas = ehSubagente
+  msg += textoDeSaidas(ehSubagente);
+  return msg;
+}
+
+/** O bloco de saídas que as duas mensagens de bloqueio (arquivo e `gh`) compartilham. */
+function textoDeSaidas(ehSubagente) {
+  return ehSubagente
     ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
       `NÃO crie arquivo nem variável para desativar esta trava: a decisão não é sua,\n` +
       `e desativá-la para si mesmo é o contorno que esta trava existe para impedir.\n`
@@ -484,9 +490,6 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemoto
       `  - node scripts/setup.cjs --desligar gate-publicacao --escopo projeto (preferida,\n` +
       `    desliga só neste repositório, de forma declarada e legível);\n` +
       `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira).\n`;
-
-  msg += saidas;
-  return msg;
 }
 
 // `preambulo` sai ANTES da mensagem, e so quando ha bloqueio de verdade.
@@ -731,6 +734,190 @@ function conferirCommit(ev, cwdDoEvento, agente) {
   process.exit(0);
 }
 
+/**
+ * O texto de `gh issue`/`gh pr` — Issue #702.
+ *
+ * As duas travas acima veem o que vira ARQUIVO versionado. O título, o corpo e
+ * o comentário que saem por `gh` não viram arquivo nenhum, e são tão públicos
+ * quanto um, com o agravante de o GitHub guardar o histórico de edição: em
+ * 2026-11-12 a #701 saiu com um termo da lista privada no corpo, e o mesmo texto
+ * escrito num design no mesmo dia foi barrado aqui.
+ *
+ * Confere só o texto que vira Issue ou PR (valor de flag, arquivo do
+ * `--body-file`, heredoc que cria esse arquivo), nunca o comando inteiro: um
+ * `cd` para a pasta de um cliente antes do `gh` seria falso positivo em toda
+ * Issue que sessão de cliente abre aqui. Valor ilegível (variável, `$(...)`)
+ * passa — falhar fechado barraria o `--body-file $f` de rotina do PowerShell
+ * em qualquer repositório (design gate-publicacao-gh, D3).
+ */
+const VERBOS_GH_TEXTO = {
+  issue: new Set(["create", "comment", "edit"]),
+  pr: new Set(["create", "comment", "edit", "review", "merge"]),
+};
+
+const FLAGS_GH_VALOR = {
+  longas: new Set([
+    "--repo", "--title", "--body", "--body-file", "--subject", "--base", "--head", "--label",
+    "--assignee", "--milestone", "--project", "--reviewer", "--template", "--add-label",
+    "--remove-label", "--add-assignee", "--remove-assignee", "--add-project", "--remove-project",
+    "--add-reviewer", "--remove-reviewer", "--author-email", "--match-head-commit",
+  ]),
+  curtasSempre: new Set(["-R", "-b", "-F"]),
+  // No `merge`, `-s`/`-m`/`-r`/`-d` são booleanas (squash, merge, rebase,
+  // delete-branch); no `review`, `-a`/`-c`/`-r` também. Tratá-las como flag de
+  // valor engoliria o `--body` seguinte (leitor cego do plano, 2026-11-13).
+  curtasPorVerbo: {
+    create: new Set(["-t", "-a", "-l", "-m", "-p", "-T", "-B", "-H", "-r"]),
+    edit: new Set(["-t", "-m", "-B"]),
+    merge: new Set(["-t", "-A"]),
+    comment: new Set(),
+    review: new Set(),
+  },
+};
+
+const ILEGIVEL = /\$\(|\x60/;
+
+/** `owner/repo` do valor de `--repo`, `"?"` quando ilegível, `null` sem valor. */
+function normalizarRepoAlvo(valor) {
+  if (valor == null || valor === "") return null;
+  if (/[$\x60]/.test(valor)) return "?";
+  const m = valor.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i);
+  if (m) return `${m[1]}/${m[2]}`;
+  const curto = valor.match(/^(?:[\w.-]+\/)?([\w.-]+)\/([\w.-]+)$/);
+  if (curto) return `${curto[1]}/${curto[2]}`; // aceita HOST/OWNER/REPO, como o gh
+  return "?";
+}
+
+function visibilidadeDoAlvo(ownerRepo) {
+  if (ownerRepo === "?" || process.env.RAINFOREST_GATE_SEM_REDE === "1") return "desconhecida";
+  return visibilidadeDeUmRepo(ownerRepo);
+}
+
+/**
+ * Família, verbo, textos e `--repo` de um segmento, ou null se o segmento não é
+ * `gh issue|pr <verbo de texto>`.
+ */
+function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
+  const { tokensComAspas } = require("./lib/tokens-comando.cjs");
+  const { normalizarExecutavel, posicoesDeOperadorHeredoc, corpoDeHeredoc } = require("./lib/heredoc.cjs");
+  let toks;
+  try { toks = tokensComAspas(segmento).map((t) => t.v); } catch { return null; }
+  const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
+  if (iGh === -1) return null;
+
+  let repoValor = null;
+  const posicionais = [];
+  let i = iGh + 1;
+  for (; i < toks.length && posicionais.length < 2; i += 1) {
+    const t = toks[i];
+    if (t.startsWith("-")) {
+      if (t === "-R" || t.toLowerCase() === "--repo") { repoValor = toks[i + 1] ?? null; i += 1; }
+      else if (t.toLowerCase().startsWith("--repo=")) repoValor = t.slice("--repo=".length);
+      else if (/^-R./.test(t)) repoValor = t.slice(2).replace(/^=/, "");
+      continue;
+    }
+    posicionais.push(t.toLowerCase());
+  }
+  if (posicionais.length < 2) return null;
+  const [familia, verbo] = posicionais;
+  if (!VERBOS_GH_TEXTO[familia] || !VERBOS_GH_TEXTO[familia].has(verbo)) return null;
+
+  const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
+  const textos = [];
+  for (; i < toks.length; i += 1) {
+    const tok = toks[i];
+    if (!tok.startsWith("-") || tok === "-") continue;
+    const longa = tok.startsWith("--");
+    const igual = tok.indexOf("=");
+    const chave = longa ? (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase() : tok.slice(0, 2);
+    const colado = longa
+      ? (igual === -1 ? null : tok.slice(igual + 1))
+      : (tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
+    const temValor = longa ? FLAGS_GH_VALOR.longas.has(chave)
+      : (FLAGS_GH_VALOR.curtasSempre.has(chave) || curtasDoVerbo.has(chave));
+    if (!temValor) continue; // booleana
+    let valor = colado;
+    if (valor === null) { valor = toks[i + 1] ?? null; i += 1; }
+    if (valor === null) continue;
+
+    if (chave === "--repo" || chave === "-R") { repoValor = valor; continue; }
+    const ehTitulo = chave === "--title" || (chave === "-t" && verbo !== "merge");
+    const ehSubject = verbo === "merge" && (chave === "--subject" || chave === "-t");
+    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject) {
+      if (!ILEGIVEL.test(valor)) textos.push({ origem: chave, texto: valor });
+      continue;
+    }
+    if (chave === "--body-file" || chave === "-F") {
+      if (/[$\x60]/.test(valor) || valor === "-") continue;
+      let caminho = valor;
+      try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(valor); } catch {}
+      const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwd, caminho);
+      try {
+        textos.push({ origem: `${chave} ${valor}`, texto: fs.readFileSync(resolvido, "utf8") });
+      } catch (e) {
+        if (e && e.code === "ENOENT") {
+          for (const pos of posicoesDeOperadorHeredoc(cmdOriginal)) {
+            const h = corpoDeHeredoc(cmdOriginal, pos);
+            if (h && h.corpo) textos.push({ origem: "heredoc", texto: h.corpo });
+          }
+        }
+      }
+    }
+  }
+  return { familia, verbo, textos, repoAlvo: normalizarRepoAlvo(repoValor) };
+}
+
+function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
+  let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
+    `Comando: gh ${familia} ${verbo}\n` +
+    `Razão: o texto deste comando vai para um repositório ` +
+    (visibilidade === "publica" ? `público (apurado por 'gh repo view')` : `de visibilidade desconhecida (bloqueado por precaução)`) +
+    ` e contém dados sensíveis.\n\nTrechos encontrados:\n`;
+  for (const a of achados) {
+    msg += `\n  ${a.origem}, linha ${a.linha}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}\n`;
+    msg += `    ${a.o_que}\n`;
+    msg += `    → ${a.faca}\n`;
+  }
+  msg += `\nO GitHub guarda o histórico de edição de Issue e PR: corrigir depois não apaga o texto publicado.\n` +
+    `Corrija o texto e rode de novo.\n\n`;
+  return msg + textoDeSaidas(ehSubagente);
+}
+
+function conferirGh(ev, cwdDoEvento, agente) {
+  const cmd = ev.tool_input && ev.tool_input.command;
+  if (typeof cmd !== "string" || !/\bgh\b/i.test(cmd)) return;
+  let segmentos;
+  try {
+    const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
+    const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
+    // A máscara vem antes: sobre heredoc cru, `segmentosParaGate` cola no último
+    // token o último caractere do delimitador (`novo.md` vira `novo.mdF`).
+    segmentos = segmentosParaGate(mascararCorposDeHeredoc(cmd));
+  } catch { return; }
+
+  let gitTop;
+  for (const segmento of segmentos) {
+    const r = textosDoSegmentoGh(segmento, cmd, cwdDoEvento);
+    if (!r || r.textos.length === 0) continue;
+    let achados = [];
+    for (const { origem, texto } of r.textos) {
+      const res = conferirConteudo(texto);
+      if (res && res.achados) for (const a of res.achados) achados.push({ ...a, origem });
+    }
+    if (achados.length === 0) continue;
+
+    if (gitTop === undefined) gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
+    const repoAlvo = r.repoAlvo;
+    if (!repoAlvo && !gitTop) continue; // sem destino, o gh não publica
+    const vis = repoAlvo ? visibilidadeDoAlvo(repoAlvo) : visibilidadeDoRepo(gitTop);
+    if (vis === "privada") continue;
+    if (vis === "desconhecida" && !repoAlvo && declaradaPrivada(gitTop)) achados = achados.filter((a) => a.id !== "termo-privado");
+    if (achados.length === 0) continue;
+    process.stderr.write(mensagemBloqueioGh(achados, r.familia, r.verbo, Boolean(agente), vis));
+    process.exit(2);
+  }
+}
+
 function main() {
   let ev;
   try {
@@ -750,7 +937,9 @@ function main() {
   const nome = ev.tool_name;
 
   // O commit é o ponto por onde tudo passa (Issue #165). Vem ANTES do filtro de
-  // ferramentas de escrita porque `Bash` nunca esteve nele.
+  // ferramentas de escrita porque `Bash` nunca esteve nele. O texto de `gh`
+  // (Issue #702) vem antes do commit, que sai 0 em comando que não é commit.
+  if (nome === "Bash" || nome === "PowerShell") conferirGh(ev, cwdDoEvento, agente);
   if (nome === "Bash" || nome === "PowerShell") conferirCommit(ev, cwdDoEvento, agente);
 
   if (!FERRAMENTAS_DE_ESCRITA.has(nome)) process.exit(0);
