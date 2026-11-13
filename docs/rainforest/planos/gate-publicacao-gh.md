@@ -23,6 +23,7 @@ mutacao:
   de: `if (nome === "Bash" || nome === "PowerShell") conferirGh(ev, cwdDoEvento, agente);`
   para: `if (false) conferirGh(ev, cwdDoEvento, agente);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 issue create --body-file com termo em repo publico barra"`
 prova: `grep -q "function conferirGh" hooks/gate-publicacao-destino.cjs`
@@ -117,6 +118,7 @@ mutacao:
   de: `if (r.repoFlag) return [{ repo: r.repoFlag }];`
   para: `if (false) return [{ repo: r.repoFlag }];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --repo dono/publico a partir de cwd privado barra"`
 prova: `grep -q "function visibilidadeDoAlvo" hooks/gate-publicacao-destino.cjs`
@@ -154,6 +156,7 @@ mutacao:
   de: `const mapas = origens.map((o) => ({ o, mapa: cwdPorSegmento(texto, o.cwd, ps) }));`
   para: `const mapas = origens.map((o) => ({ o, mapa: [{ seg: texto, cwd: o.cwd, incerto: false }] }));`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd para repo publico antes do gh barra"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
@@ -170,6 +173,7 @@ mutacao:
   de: `if (prefixo.length && r.prefixoLimpo) return prefixo;`
   para: `if (false) return prefixo;`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO privado no prefixo libera cwd publico"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
@@ -202,6 +206,7 @@ mutacao:
   de: `    empilhar(cmd, 0);`
   para: `    empilhar(mascarado, 0);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO privado no prefixo depois de heredoc passa em cwd publico"`
 prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
@@ -227,6 +232,7 @@ mutacao:
   de: `  const textos = [{ origem: "comando", texto: cmdOriginal }];`
   para: `  const textos = [];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --body com heredoc em subst de comando barra"`
 prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
@@ -252,6 +258,7 @@ mutacao:
   de: `  const textos = [{ origem: "comando", texto: cmdOriginal }];`
   para: `  const textos = [{ origem: "comando", texto: segmento }];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 variavel literal no mesmo comando barra"`
 prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
@@ -275,6 +282,7 @@ mutacao:
   de: `  if (!achouGhTexto) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   para: `  if (false) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 apostrofo escapado no bash antes do gh barra"`
 prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
@@ -291,6 +299,7 @@ mutacao:
   de: `        if (w && w.interno) empilhar(w.interno, profundidade + 1, locais, ehPs(s));`
   para: `        if (w && w.interno) empilhar(w.interno, profundidade + 1);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
   timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd antes de bash -c para repo publico barra"`
 prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
