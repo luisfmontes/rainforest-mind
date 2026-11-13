@@ -12,8 +12,12 @@
  *   get ou set, sem `if`/`for`/`while`/`switch`/`return`/`catch`/`with`, e sem `function`
  *   dentro dos parênteses. Dart (topo e método) só casa com tipo de retorno antes do nome,
  *   para não confundir chamada solta com definição; `main` de topo fica de fora.
+ *   ADVPL/TLPP (`metodo`): só a implementação, `Method x(...) [as <tipo>] Class Y`, que
+ *   casa com a classe. A declaração recuada dentro do corpo da classe (`Method x()` sem
+ *   `Class` depois) não casa, para não contar a mesma função duas vezes.
  *
- * Cada regex tem o nome em `m[1]`. `casar` devolve o primeiro nome que casa, ou null.
+ * Cada regex tem o nome em `m[1]`; quando tem um segundo grupo (`m[2]`, a classe de um
+ * método ADVPL), `casar` devolve `Classe:metodo`. `casar` devolve o primeiro nome que casa, ou null.
  */
 
 const EXTENSOES = {
@@ -59,6 +63,8 @@ const REGRAS = {
     dart: [
       /^\s+(?:(?:static|final|late)\s+)*(?:void|bool|int|double|num|dynamic|[A-Z_]\w*(?:<[^(]*>)?\??)\s+(\w+)\s*\(/,
     ],
+    // implementação ADVPL/TLPP: `Method x(...) [as <tipo>] Class Y`; grupo 1 = método, grupo 2 = classe
+    advpl: [/^\s*method\s+(\w+)\s*\([^)]*\)(?:\s+as\s+\w+)?\s+class\s+(\w+)/i],
   },
 };
 
@@ -67,7 +73,7 @@ function casar(linha, linguagem, conjunto = 'topo') {
   const lista = (REGRAS[conjunto] && REGRAS[conjunto][linguagem]) || [];
   for (const re of lista) {
     const m = re.exec(linha);
-    if (m) return m[1];
+    if (m) return m[2] ? `${m[2]}:${m[1]}` : m[1];
   }
   return null;
 }

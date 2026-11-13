@@ -168,7 +168,7 @@ function definicoesDoArquivo(raiz, rel, contextoN) {
 /** Definições de um texto já lido: serve ao disco e ao lado da base do `variacao`, sem gravar arquivo. */
 function definicoesDoTexto(texto, linguagem, contextoN) {
   const linhas = texto.split(/\r?\n/);
-  const conjuntos = linguagem === 'dart' || linguagem === 'js' ? ['topo', 'metodo'] : ['topo'];
+  const conjuntos = ['dart', 'js', 'advpl'].includes(linguagem) ? ['topo', 'metodo'] : ['topo'];
   const achados = [];
   linhas.forEach((linha, i) => {
     for (const conjunto of conjuntos) {

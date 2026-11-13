@@ -22,6 +22,8 @@
 #  17. variacao: só as funções tocadas, antes e depois, com nova, removida, (=), ordem, pareamento
 #      por ordem, remoção pura, py como não medido, sem diff, --base explícito e os dois erros.
 #  18. variacao (revisão 1): base com nome de pasta, lacunas (base)/(atual), --raiz subpasta.
+#  19. advpl: Method ... Class entra como Classe:metodo na linha da implementação; a declaração
+#      recuada dentro da classe fica de fora; a Class continua saindo.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -708,6 +710,20 @@ for (const b of blocos) {
 process.stdout.write(erro || "ok");
 ' "$(winpath "$SBP/cx-real.txt")" "$(winpath "$SBP/cx-cat.json")")"
 igual "5 blocos em ordem, cada um no começo que o listar dá, contribuições depois do começo" "$CONF11" "ok"
+
+echo "== 19. advpl: Method ... Class entra como Classe:metodo, na linha da implementação =="
+# Declaração recuada dentro do corpo da classe (linha 2) não entra; a implementação (linha 4) entra
+# com o nome composto; a Class (linha 1) continua saindo como antes.
+FXADV="$SBP/fixture-advpl"
+montar_repo "$FXADV" \
+  'lib/saldo.tlpp=Class SaldoProjeto\n    Method calcular()\nEndClass\nMethod calcular(cProj as character) as logical Class SaldoProjeto\n    Return .T.\n' || { echo "FALHA: montar_repo advpl"; exit 1; }
+node "$CAT" listar --raiz "$(winpath "$FXADV")" > "$SBP/c19.json" 2> "$SBP/e19.txt"; EXIT=$?
+saiu "listar do fixture advpl sai 0" "$EXIT" 0
+T19="$(tuplas < "$SBP/c19.json")"
+linha "implementação Method ... Class entra como SaldoProjeto:calcular na linha 4" "$T19" "lib/saldo.tlpp:4:SaldoProjeto:calcular:advpl"
+nao "declaração recuada (linha 2) fica fora do catálogo" "$T19" "lib/saldo.tlpp:2:"
+nao "nenhuma entrada calcular sem a classe (na linha 4)" "$T19" "lib/saldo.tlpp:4:calcular:advpl"
+linha "a Class SaldoProjeto (linha 1) continua saindo" "$T19" "lib/saldo.tlpp:1:SaldoProjeto:advpl"
 
 echo
 echo "ok: $ok   falhou: $falhou"
