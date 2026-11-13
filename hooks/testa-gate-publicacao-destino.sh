@@ -962,6 +962,12 @@ confere702 "702 rede pega gh perdido com flag entre familia e verbo" 2 "" Bash "
 confere702 "702 rede pega gh perdido com familia entre aspas" 2 "" Bash "$R702P" $'echo it\\\'s; gh "issue" create --repo dono/publico --title t --body termo702'
 confere702 "702 flag entre familia e verbo com destino privado passa" 0 "" Bash "$R702P" 'gh issue --repo dono/priv comment 3 --body termo702'
 GH702="node $SANDBOX_BIN/gh"
+# Revisão de segurança da rodada 6: hífens repetidos entre família e verbo davam
+# retrocesso exponencial na regex da rede (40 repetições bastavam para travar).
+P702R=$(pay702 Bash "$(esc "$R702")" "gh issue$(printf ' ---a%.0s' $(seq 1 40)) x")
+printf '%s' "$P702R" | env -u GH_REPO HOME="$H702" RFM_ROOT="$D702" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" timeout 20 node "$GATE" > /dev/null 2>&1; RC702R=$?
+if [ "$RC702R" = 0 ]; then ok=$((ok+1)); echo "  ok   702 rede termina com hifens repetidos entre familia e verbo"
+else falhou=$((falhou+1)); echo "  FALHA 702 rede travou ou barrou com hifens repetidos (exit $RC702R; 124 = timeout)"; fi
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -439,7 +439,7 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 19
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `["']?\b(issue|pr)\b["']?(?:\s+-{1,2}[\w-]+(?:=[^\s;|&]*|\s+(?!-)[^\s;|&]+)?)*\s+["']?(create|`
+  de: `["']?\b(issue|pr)\b["']?(?:\s+-{1,2}\w[\w-]*(?:=[^\s;|&]*|\s+(?!-)[^\s;|&]+)?)*\s+["']?(create|`
   para: `\b(issue|pr)\s+(create|`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`

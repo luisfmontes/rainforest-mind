@@ -19,7 +19,7 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-13",
     "tarefas_ok": 19,
     "tarefas": 19,
@@ -123,10 +123,14 @@
       }
     ],
     "em": "2026-11-13",
-    "reaberturas": 4
+    "reaberturas": 5,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-13"
+    }
   },
   "revisar": {
-    "status": "parcial",
+    "status": "reprovado",
     "snapshot": {
       "head": "7b150e51767ec18ac40050dd7c709c28111c54dd",
       "caminhos_sujos": []
@@ -142,7 +146,7 @@
     ],
     "achados": 5,
     "em": "2026-11-13",
-    "tentativas": 4,
+    "tentativas": 5,
     "voltas": [
       {
         "volta": 1,
@@ -203,6 +207,10 @@
       },
       {
         "texto": "Modo automatico do Luis (2026-11-13), recomendada: 5a rodada com continuacao do PowerShell, rede por contagem, corpo embutido com todos os detectores, rede com aspas; residuos na #707",
+        "em": "2026-11-13"
+      },
+      {
+        "texto": "Luis 2026-11-13 (vai no automatico, recomendada): 6a e ultima rodada sobre o merge da origin/main; rede aceita flag e aspas entre familia e verbo (tarefa 20), FP de destino privado aceito e documentado, versao 2.14.1, mutacao da tarefa 19 sem excecao, caso de crase na #707",
         "em": "2026-11-13"
       }
     ],
