@@ -301,3 +301,49 @@ Passos:
 1. Em `scripts/conferir-busca.cjs`, a `REFERENCIA` passa a ser exatamente o `de:` acima: sem `[`, `]` e `$` na classe. Caminho com esses caracteres vai entre crases, como o caminho com espaço. A `CRASE` não muda.
 2. Na bateria, o caso (q) troca a entrada para a forma entre crases e o nome dele diz isso. O que (q) protege é ler `app/[id]/page.tsx`, e a forma entre crases continua lendo. Caso novo (s) com as duas linhas do critério. Cabeçalho atualizado.
 3. Em `campo-busca.md`, linhas ~83-84: `[`, `]`, `$`, espaço e acento no caminho pedem crase. Sem crase, colchete e `$` são pontuação e ficam fora do caminho.
+
+Emenda de 2026-11-13, depois da revisão 4 (`VEREDITO: ok`, com um achado médio marcado `[design]`). O achado: a tarefa 13 deixou `pages/[id].js:99`, escrito sem crase, passar sem conferência nenhuma. O design não fixa a regex, só o D3 ("confere cada `arquivo:linha`"), então a correção cumpre o D3 e não muda nenhuma `D<n>`. A decisão está gravada com `estado.cjs decidir`. As tarefas 9, 11 e 13 mexeram três vezes na forma de extrair o caminho, trocando falso vermelho por falso verde. A 14 não mexe mais na extração: ela fecha o invariante. Fora de crase, toda ocorrência `.ext:N` é conferida ou recusada, nunca pulada. As linhas `const texto`, `const resto` e `const REFERENCIA` ficam idênticas, porque são o `de:` das tarefas 9, 11 e 13.
+
+### 14. Toda `.ext:N` fora de crase é conferida ou recusada com a dica da crase [tipo: implementar]
+atende: D3
+arquivos: `scripts/conferir-busca.cjs`, `scripts/testa-conferir-busca.sh`
+depende de: 13
+busca:
+- repo | rg -n "function problemasDeReferencia|resto.matchAll" scripts/conferir-busca.cjs | o laço que monta refs, das tarefas 11 e 13
+- catalogo | listar --raiz scripts | estendo a função problemasDeReferencia de scripts/conferir-busca.cjs:121, sem função nova
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conferir-busca.cjs`
+  de: `if (/^[(\["',;]*$/.test(prefixo)) refs.push([m[1], m[2]]);`
+  para: `refs.push([m[1], m[2]]);`
+  bateria: `bash scripts/testa-conferir-busca.sh`
+  fixture: `testa-conferir-busca.sh, caso novo "catalogo (t): lib/Foo$Bar.js:1 sem crase é recusado pedindo crase"`
+prova: `node -e "const s=require('fs').readFileSync('scripts/conferir-busca.cjs','utf8');process.exit(s.includes('const SOLTA')?0:1)"`
+pronto quando: com o repo de fixture da seção 9 da bateria (`src/x.js` com `function soma()` na linha 3), `node scripts/conferir-busca.cjs plano --slug s --plano <arq>` responde assim. (t) Resultado `reaproveito Edit de pages/[id].js:99` → exit 2. O mesmo vale para `pages/[...slug].tsx:99`, `pages/[nada].tsx:99`, `lib/Foo$Bar.js:1` e `app/[id]/page.tsx:1`, todos sem crase. Cada um sai com a recusa `referência sem crase que o checador não lê por inteiro: <token>`, e a mensagem cita a crase. (u) `reaproveito soma de src/x.js:3,src/x.js:3` e `reaproveito soma (src/x.js:3)` → exit 0. Os casos (a) a (s) continuam com o mesmo exit, inclusive (m), (q) e (s). Provado por `bash scripts/testa-conferir-busca.sh` terminando em `vermelhas:[]` e exit 0, e por `node scripts/conferir-busca.cjs plano --slug 2026-11-13-reuso-antes-de-criar` saindo 0 sobre este plano.
+
+Passos:
+1. Constante nova ao lado da `CRASE`: `const SOLTA = /\S*\.[A-Za-z][A-Za-z0-9]*:L?\d+/gu;`. É uma ocorrência `.ext:N` com o que vier colado antes dela.
+2. Em `problemasDeReferencia`, a linha `for (const m of resto.matchAll(REFERENCIA)) refs.push([m[1], m[2]]);` dá lugar ao bloco abaixo. As linhas antes dela não mudam.
+   ```
+   const soltas = [];
+   let fim = 0;
+   for (const m of resto.matchAll(REFERENCIA)) {
+     const antes = resto.slice(fim, m.index);
+     const prefixo = antes.slice(antes.search(/\S*$/));
+     fim = m.index + m[0].length;
+     if (/^[(\["',;]*$/.test(prefixo)) refs.push([m[1], m[2]]);
+     else soltas.push(prefixo + m[0]);
+   }
+   for (const m of resto.replace(REFERENCIA, ' ').matchAll(SOLTA)) soltas.push(m[0]);
+   ```
+   A linha `if (...)` é o alvo da mutação e fica exatamente como no `de:`. A `const problemas = [];` passa para antes do bloco. Cada item de `soltas` vira o problema `` `referência sem crase que o checador não lê por inteiro: ${t}; caminho com espaço, \`[\`, \`]\` ou \`$\` vai entre crases` ``.
+3. O comentário acima da `REFERENCIA` deixa de dizer "A regex é a do design", porque o design não fixa a regex. Passa a dizer o que ela lê sem crase.
+4. Na bateria, casos novos (t) e (u) do critério, na seção 9, com o cabeçalho atualizado.
+
+### 15. `campo-busca.md` e CHANGELOG descrevem o que o checador faz depois das tarefas 8 a 14 [tipo: docs]
+atende: D3, D6, D8
+arquivos: `skills/plano/references/campo-busca.md`, `CHANGELOG.md`
+depende de: 14
+mutacao: n/a
+  motivo: tarefa só reescreve doc
+pronto quando: com o código das tarefas 8 a 14, (1) `campo-busca.md`, na seção do canal `catalogo`, diz que crase é necessária para espaço, `[`, `]` e `$` no caminho, e que acento sozinho não pede crase. Diz também que, fora de crase, `.ext:N` que o checador não lê por inteiro é recusada com a dica da crase. Em "o que o checador não faz", registra que prosa estranha pode dar recusa e que a saída é crase ou `pulado:`. (2) A entrada 2.14.0 do `CHANGELOG.md` cita as variantes de `Method` (parêntese aninhado, `as X Of Y`, classe com ponto, continuação com `;`, com teto de 50 linhas) e a regra das referências (linha `catalogo` inteira, contrabarra, URL ignorada, crase). Provado pela leitura das duas passagens contra `scripts/conferir-busca.cjs` (`problemasDeReferencia`) e `scripts/catalogo-funcoes.cjs` (`juntarContinuacao`, `MAX_CONTINUACAO`), com a linha de código que sustenta cada afirmação.
