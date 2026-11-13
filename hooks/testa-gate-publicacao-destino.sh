@@ -917,6 +917,7 @@ confere702 "termo so no caminho do cd para repo privado passa" 0 "" Bash "$R702"
 confere702 "cd dentro de bash -c para repo publico barra" 2 "" Bash "$R702P" "bash -c \"cd $R702E && gh issue create --title termo702 --body x\""
 confere702 "cd antes de bash -c para repo publico barra" 2 "" Bash "$R702P" "cd $R702E && bash -c \"gh issue create --title termo702 --body x\""
 confere702 "cd dentro de bash -c para repo privado passa" 0 "" Bash "$R702" "bash -c \"cd $R702PE && gh issue create --title termo702 --body x\""
+confere702 "GH_REPO privado no prefixo depois de heredoc passa em cwd publico" 0 "" Bash "$R702" $'cat > n.md <<\'EOF\'\nlimpo\nEOF\nGH_REPO=dono/priv gh issue create --title termo702 --body x'
 GH702="node $SANDBOX_BIN/gh"
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

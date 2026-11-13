@@ -23,6 +23,7 @@ mutacao:
   de: `if (nome === "Bash" || nome === "PowerShell") conferirGh(ev, cwdDoEvento, agente);`
   para: `if (false) conferirGh(ev, cwdDoEvento, agente);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 issue create --body-file com termo em repo publico barra"`
 prova: `grep -q "function conferirGh" hooks/gate-publicacao-destino.cjs`
 pronto quando: payload real de PreToolUse, `HOME` de areia com o termo `termo702` na lista privada, repositório com remoto GitHub e o dublê `gh` da bateria:
@@ -116,6 +117,7 @@ mutacao:
   de: `if (r.repoFlag) return [{ repo: r.repoFlag }];`
   para: `if (false) return [{ repo: r.repoFlag }];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --repo dono/publico a partir de cwd privado barra"`
 prova: `grep -q "function visibilidadeDoAlvo" hooks/gate-publicacao-destino.cjs`
 pronto quando: payload real de PreToolUse `Bash` com o dublê `gh-por-nome` da bateria, que responde `isPrivate: true` só para repositório terminado em `/priv`:
@@ -152,6 +154,7 @@ mutacao:
   de: `const mapas = origens.map((o) => ({ o, mapa: cwdPorSegmento(texto, o.cwd, ps) }));`
   para: `const mapas = origens.map((o) => ({ o, mapa: [{ seg: texto, cwd: o.cwd, incerto: false }] }));`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd para repo publico antes do gh barra"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse `Bash` com o dublê `gh-por-nome`. A partir do repositório privado, `cd <repo público> && gh issue create --title termo702 --body x` sai 2. A partir do público, `cd <repo privado> && ...` sai 0. `cd $X && ...` com o termo sai 2: cwd incerto e sem `--repo`, falha fechada. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
@@ -167,6 +170,7 @@ mutacao:
   de: `if (prefixo.length && r.prefixoLimpo) return prefixo;`
   para: `if (false) return prefixo;`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO privado no prefixo libera cwd publico"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse com o dublê `gh-por-nome`, todos com o termo no título:
@@ -198,12 +202,14 @@ mutacao:
   de: `    empilhar(cmd, 0);`
   para: `    empilhar(mascarado, 0);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
-  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 gh na linha depois de heredoc com aspas barra"`
+  timeout: `1200000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO privado no prefixo depois de heredoc passa em cwd publico"`
 prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse `Bash`, repositório público:
 - `cat > n.md <<'EOF'` + `limpo` + `EOF` + `gh issue create --title termo702 --body x`, em linhas separadas, sai 2;
 - `bash -c "gh issue create --title t --body termo702"`, `sh -c '...'` e `eval "..."` saem 2;
 - `{ gh issue create --title termo702 --body x; }` num repositório privado sai 2. O `cwdPorSegmento` marca grupo como incerto, e esse é o preço aceito da falha fechada.
+- emenda da revisão 2: num repositório público, `cat > n.md <<'EOF'` + `limpo` + `EOF` + `GH_REPO=dono/priv gh issue create --title termo702 --body x` sai 0 (o `gh` achado pela segmentação crua vai para o privado; sem ela, a rede da tarefa 9 barraria pelo cwd).
 
 Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
@@ -221,6 +227,7 @@ mutacao:
   de: `  const textos = [{ origem: "comando", texto: cmdOriginal }];`
   para: `  const textos = [];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --body com heredoc em subst de comando barra"`
 prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse, repositório público, saem 2:
@@ -245,6 +252,7 @@ mutacao:
   de: `  const textos = [{ origem: "comando", texto: cmdOriginal }];`
   para: `  const textos = [{ origem: "comando", texto: segmento }];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 variavel literal no mesmo comando barra"`
 prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse, repositório público, saem 2:
@@ -267,6 +275,7 @@ mutacao:
   de: `  if (!achouGhTexto) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   para: `  if (false) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 apostrofo escapado no bash antes do gh barra"`
 prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse, repositório público, saem 2: `echo it` + contrabarra + `'s; gh issue create --title termo702 --body x` no Bash, e o here-string do PowerShell com `it's termo702` seguido de `gh issue create --title t --body-file n.md` na linha de baixo. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
@@ -282,6 +291,7 @@ mutacao:
   de: `        if (w && w.interno) empilhar(w.interno, profundidade + 1, locais, ehPs(s));`
   para: `        if (w && w.interno) empilhar(w.interno, profundidade + 1);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `1200000`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd antes de bash -c para repo publico barra"`
 prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse, a partir de um repositório privado, saem 2 `bash -c "cd <público> && gh issue create --title termo702 --body x"` e `cd <público> && bash -c "gh issue create --title termo702 --body x"`; a partir de um público, sai 0 `bash -c "cd <privado> && gh issue create --title termo702 --body x"`. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
