@@ -41,23 +41,23 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "013bc459734bdd7d26cede2364707fad03213797",
+      "head": "62ef762e6fd14cfa79abdff605fd4d45c18c5539",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a9c9af62433b2e7e6",
-        "veredito": "reprovado",
+        "agente_id": "ae572f3f4e912de47",
+        "veredito": "ok",
         "em": "2026-11-12",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a9c9af62433b2e7e6.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae572f3f4e912de47.jsonl"
       }
     ],
-    "achados": 4,
+    "achados": 3,
     "base": "969e24b1",
-    "head": "936310a3",
+    "head": "62ef762e",
     "em": "2026-11-12",
     "voltas": [
       {
@@ -71,13 +71,28 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a78cdc9315dbf58f6.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a9c9af62433b2e7e6",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a9c9af62433b2e7e6.jsonl"
+          }
+        ]
       }
-    ],
-    "tentativas": 1
+    ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-12"
+    "status": "ok",
+    "em": "2026-11-12",
+    "comando": "bash scripts/testa-observar.sh && node scripts/conferir-versao.cjs --sem-fetch",
+    "saida": "== resultado: 44 ok, 0 falha(s) == | 8.d 1 intocada | 8.e corte 2552ms | 8.f saiu em 2758ms | versao 2.13.2 ok",
+    "sensor_externo": "bash scripts/testa-observar.sh",
+    "head": "62ef762e6fd14cfa79abdff605fd4d45c18c5539"
   },
   "fechar": {
     "status": "pendente",
