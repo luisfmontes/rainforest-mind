@@ -1,0 +1,53 @@
+Data: 2026-11-13
+Termos: body-file, termo-privado
+
+$ gh issue list --state all --search "body-file" --limit 200 --json number,title,state
+[{"number":702,"state":"OPEN","title":"gate-publicacao não confere o corpo de gh issue/pr em repositório público"},{"number":664,"state":"CLOSED","title":"gate-fechar-issue não reconhece -F (atalho de --body-file) e recusa como editor interativo"},{"number":407,"state":"CLOSED","title":"gate-fechar-issue barra --body-file criado por heredoc no mesmo comando"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":682,"state":"CLOSED","title":"gate-fechar-issue barra 'gh pr create --help' e 'gh help pr create'"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":594,"state":"CLOSED","title":"gate-fechar-issue: temMarcadorEvidencia consulta a Issue no cwd do hook e lê erro como falta de evidência"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":575,"state":"CLOSED","title":"fechar: <slug>.pr.md editado depois do verificar conta como código e exige reabrir o executar"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"}]
+
+
+$ gh issue list --state all --search "termo-privado" --limit 200 --json number,title,state
+[{"number":702,"state":"OPEN","title":"gate-publicacao não confere o corpo de gh issue/pr em repositório público"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"}]
+
+
+$ gh pr list --state all --search "body-file" --limit 200 --json number,title,state
+[{"number":665,"state":"MERGED","title":"gate-fechar-issue: recusas do corpo do PR com uma receita só (2.8.2)"},{"number":680,"state":"MERGED","title":"gate-fechar-issue: -F, valor colado e flag curta com caixa (2.11.1)"},{"number":630,"state":"MERGED","title":"Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0)"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":497,"state":"MERGED","title":"Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2)"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":348,"state":"MERGED","title":"zerar-issues-10: #346 #344 #342 #341 #340 #339 (1.27.0)"}]
+
+
+$ gh pr list --state all --search "termo-privado" --limit 200 --json number,title,state
+[{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"}]
+
+
+$ git ls-remote --heads origin | grep -F "body-file"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "termo-privado"
+(vazio)
+
+$ git log --all --grep="body-file" --oneline
+c2295e2e gate-segmentador (tarefa 6): versao 2.12.3 e CHANGELOG
+ba6267c3 gate-segmentador (tarefa 4): "$(...)" com interior complexo barra com gh de escrita depois (Bash)
+77ff9113 gate-fechar-issue: -F, valor colado e flag curta com caixa (2.11.1) (#680)
+510c08cd gate-fechar-issue: recusas do corpo do PR com uma receita só (2.8.2) (#665)
+1d7dcb4f Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0) (#630)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+d9f639d8 gate-fechar-issue: --body-file com variavel tem mensagem propria (#350)
+299a9ef6 zerar-issues-10: gate-fechar-issue normaliza caminhos MSYS em --body-file (#344)
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+0a0f8913 Gate de Issue: corpo de heredoc e script se a LINHA tem interpretador
+2494e055 Lote 3 rodada 17: gh pr edit e gatilho; gh pr merge le a descricao real do PR via pr view
+0236f369 Merge lote 3 rodada 15 (--body-file pelo cwd efetivo do segmento) into fluxo/guardas
+5aa440fe Lote 3 rodada 15: --body-file resolvido contra o cwd efetivo do segmento
+54443215 Lote 3: revisar reprovado (13a revisao: --body-file relativo ao cwd errado) — executar reaberto
+8fad4fa2 Lote 3 T13: Corrigir stub gh para usar Node.js e converter cwd para Windows
+24c0286c Lote 3 T13: Hook barra `gh issue close` e `gh pr create/merge` sem evidência
+51af4d77 Lote 3 T12: Corrige parser (segurança) e stub da bateria
+
+$ git log --all --grep="termo-privado" --oneline
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+454bce8f Trava contra termo que nao tem forma: lista privada fora da arvore
+
+$ cat <dados>/ideias.jsonl
+{"id":"obs-2026-10-11-gate-pr-nao-le-body-file-no-tmp-do-bash","titulo":"gate-fechar-issue nao le --body-file gravado em /tmp do Git Bash"}
+
+
