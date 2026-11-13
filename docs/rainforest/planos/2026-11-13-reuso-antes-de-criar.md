@@ -178,7 +178,7 @@ arquivos: `hooks/lib/definicoes.cjs`, `scripts/catalogo-funcoes.cjs`, `scripts/t
 depende de: 3
 busca:
 - repo | rg -n "advpl" hooks/lib/definicoes.cjs scripts/catalogo-funcoes.cjs | o regex advpl do mapa metodo e o laço de definicoesDoTexto, ambos da tarefa 1
-- catalogo | listar --raiz hooks/lib | estendo a função casar de hooks/lib/definicoes.cjs:72 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:170, sem função nova
+- catalogo | listar --raiz hooks/lib | estendo a função casar de hooks/lib/definicoes.cjs:73 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:184, sem função nova
 desfecho: estender
 mutacao:
   arquivo: `hooks/lib/definicoes.cjs`
@@ -227,3 +227,52 @@ depende de: 9
 mutacao: n/a
   motivo: tarefa só reescreve doc
 pronto quando: com o checador das tarefas 3 e 9, (1) o Degrau 2b de `skills/modo-dev/SKILL.md` diz que toda tarefa de código do plano, nova ou que edita, declara o canal `catalogo`, e que o `repo` é obrigatório só quando cria arquivo; (2) a linha do `scripts/conferir-busca.cjs` em `docs/travas-mecanicas.md` diz o mesmo e cita a conferência de `arquivo:linha` (arquivo existe, dentro do repo, extensão lida pelo catálogo, linha que começa definição); (3) `skills/plano/references/campo-busca.md`, na seção do canal `catalogo`, avisa que o `listar --raiz <pasta>` imprime caminho relativo à pasta, que a referência no plano leva o caminho relativo ao repositório (prefixar a pasta) e que toda referência da linha é conferida, não só a do último campo. Provado por `wc -c skills/modo-dev/SKILL.md` abaixo de 16384, por `bash scripts/testa-teto-skills.sh` com exit 0 e pela leitura das três passagens contra os passos 1 a 4 da tarefa 9.
+
+Emenda de 2026-11-13, depois da revisão 2 (`VEREDITO: ok` com 3 achados que cabem no PR). As tarefas 11 e 12 não dividem arquivo e vão em paralelo. As referências `arquivo:linha` da tarefa 8 foram atualizadas para as linhas de hoje, porque o próprio código da tarefa 8 as deslocou.
+
+### 11. Referência entre crases aceita espaço e acento; nome com `[`, `]` e `$` é lido [tipo: implementar]
+atende: D3
+arquivos: `scripts/conferir-busca.cjs`, `scripts/testa-conferir-busca.sh`, `skills/plano/references/campo-busca.md`
+depende de: 10
+busca:
+- repo | rg -n "REFERENCIA|function problemasDeReferencia" scripts/conferir-busca.cjs | a regex e a função da tarefa 9
+- catalogo | listar --raiz scripts | estendo a função problemasDeReferencia de scripts/conferir-busca.cjs:118, sem função nova
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conferir-busca.cjs`
+  de: `const resto = texto.replace(CRASE, (_, arq, lin) => { refs.push([arq, lin]); return ' '; });`
+  para: `const resto = texto;`
+  bateria: `bash scripts/testa-conferir-busca.sh`
+  fixture: `testa-conferir-busca.sh, caso novo "catalogo (p): caminho com espaço e acento entre crases é conferido"`
+prova: `node -e "const s=require('fs').readFileSync('scripts/conferir-busca.cjs','utf8');process.exit(s.includes('const CRASE')?0:1)"`
+pronto quando: num repo de fixture com `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw` contendo `User Function MT100()` na linha 1, `src/x.js` com `function soma()` na linha 3 e `app/[id]/page.tsx` com `function Page()` na linha 1, `node scripts/conferir-busca.cjs plano --slug s --plano <arq>` responde assim. (p) Resultado ``reaproveito MT100 de `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw:1` `` → exit 0; o mesmo com `:2` → exit 2, recusa `não começa definição` citando o caminho inteiro com espaço. (q) Resultado `reaproveito Page de app/[id]/page.tsx:1` → exit 0. (r) Resultado ``reaproveito soma de `src\x.js:3` `` → exit 0. Os casos (a) a (o) continuam com o mesmo exit. Provado por `bash scripts/testa-conferir-busca.sh` terminando em `vermelhas:[]` e exit 0.
+
+Passos:
+1. Constante nova, ao lado da `REFERENCIA`: `const CRASE = /`([^`]+?\.[A-Za-z][A-Za-z0-9]*):L?(\d+)`/g;` — referência inteira entre crases, com espaço e acento no caminho.
+2. `REFERENCIA` passa a aceitar letra acentuada, `[`, `]` e `$` no caminho: `/([\p{L}\p{N}_.\/\[\]$-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu`.
+3. Em `problemasDeReferencia`, depois da linha `const texto = ...` (que não muda), montar a lista `refs` de pares `[arquivo, linha]`: primeiro as referências entre crases, removidas do texto pela linha exata do `de:` acima (`const refs = [];` vem antes dela); depois `for (const m of resto.matchAll(REFERENCIA)) refs.push([m[1], m[2]]);`. O laço das quatro recusas passa a iterar `refs`, sem mudar as recusas.
+4. `campo-busca.md`, seção do canal `catalogo`: caminho com espaço vai entre crases (exemplo com `Ponto de Entrada/...`), e `[`, `]`, `$` e acento são lidos sem crase. A regex citada na doc passa a ser a nova.
+5. Na bateria, casos novos (p), (q) e (r) na seção 9, cabeçalho atualizado. Montar o arquivo com espaço e acento no nome pelo mesmo helper da seção, conferindo com `ls` que ele existe com o nome exato.
+
+### 12. Junção de continuação só em linha que abre definição, com teto [tipo: implementar]
+atende: D6
+arquivos: `scripts/catalogo-funcoes.cjs`, `scripts/testa-catalogo-funcoes.sh`
+depende de: 8
+busca:
+- repo | rg -n "juntarContinuacao" scripts/catalogo-funcoes.cjs | a função da tarefa 8 e a única chamada dela
+- catalogo | listar --raiz scripts | estendo a função juntarContinuacao de scripts/catalogo-funcoes.cjs:173 e a função definicoesDoTexto de scripts/catalogo-funcoes.cjs:184, sem função nova
+desfecho: estender
+mutacao:
+  arquivo: `scripts/catalogo-funcoes.cjs`
+  de: `const casavel = linguagem === 'advpl' && INICIO_ADVPL.test(linha) ? juntarContinuacao(linhas, i) : linha;`
+  para: `const casavel = linguagem === 'advpl' ? juntarContinuacao(linhas, i) : linha;`
+  bateria: `bash scripts/testa-catalogo-funcoes.sh`
+  fixture: `testa-catalogo-funcoes.sh, caso novo 22 "advpl: cadeia de 3000 linhas com ; termina em menos de 20 s"`
+prova: `node -e "const s=require('fs').readFileSync('scripts/catalogo-funcoes.cjs','utf8');process.exit(s.includes('INICIO_ADVPL')?0:1)"`
+pronto quando: com um fonte `lib/longo.prw` de fixture com `User Function Grande()` na linha 1 seguida de 3000 linhas `  cSql += "x" + ;` e uma última `  "y"`, `timeout 20 node scripts/catalogo-funcoes.cjs listar --raiz <fixture>` sai 0 e devolve exatamente uma entrada para o arquivo, `Grande` na linha 1. O caso 21 da tarefa 8 (`Foo:Quux` na linha 7, juntado) continua passando. Provado por `bash scripts/testa-catalogo-funcoes.sh` terminando em `falhou: 0` e exit 0.
+
+Passos:
+1. Constante nova perto de `MAX_CAMINHO_ASSINATURA`: `const INICIO_ADVPL = /^\s*(?:method|class|(?:static\s+|user\s+)?function)\b/i;` e `const MAX_CONTINUACAO = 50;`.
+2. Em `definicoesDoTexto`, a linha do `casavel` passa a ser exatamente o `de:` acima: só linha que abre definição junta as seguintes.
+3. Em `juntarContinuacao`, o `while` também para quando `j - i >= MAX_CONTINUACAO`.
+4. Caso novo 22 na bateria: monta a fixture do critério com um laço do shell (não colar 3000 linhas no script), roda o `listar` com `timeout 20`, afirma exit 0 e a entrada única. Cabeçalho atualizado.

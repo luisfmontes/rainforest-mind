@@ -18,7 +18,7 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-13",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -202,22 +202,36 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "ee087e4b0cb6552b77e966e29e274c67bfc1587d",
+      "head": "f63ef4581bfa9d8936f49de7b74648b245299cc6",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aecc916cd066b4712",
+        "agente_id": "a5c21af5a19984c1b",
         "veredito": "ok",
         "em": "2026-11-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-aecc916cd066b4712.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a5c21af5a19984c1b.jsonl"
       }
     ],
     "em": "2026-11-13",
-    "achados": 5,
+    "achados": 3,
     "base": "17942d8a6e3ccbefb242eb960ce6cb9ce7a76d71",
-    "head": "ee087e4b0cb6552b77e966e29e274c67bfc1587d"
+    "head": "f63ef4581bfa9d8936f49de7b74648b245299cc6",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aecc916cd066b4712",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-aecc916cd066b4712.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
     "status": "pendente",
@@ -232,6 +246,11 @@
       "em": "2026-11-13",
       "de": "revisar",
       "motivo": "revisao rodada 1 aprovou com 5 achados que cabem no PR: (1) regex de Method perde parentese aninhado, retorno de varias palavras, continuacao com ; e classe com ponto; (2) modo-dev Degrau 2b, travas-mecanicas e mensagens ok do conferir-busca com texto antigo; (3) campo-busca nao avisa prefixar caminho do listar com --raiz; (4) referencia com contrabarra, numero com ponto e URL saem com diagnostico errado; (5) so o ultimo campo da linha catalogo e conferido"
+    },
+    {
+      "em": "2026-11-13",
+      "de": "revisar",
+      "motivo": "revisao rodada 2 aprovou com 3 achados: (1) referencia com espaco ou acento no caminho vira arquivo nao existe; (2) juntarContinuacao cubico em cadeia longa de ;; (3) [id] e $id no nome viram falso vermelho"
     }
   ]
 }
