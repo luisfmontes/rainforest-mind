@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.13.2 — 2026-11-12
+
+- **A captura de memória no fim da sessão não derruba mais os hooks de outros plugins.** O `observar.cjs`, que resume o transcrito no `SessionEnd`, tinha 25 s de orçamento por sessão pendente e esperava até 60 s por chamada ao modelo. Com várias sessões pendentes ou uma chamada lenta, passava do tempo que o Claude Code dá a todos os hooks de fim de sessão juntos, e os hooks de outros plugins saíam com `Hook cancelled` no meio do trabalho (Issue #701). Agora os 25 s valem para a execução inteira, cada chamada só tem o que sobra deles, e o processo do modelo é encerrado junto com o corte. O que não coube fica para a próxima sessão, como antes.
+
 ## 2.13.1 — 2026-11-12
 
 - **O aviso de contexto alto não para mais o fluxo.** Quando o `exigir` de um estágio encontra a sessão acima do limiar, o aviso agora manda seguir com o estágio: o autocompact do Claude Code compacta a sessão sozinho quando precisar, e o estado do fluxo está gravado e sobrevive à compactação. A sessão não pede `/compact` ao usuário. Antes ele sugeria "considere /compact ou uma sessão nova", e várias sessões paravam o fluxo oferecendo recomeçar numa sessão nova. O limiar, a medição e o resultado do `exigir` não mudam.
