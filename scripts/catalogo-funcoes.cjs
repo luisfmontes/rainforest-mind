@@ -610,13 +610,17 @@ function principal(argv) {
   process.exitCode = todasValidas ? 0 : 1;
 }
 
-try {
-  principal(process.argv.slice(2));
-} catch (e) {
-  if (e instanceof ErroDeUso) {
-    process.stderr.write(`${e.message}\n${USO}`);
-  } else {
-    process.stderr.write(`erro: ${e.message}\n`);
+module.exports = { definicoesDoArquivo, definicoesDoTexto, EXTENSOES };
+
+if (require.main === module) {
+  try {
+    principal(process.argv.slice(2));
+  } catch (e) {
+    if (e instanceof ErroDeUso) {
+      process.stderr.write(`${e.message}\n${USO}`);
+    } else {
+      process.stderr.write(`erro: ${e.message}\n`);
+    }
+    process.exitCode = 1;
   }
-  process.exitCode = 1;
 }

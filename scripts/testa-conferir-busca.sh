@@ -37,9 +37,10 @@ W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
 (
   cd "$S" || exit 1
   git init -q
-  mkdir -p scripts docs/rainforest/design docs/rainforest/planos
+  mkdir -p scripts docs/rainforest/design docs/rainforest/planos src
   echo "// existente" > scripts/existente.cjs
-  git add scripts/existente.cjs
+  printf '%s\n' '// fixture' '' 'function soma(a, b) {' '  return a + b;' '}' > src/x.js
+  git add scripts/existente.cjs src/x.js
   GIT_CONFIG_GLOBAL=/dev/null git -c user.name=fixture -c user.email=fixture@example.invalid commit -q -m "base da fixture"
 )
 D="$S/docs/rainforest/design/t.md"
@@ -82,6 +83,7 @@ tarefa() {
 }
 
 BUSCA_OK='- repo | grep -E "novo" scripts | nada reaproveitável
+- catalogo | listar --raiz scripts | nada equivalente
 - livro | pulado: sem repositório de terceiro para este caso'
 DESF_OK='desfecho: enxertar'
 
@@ -138,8 +140,8 @@ caso "desfecho fora da lista é recusado" 2 'fora de adotar' CHK plano --slug t 
 echo
 echo "== 3. plano: o que nao cria codigo novo passa =="
 
-{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/existente.cjs`' '' ''; } > "$P"
-caso "tarefa que só edita scripts/existente.cjs passa" 0 '' CHK plano --slug t --plano "$P"
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/existente.cjs`' '- catalogo | pulado: fixture só edita arquivo existente' 'desfecho: estender'; } > "$P"
+caso "tarefa que só edita scripts/existente.cjs passa (com catalogo pulado: e desfecho)" 0 '' CHK plano --slug t --plano "$P"
 
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/testa-novo.sh`, `test/x.test.js`, `docs/x.md`' '' ''; } > "$P"
 caso "tarefa que só cria testa-*, test/ e .md passa" 0 '' CHK plano --slug t --plano "$P"
@@ -220,8 +222,8 @@ caso "achado 2: sem git, plano com candidato a caminho novo continua exit 69" 69
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`pkg/tests/foo.py`' '' ''; } > "$P"
 caso "achado 7: tests/ aninhado nao e' codigo novo" 0 '' CHK plano --slug t --plano "$P"
 
-{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts\existente.cjs`' '' ''; } > "$P"
-caso "achado 7: barra invertida de arquivo existente passa" 0 '' CHK plano --slug t --plano "$P"
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts\existente.cjs`' '- catalogo | pulado: fixture só edita arquivo existente' 'desfecho: estender'; } > "$P"
+caso "achado 7: barra invertida de arquivo existente passa (com catalogo pulado: e desfecho)" 0 '' CHK plano --slug t --plano "$P"
 
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts\novo.cjs`' '' ''; } > "$P"
 caso "achado 7: barra invertida de arquivo novo e' recusada com barra normal" 2 'scripts/novo\.cjs' CHK plano --slug t --plano "$P"
@@ -242,7 +244,8 @@ caso "repo | pulado: sem rede | offline e' recusado" 2 'leva um campo só' CHK p
 caso "repo | grep -E \"a|b\" sem resultado e' recusado" 2 'sem resultado' CHK plano --slug t --plano "$P"
 
 # Mesma consulta com resultado depois: passa.
-{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | grep -E "a|b" | 2 candidatos: x.cjs' "$DESF_OK"; } > "$P"
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | grep -E "a|b" | 2 candidatos: x.cjs
+- catalogo | pulado: fixture de parse' "$DESF_OK"; } > "$P"
 caso "repo | grep -E \"a|b\" | 2 candidatos: x.cjs passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
 echo
@@ -281,6 +284,58 @@ caso "doc: sem git, consulta sem URL em tarefa docs sai 2" 2 'linha .doc. invál
 { printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | sem url | x' ''; tarefa 2 implementar '`scripts/novo.cjs`' "$BUSCA_OK" "$DESF_OK"; } > "$ND/p.md"
 caso "doc: sem git, doc invalido e caminho novo continua exit 69" 69 'nao-verificavel' env RFM_ESTADO_ROOT="$ND" node "$CHECADOR" plano --slug t --plano "$ND/p.md"
 caso "doc: sem git com arquivo de codigo, a recusa do doc sai junto do 69" 69 'RECUSADO: tarefa 1\..*linha .doc. inválida' env RFM_ESTADO_ROOT="$ND" node "$CHECADOR" plano --slug t --plano "$ND/p.md"
+
+echo
+echo "== 9. canal catalogo: tarefa de código declara o catálogo; arquivo:linha do resultado é conferido =="
+
+# catalogo (a): tarefa que só edita arquivo existente sem busca é recusada.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '' ''; } > "$P"
+caso "catalogo (a): tarefa que só edita arquivo existente sem busca é recusada" 2 'tarefa 1\..*catalogo' CHK plano --slug t --plano "$P"
+
+# catalogo (b): reaproveito de definição que existe, com adotar, passa.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3' 'desfecho: adotar'; } > "$P"
+caso "catalogo (b): reaproveito soma de src/x.js:3 com desfecho adotar passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (c): linha que não começa definição é recusada, citando a referência.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:4' 'desfecho: adotar'; } > "$P"
+caso "catalogo (c): src/x.js:4 não começa definição e é recusado" 2 'não começa definição em src/x\.js:4' CHK plano --slug t --plano "$P"
+
+# catalogo (d): arquivo inexistente, caminho com .. e extensão que o catálogo não lê.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/nao-existe.js:1' 'desfecho: adotar'; } > "$P"
+caso "catalogo (d): src/nao-existe.js:1 é recusado (arquivo não existe)" 2 'arquivo não existe: src/nao-existe\.js:1' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de ../fora.js:1' 'desfecho: adotar'; } > "$P"
+caso "catalogo (d): ../fora.js:1 é recusado (fora do repositório)" 2 'fora do repositório: \.\./fora\.js:1' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de README.md:1' 'desfecho: adotar'; } > "$P"
+caso "catalogo (d): README.md:1 é recusado (extensão que o catálogo não lê)" 2 'extensão que o catálogo não lê: README\.md:1' CHK plano --slug t --plano "$P"
+
+# catalogo (e): pulado: com motivo e desfecho estender passa.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | pulado: só corrige condição dentro de soma' 'desfecho: estender'; } > "$P"
+caso "catalogo (e): pulado: com motivo e desfecho estender passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (f): tarefa que cria arquivo novo sem repo é recusada, mesmo com catalogo.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/novo.js`' '- catalogo | listar --raiz src | nada equivalente' 'desfecho: construir'; } > "$P"
+caso "catalogo (f): arquivo novo com catalogo e sem repo é recusado" 2 'sem o canal `repo`' CHK plano --slug t --plano "$P"
+
+# catalogo (g): tarefa teste ou docs sem busca passa.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 teste '`src/x.js`' '' ''; } > "$P"
+caso "catalogo (g): tarefa teste sem busca passa" 0 '' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`src/x.js`' '' ''; } > "$P"
+caso "catalogo (g): tarefa docs sem busca passa" 0 '' CHK plano --slug t --plano "$P"
+
+# catalogo (h): isolamento declarado no resultado, com construir, passa.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | isolado de propósito (D4 do design), não reaproveito soma de src/x.js:3' 'desfecho: construir'; } > "$P"
+caso "catalogo (h): isolamento declarado no resultado com construir passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (i): nada equivalente, sem referência, com construir, passa.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | nada equivalente' 'desfecho: construir'; } > "$P"
+caso "catalogo (i): nada equivalente com construir passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (j): linha catalogo sem desfecho é recusada.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3' ''; } > "$P"
+caso "catalogo (j): catalogo sem desfecho é recusado" 2 'falta `desfecho:`' CHK plano --slug t --plano "$P"
 
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
