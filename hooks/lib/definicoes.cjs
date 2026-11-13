@@ -13,8 +13,9 @@
  *   dentro dos parênteses. Dart (topo e método) só casa com tipo de retorno antes do nome,
  *   para não confundir chamada solta com definição; `main` de topo fica de fora.
  *   ADVPL/TLPP (`metodo`): só a implementação, `Method x(...) [as <tipo>] Class Y`, que
- *   casa com a classe. A declaração recuada dentro do corpo da classe (`Method x()` sem
- *   `Class` depois) não casa, para não contar a mesma função duas vezes.
+ *   casa com a classe. O retorno aceita `as <tipo>` e `as <tipo> Of <tipo>`, e a classe
+ *   pode ter ponto (`Class Foo.Sub`). A declaração recuada dentro do corpo da classe
+ *   (`Method x()` sem `Class` depois) não casa, para não contar a mesma função duas vezes.
  *
  * Cada regex tem o nome em `m[1]`; quando tem um segundo grupo (`m[2]`, a classe de um
  * método ADVPL), `casar` devolve `Classe:metodo`. `casar` devolve o primeiro nome que casa, ou null.
@@ -64,7 +65,7 @@ const REGRAS = {
       /^\s+(?:(?:static|final|late)\s+)*(?:void|bool|int|double|num|dynamic|[A-Z_]\w*(?:<[^(]*>)?\??)\s+(\w+)\s*\(/,
     ],
     // implementação ADVPL/TLPP: `Method x(...) [as <tipo>] Class Y`; grupo 1 = método, grupo 2 = classe
-    advpl: [/^\s*method\s+(\w+)\s*\([^)]*\)(?:\s+as\s+\w+)?\s+class\s+(\w+)/i],
+    advpl: [/^\s*method\s+(\w+)\s*\(.*\)(?:\s+as\s+[\w.]+(?:\s+of\s+[\w.]+)?)?\s+class\s+([\w.]+)/i],
   },
 };
 

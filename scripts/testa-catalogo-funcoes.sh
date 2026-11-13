@@ -24,6 +24,8 @@
 #  18. variacao (revisão 1): base com nome de pasta, lacunas (base)/(atual), --raiz subpasta.
 #  19. advpl: Method ... Class entra como Classe:metodo na linha da implementação; a declaração
 #      recuada dentro da classe fica de fora; a Class continua saindo.
+#  21. advpl: Method com parêntese aninhado, retorno composto (as ... Of ...), classe com ponto e
+#      continuação com ; (a linha de baixo junta no lugar do ;; a entrada sai na primeira linha).
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -747,6 +749,21 @@ igual "cada entrada tem arquivo, linha, nome, assinatura e linguagem" "$CHAVES20
 ERR20="$(node "$CAT" novas --raiz "$(winpath "$NV")" --base naoexiste 2>&1 >/dev/null)"; EXIT=$?
 saiu "base que não existe sai 1" "$EXIT" 1
 igual "o stderr começa pela mensagem de base" "${ERR20%%$'\n'*}" "novas: base não resolvida: naoexiste"
+
+echo "== 21. advpl: Method com parêntese aninhado, retorno composto, classe com ponto e continuação com ; =="
+# Uma entrada por Method, na linha que começa a definição; a linha 8 é a continuação e não entra.
+FX21="$SBP/fixture-advpl-21"
+montar_repo "$FX21" \
+  'lib/extra.tlpp=Method Baz(a := Array(3)) Class Foo\n    Return\nMethod Qux(a) as Array Of Object Class Foo\n    Return\nMethod Corge() Class Foo.Sub\n    Return\nMethod Quux(a, ;\n    b) Class Foo\n    Return\n' || { echo "FALHA: montar_repo advpl 21"; exit 1; }
+node "$CAT" listar --raiz "$(winpath "$FX21")" > "$SBP/c21.json" 2> "$SBP/e21.txt"; EXIT=$?
+saiu "listar do fixture advpl 21 sai 0" "$EXIT" 0
+T21="$(tuplas < "$SBP/c21.json")"
+igual "exatamente quatro entradas" "$(wc -l <<<"$T21" | tr -d ' ')" "4"
+linha "Method com parêntese aninhado entra como Foo:Baz na linha 1" "$T21" "lib/extra.tlpp:1:Foo:Baz:advpl"
+linha "retorno as ... Of ... entra como Foo:Qux na linha 3" "$T21" "lib/extra.tlpp:3:Foo:Qux:advpl"
+linha "classe com ponto entra como Foo.Sub:Corge na linha 5" "$T21" "lib/extra.tlpp:5:Foo.Sub:Corge:advpl"
+linha "continuação com ; junta e entra como Foo:Quux na linha 7" "$T21" "lib/extra.tlpp:7:Foo:Quux:advpl"
+nao "nenhuma entrada na linha 8 (continuação)" "$T21" "lib/extra.tlpp:8:"
 
 echo
 echo "ok: $ok   falhou: $falhou"

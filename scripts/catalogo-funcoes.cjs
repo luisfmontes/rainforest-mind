@@ -166,19 +166,34 @@ function definicoesDoArquivo(raiz, rel, contextoN) {
   return definicoesDoTexto(texto, linguagem, contextoN);
 }
 
+/**
+ * ADVPL: a linha `i` junta as seguintes enquanto a juntada terminar em `;`, e o `;` vira um espaço.
+ * Só a linha que começa a definição junta; as de continuação seguem sendo lidas sozinhas no laço.
+ */
+function juntarContinuacao(linhas, i) {
+  let juntada = linhas[i];
+  let j = i;
+  while (/;\s*$/.test(juntada) && j + 1 < linhas.length) {
+    j++;
+    juntada = juntada.replace(/\s*;\s*$/, ' ') + linhas[j].trim();
+  }
+  return juntada;
+}
+
 /** Definições de um texto já lido: serve ao disco e ao lado da base do `variacao`, sem gravar arquivo. */
 function definicoesDoTexto(texto, linguagem, contextoN) {
   const linhas = texto.split(/\r?\n/);
   const conjuntos = ['dart', 'js', 'advpl'].includes(linguagem) ? ['topo', 'metodo'] : ['topo'];
   const achados = [];
   linhas.forEach((linha, i) => {
+    const casavel = linguagem === 'advpl' ? juntarContinuacao(linhas, i) : linha;
     for (const conjunto of conjuntos) {
-      const nome = casar(linha, linguagem, conjunto);
+      const nome = casar(casavel, linguagem, conjunto);
       if (!nome) continue;
       achados.push({
         linha: i + 1,
         nome,
-        assinatura: linha.trim().slice(0, MAX_CAMINHO_ASSINATURA),
+        assinatura: casavel.trim().slice(0, MAX_CAMINHO_ASSINATURA),
         contexto: linhas.slice(i + 1, i + 1 + contextoN).join('\n'),
         linguagem,
       });
