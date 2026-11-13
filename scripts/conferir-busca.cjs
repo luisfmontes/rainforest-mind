@@ -108,7 +108,7 @@ function existeNoHead(repo, caminho) {
 }
 
 /** Referência `arquivo:linha` dentro do resultado de uma linha `catalogo`. A regex é a do design. */
-const REFERENCIA = /([\p{L}\p{N}_.\/\[\]$-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu;
+const REFERENCIA = /([\p{L}\p{N}_.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu;
 
 /** Referência inteira entre crases: caminho com espaço e acento (`Ponto de Entrada/...`). */
 const CRASE = /`([^`]+?\.[A-Za-z][A-Za-z0-9]*):L?(\d+)`/g;

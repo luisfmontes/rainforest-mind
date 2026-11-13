@@ -9,8 +9,8 @@
 # e a `cobertura` aceita o campo novo em vez de recusa-lo como campo desconhecido.
 # A referencia `arquivo:linha` do resultado `catalogo` le contrabarra (Windows), ignora
 # URL e so aceita extensao que comeca com letra; e confere cada campo da linha, nao so o
-# ultimo. Caminho com espaço e acento entre crases, e colchetes/`$` sem crase, tambem.
-# Secao 9, casos (k) a (r).
+# ultimo. Caminho com espaço, acento, colchetes e `$` entre crases; sem crase, colchete e `$`
+# são pontuação e ficam fora do caminho. Secao 9, casos (k) a (s).
 #
 # Fixture: repositorio git temporario montado AQUI, com um unico arquivo commitado
 # (scripts/existente.cjs). Planos sao escritos por `tarefa`, um bloco por tarefa,
@@ -365,7 +365,7 @@ caso "catalogo (o): reaproveito soma de src/x.js:L3 passa" 0 'ok:' CHK plano --s
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:L4' 'desfecho: adotar'; } > "$P"
 caso "catalogo (o): src/x.js:L4 é recusado (não começa definição)" 2 'não começa definição em src/x\.js:4' CHK plano --slug t --plano "$P"
 
-# catalogo (p), (q), (r): caminho com espaço e acento entre crases; colchetes e `$` sem crase;
+# catalogo (p), (q), (r): caminho com espaço e acento entre crases; colchetes e `$` entre crases;
 # contrabarra dentro de crase. Fixtures com nome exato: a guarda aborta a bateria se faltar.
 mkdir -p "$S/Ponto de Entrada/69 - Gestão de Contratos" "$S/app/[id]"
 printf '%s\n' 'User Function MT100()' '  Return .T.' > "$S/Ponto de Entrada/69 - Gestão de Contratos/MT100.prw"
@@ -382,13 +382,28 @@ caso "catalogo (p): caminho com espaço e acento entre crases é conferido, linh
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz "Ponto de Entrada" | reaproveito MT100 de `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw:2`' 'desfecho: adotar'; } > "$P"
 caso "catalogo (p): mesmo caminho com linha 2 é recusado, citando o caminho inteiro" 2 'não começa definição em Ponto de Entrada/69 - Gestão de Contratos/MT100\.prw:2' CHK plano --slug t --plano "$P"
 
-# catalogo (q): colchetes do Next (`app/[id]/page.tsx`) lidos sem crase.
-{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz app | reaproveito Page de app/[id]/page.tsx:1' 'desfecho: adotar'; } > "$P"
-caso "catalogo (q): reaproveito Page de app/[id]/page.tsx:1 com colchetes sem crase passa" 0 'ok:' CHK plano --slug t --plano "$P"
+# catalogo (q): colchetes do Next (`app/[id]/page.tsx`) lidos entre crases.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz app | reaproveito Page de `app/[id]/page.tsx:1`' 'desfecho: adotar'; } > "$P"
+caso "catalogo (q): reaproveito Page de \`app/[id]/page.tsx:1\` entre crases com colchetes passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
 # catalogo (r): contrabarra dentro de crase vira barra; src/x.js:3 é início de definição.
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de `src\x.js:3`' 'desfecho: adotar'; } > "$P"
 caso "catalogo (r): reaproveito soma de src\x.js:3 entre crases (contrabarra) passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (s): colchete sem crase é pontuação. [src/x.js:3] passa; [src/x.js:4] recusa citando
+# src/x.js:4, e a saída não traz o colchete (`[src/x.js`), que faria parte do caminho.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito [src/x.js:3]' 'desfecho: adotar'; } > "$P"
+caso "catalogo (s): reaproveito [src/x.js:3] com colchete de pontuação passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito [src/x.js:4]' 'desfecho: adotar'; } > "$P"
+caso "catalogo (s): reaproveito [src/x.js:4] recusa citando src/x.js:4" 2 'não começa definição em src/x\.js:4' CHK plano --slug t --plano "$P"
+total=$((total+1))
+if CHK plano --slug t --plano "$P" 2>&1 | grep -q -- '\[src/x\.js'; then
+  vermelhas+=("catalogo (s): saída de [src/x.js:4] traz o colchete")
+  printf '  FALHA catalogo (s): saída de [src/x.js:4] traz [src/x.js\n'
+else
+  printf '  ok    catalogo (s): saída de [src/x.js:4] sem [src/x.js\n'
+fi
 
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
