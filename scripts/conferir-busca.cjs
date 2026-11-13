@@ -108,7 +108,10 @@ function existeNoHead(repo, caminho) {
 }
 
 /** Referência `arquivo:linha` dentro do resultado de uma linha `catalogo`. A regex é a do design. */
-const REFERENCIA = /([\w.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/g;
+const REFERENCIA = /([\p{L}\p{N}_.\/\[\]$-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu;
+
+/** Referência inteira entre crases: caminho com espaço e acento (`Ponto de Entrada/...`). */
+const CRASE = /`([^`]+?\.[A-Za-z][A-Za-z0-9]*):L?(\d+)`/g;
 
 /**
  * Problemas das referências `arquivo:linha` do resultado de `catalogo` (D7). Ordem: fora do
@@ -117,10 +120,12 @@ const REFERENCIA = /([\w.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/g;
  */
 function problemasDeReferencia(repo, resultado) {
   const texto = resultado.replace(/https?:\/\/\S+/g, ' ').replace(/\\/g, '/');
+  const refs = [];
+  const resto = texto.replace(CRASE, (_, arq, lin) => { refs.push([arq, lin]); return ' '; });
+  for (const m of resto.matchAll(REFERENCIA)) refs.push([m[1], m[2]]);
   const problemas = [];
-  for (const m of texto.matchAll(REFERENCIA)) {
-    const arquivo = m[1];
-    const linha = Number(m[2]);
+  for (const [arquivo, lin] of refs) {
+    const linha = Number(lin);
     const ref = `${arquivo}:${linha}`;
     if (/^\//.test(arquivo) || /(^|\/)\.\.(\/|$)/.test(arquivo)) {
       problemas.push(`referência fora do repositório: ${ref}`);

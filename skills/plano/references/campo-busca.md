@@ -78,11 +78,16 @@ criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
   acha `conferir-busca.cjs`, sem o prefixo `scripts/`. A referência no resultado leva o
   caminho **relativo ao repositório**, com a pasta na frente: `scripts/conferir-busca.cjs:118`.
   O checador lê o arquivo a partir da raiz do repo, então sem a pasta ele não acha.
+- Caminho com **espaço** vai entre crases, com a referência inteira dentro: ``reaproveito MT100 de `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw:1` ``.
+  Sem as crases o espaço corta o caminho e a referência não é conferida inteira. Caminho sem
+  espaço não precisa de crase. Dentro das crases o caminho pode ter acento, `[`, `]` e `$`
+  (pasta de rota do Next, `app/[id]/page.tsx:1`), e isso vale também sem crase.
 - `- catalogo | pulado: <motivo>` vale para tarefa que não cria função, por exemplo uma
   correção dentro de uma função que já existe. O motivo não pode ser vazio.
 - Conferência: só quando a linha não é `pulado:`, toda ocorrência de `arquivo:linha` em
   qualquer campo depois do canal (consulta e resultado) é casada com
-  `([\w.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)`; o `L` antes do número é opcional. A
+  `([\p{L}\p{N}_.\/\[\]$-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)` (com a flag `u`), e a referência
+  entre crases (`` `arq:L?n` ``) é casada antes, com espaço no caminho; o `L` antes do número é opcional. A
   contrabarra vale como barra, e URL (`http://` ou `https://`) não conta como referência.
   Cada referência passa pelas quatro recusas, nesta ordem, e sai com o primeiro motivo
   que casar:

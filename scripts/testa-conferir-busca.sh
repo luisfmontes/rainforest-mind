@@ -9,7 +9,8 @@
 # e a `cobertura` aceita o campo novo em vez de recusa-lo como campo desconhecido.
 # A referencia `arquivo:linha` do resultado `catalogo` le contrabarra (Windows), ignora
 # URL e so aceita extensao que comeca com letra; e confere cada campo da linha, nao so o
-# ultimo. Secao 9, casos (k) a (o).
+# ultimo. Caminho com espaço e acento entre crases, e colchetes/`$` sem crase, tambem.
+# Secao 9, casos (k) a (r).
 #
 # Fixture: repositorio git temporario montado AQUI, com um unico arquivo commitado
 # (scripts/existente.cjs). Planos sao escritos por `tarefa`, um bloco por tarefa,
@@ -363,6 +364,31 @@ caso "catalogo (o): reaproveito soma de src/x.js:L3 passa" 0 'ok:' CHK plano --s
 
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:L4' 'desfecho: adotar'; } > "$P"
 caso "catalogo (o): src/x.js:L4 é recusado (não começa definição)" 2 'não começa definição em src/x\.js:4' CHK plano --slug t --plano "$P"
+
+# catalogo (p), (q), (r): caminho com espaço e acento entre crases; colchetes e `$` sem crase;
+# contrabarra dentro de crase. Fixtures com nome exato: a guarda aborta a bateria se faltar.
+mkdir -p "$S/Ponto de Entrada/69 - Gestão de Contratos" "$S/app/[id]"
+printf '%s\n' 'User Function MT100()' '  Return .T.' > "$S/Ponto de Entrada/69 - Gestão de Contratos/MT100.prw"
+printf '%s\n' 'function Page() {' '  return null;' '}' > "$S/app/[id]/page.tsx"
+[ -f "$S/Ponto de Entrada/69 - Gestão de Contratos/MT100.prw" ] && [ -f "$S/app/[id]/page.tsx" ] \
+  || { echo "FALHA: fixture com espaço, acento ou colchetes não montada"; exit 1; }
+
+# catalogo (p): sem a crase o espaço corta o caminho; com a regex antiga `Contratos/MT100.prw` não
+# existe e a recusa sairia. Com a mutação `const resto = texto;` este caso fica vermelho.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz "Ponto de Entrada" | reaproveito MT100 de `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw:1`' 'desfecho: adotar'; } > "$P"
+caso "catalogo (p): caminho com espaço e acento entre crases é conferido, linha 1 passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (p), mesmo caminho com :2: recusa, com o caminho inteiro (espaço e acento) na saída.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz "Ponto de Entrada" | reaproveito MT100 de `Ponto de Entrada/69 - Gestão de Contratos/MT100.prw:2`' 'desfecho: adotar'; } > "$P"
+caso "catalogo (p): mesmo caminho com linha 2 é recusado, citando o caminho inteiro" 2 'não começa definição em Ponto de Entrada/69 - Gestão de Contratos/MT100\.prw:2' CHK plano --slug t --plano "$P"
+
+# catalogo (q): colchetes do Next (`app/[id]/page.tsx`) lidos sem crase.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz app | reaproveito Page de app/[id]/page.tsx:1' 'desfecho: adotar'; } > "$P"
+caso "catalogo (q): reaproveito Page de app/[id]/page.tsx:1 com colchetes sem crase passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (r): contrabarra dentro de crase vira barra; src/x.js:3 é início de definição.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de `src\x.js:3`' 'desfecho: adotar'; } > "$P"
+caso "catalogo (r): reaproveito soma de src\x.js:3 entre crases (contrabarra) passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
