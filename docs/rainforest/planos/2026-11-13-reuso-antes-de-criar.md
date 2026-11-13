@@ -322,7 +322,7 @@ prova: `node -e "const s=require('fs').readFileSync('scripts/conferir-busca.cjs'
 pronto quando: com o repo de fixture da seção 9 da bateria (`src/x.js` com `function soma()` na linha 3), `node scripts/conferir-busca.cjs plano --slug s --plano <arq>` responde assim. (t) Resultado `reaproveito Edit de pages/[id].js:99` → exit 2. O mesmo vale para `pages/[...slug].tsx:99`, `pages/[nada].tsx:99`, `lib/Foo$Bar.js:1` e `app/[id]/page.tsx:1`, todos sem crase. Cada um sai com a recusa `referência sem crase que o checador não lê por inteiro: <token>`, e a mensagem cita a crase. (u) `reaproveito soma de src/x.js:3,src/x.js:3` e `reaproveito soma (src/x.js:3)` → exit 0. Os casos (a) a (s) continuam com o mesmo exit, inclusive (m), (q) e (s). Provado por `bash scripts/testa-conferir-busca.sh` terminando em `vermelhas:[]` e exit 0, e por `node scripts/conferir-busca.cjs plano --slug 2026-11-13-reuso-antes-de-criar` saindo 0 sobre este plano.
 
 Passos:
-1. Constante nova ao lado da `CRASE`: `const SOLTA = /\S*\.[A-Za-z][A-Za-z0-9]*:L?\d+/gu;`. É uma ocorrência `.ext:N` com o que vier colado antes dela.
+1. Constante nova `const SOLTA = /\S*\.[A-Za-z][A-Za-z0-9]*:L?\d+/gu;`, declarada **logo depois** do fim da função `problemasDeReferencia`, e não ao lado da `CRASE`. É uma ocorrência `.ext:N` com o que vier colado antes dela. Nenhuma linha entra nem sai acima da função, porque as `busca:` das tarefas 9, 11 e 14 citam `scripts/conferir-busca.cjs:121`. A `const` no nível do módulo depois da função funciona, porque a função só roda depois de o módulo carregar.
 2. Em `problemasDeReferencia`, a linha `for (const m of resto.matchAll(REFERENCIA)) refs.push([m[1], m[2]]);` dá lugar ao bloco abaixo. As linhas antes dela não mudam.
    ```
    const soltas = [];
@@ -331,13 +331,15 @@ Passos:
      const antes = resto.slice(fim, m.index);
      const prefixo = antes.slice(antes.search(/\S*$/));
      fim = m.index + m[0].length;
+     if (/^[A-Za-z]:$/.test(prefixo)) { refs.push([prefixo + m[1], m[2]]); continue; }
      if (/^[(\["',;]*$/.test(prefixo)) refs.push([m[1], m[2]]);
      else soltas.push(prefixo + m[0]);
    }
    for (const m of resto.replace(REFERENCIA, ' ').matchAll(SOLTA)) soltas.push(m[0]);
    ```
    A linha `if (...)` é o alvo da mutação e fica exatamente como no `de:`. A `const problemas = [];` passa para antes do bloco. Cada item de `soltas` vira o problema `` `referência sem crase que o checador não lê por inteiro: ${t}; caminho com espaço, \`[\`, \`]\` ou \`$\` vai entre crases` ``.
-3. O comentário acima da `REFERENCIA` deixa de dizer "A regex é a do design", porque o design não fixa a regex. Passa a dizer o que ela lê sem crase.
+   A linha do drive (`C:` colado antes de `/abs/x.js:3`) devolve o caminho absoluto inteiro para as recusas. A checagem "fora do repositório" passa de `/^\//.test(arquivo)` para `/^(\/|[A-Za-z]:\/)/.test(arquivo)`. Assim o caso (l) continua com a mensagem `referência fora do repositório`. Emenda da integração: a primeira entrega da 14 mandava o `C:` para `soltas`, e (l) mudou de mensagem.
+3. O comentário de uma linha acima da `REFERENCIA` deixa de dizer "A regex é a do design", porque o design não fixa a regex. Passa a dizer, **ainda em uma linha só**, o que ela lê sem crase.
 4. Na bateria, casos novos (t) e (u) do critério, na seção 9, com o cabeçalho atualizado.
 
 ### 15. `campo-busca.md` e CHANGELOG descrevem o que o checador faz depois das tarefas 8 a 14 [tipo: docs]
