@@ -19,10 +19,10 @@
     "em": "2026-11-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-12",
-    "comando": "bash scripts/testa-observar.sh",
-    "saida": "== resultado: 44 ok, 0 falha(s) ==",
+    "comando": "bash scripts/testa-observar.sh && bash scripts/testa-memoria-consolidar-pulo.sh",
+    "saida": "== resultado: 44 ok, 0 falha(s) == | == resultado: 6 ok, 0 falha(s) ==",
     "tarefas_ok": 2,
     "tarefas": 2,
     "mutacao": [
@@ -38,10 +38,6 @@
       }
     ],
     "em": "2026-11-12",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-12"
-    },
     "reaberturas": 1
   },
   "revisar": {
