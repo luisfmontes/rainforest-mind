@@ -12,9 +12,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 2.14.0 — 2026-11-13
 
-- **O catálogo de funções passa a enxergar métodos de classe TLPP.** O `scripts/catalogo-funcoes.cjs` lê agora as declarações `Method x() Class Y`, que saem como `Y:x`. Antes ficavam de fora, e num template Protheus real eram 142 métodos sem entrada no catálogo.
+- **O catálogo de funções passa a enxergar métodos de classe TLPP.** O `scripts/catalogo-funcoes.cjs` lê agora as declarações `Method x() Class Y`, que saem como `Y:x`. Antes ficavam de fora, e num template Protheus real eram 142 métodos sem entrada no catálogo. A leitura cobre parêntese aninhado no default, `as <tipo> Of <tipo>` e classe com ponto; a assinatura quebrada com `;` é juntada só na linha que abre a definição, até 50 linhas de continuação.
 - **Novo subcomando `catalogo-funcoes.cjs novas --base <ref>`.** Lista as funções que o diff cria em relação a uma referência, para ver o que a mudança acrescentou antes de olhar o resto.
-- **O plano cobra a busca em toda tarefa que toca código, não só na que cria arquivo.** O canal `catalogo` do `busca:` passa a ser exigido, e o `conferir-busca` confere cada `arquivo:linha` citado (detalhe em `skills/plano/references/campo-busca.md`). Plano em andamento com tarefa que só edita código existente precisa ganhar a linha `catalogo` (ou `- catalogo | pulado: <motivo>`) para fechar o `marcar plano`.
+- **O plano cobra a busca em toda tarefa que toca código, não só na que cria arquivo.** O canal `catalogo` do `busca:` passa a ser exigido, e o `conferir-busca` confere cada `arquivo:linha` citado (detalhe em `skills/plano/references/campo-busca.md`). A regra vale para a linha `catalogo` inteira: contrabarra vale como barra, URL é ignorada, e caminho com espaço, `[`, `]` ou `$` vai entre crases. Plano em andamento com tarefa que só edita código existente precisa ganhar a linha `catalogo` (ou `- catalogo | pulado: <motivo>`) para fechar o `marcar plano`.
 - **O `revisar` compara as funções novas com o catálogo do repo.** Uma duplicata HIGH (mesma entrada, mesma saída) reprova a entrega; o resto vira observação (`skills/revisar/references/duplicata-das-novas.md`).
 
 ## 2.13.2 — 2026-11-12
