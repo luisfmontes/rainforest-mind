@@ -267,24 +267,24 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "8753fdf1df2a6e831c66484f75b0bc78be635cd4",
+      "head": "840d4bd0a0e5682ce253ab55b97f5735638154c0",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a6472f32bbe91595f",
+        "agente_id": "ac8d22639e93768f2",
         "veredito": "ok",
         "em": "2026-11-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a6472f32bbe91595f.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-ac8d22639e93768f2.jsonl"
       }
     ],
     "em": "2026-11-13",
-    "achados": 3,
+    "achados": 1,
     "base": "17942d8a6e3ccbefb242eb960ce6cb9ce7a76d71",
-    "head": "8753fdf1df2a6e831c66484f75b0bc78be635cd4",
+    "head": "840d4bd0a0e5682ce253ab55b97f5735638154c0",
     "voltas": [
       {
         "volta": 1,
@@ -321,12 +321,28 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a04cbf111b2286d4c.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a6472f32bbe91595f",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a6472f32bbe91595f.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-13"
+    "status": "ok",
+    "em": "2026-11-13",
+    "comando": "node scripts/conferir-busca.cjs plano --slug 2026-11-13-reuso-antes-de-criar; node scripts/catalogo-funcoes.cjs novas --raiz . --base 17942d8a; bash scripts/testa-conferir-busca.sh; bash scripts/testa-catalogo-funcoes.sh; 48 baterias de baterias-do-diff",
+    "saida": "ok: 9 tarefa(s) com busca | 3 novas | total=68 vermelhas:[] | ok: 206 falhou: 0 | 48/48 exit 0 (estado 337, reabrir 97, saude 94)",
+    "sensor_externo": "bash scripts/testa-conferir-busca.sh",
+    "head": "840d4bd0a0e5682ce253ab55b97f5735638154c0"
   },
   "fechar": {
     "status": "pendente",
