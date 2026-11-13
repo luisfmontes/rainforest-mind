@@ -766,6 +766,10 @@ const APELIDOS_GH = { new: "create" };
 function repoDaUrlGh(valor) {
   const s = String(valor || "");
   if (!/github\.|\/(?:issues|pull)\//i.test(s)) return null;
+  // Caminho que muda ao normalizar (`..`, `%2e`, contrabarra) pode apontar
+  // para um repo no texto e outro no `new URL`: falha fechada (revisão de
+  // segurança do commit, 2026-11-13).
+  if (/\.\.|%|\\/.test(s)) return "?";
   try {
     const u = new URL(s);
     if (!/^(?:www\.)?github\.com$/i.test(u.hostname)) return "?";
@@ -1099,7 +1103,11 @@ function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
   }
   if (achados.length === 0) return;
   const destinos = [];
-  for (const x of cmd.matchAll(/\S*(?:github\.|\/(?:issues|pull)\/)\S*/gi)) { const u = repoDaUrlGh(x[0].replace(/^["']|["']$/g, "")); if (u) destinos.push({ repo: u }); }
+  // Por token, sem regex com `\S*` à frente (retrocesso quadrático num comando longo).
+  for (const tok of cmd.split(/\s+/)) {
+    const u = repoDaUrlGh(tok.replace(/^["']+|["']+$/g, ""));
+    if (u) destinos.push({ repo: u });
+  }
   for (const x of cmd.matchAll(/(?:--repo[=\s]+|(?:^|\s)-R\s*=?\s*)["']?([^\s"';|&]+)/gi)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   for (const x of cmd.matchAll(/\bGH_REPO\s*=\s*["']?([^\s"';|&]*)/g)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   if (process.env.GH_REPO) destinos.push({ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" });

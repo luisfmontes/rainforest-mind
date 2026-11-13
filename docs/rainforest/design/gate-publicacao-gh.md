@@ -56,7 +56,7 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
   - o valor literal de `--title`/`--body`/`--subject`/`--comment` e o conteúdo legível dos `--body-file` seguem com todos os detectores;
   - a rede do `gh` que a segmentação perde também lê os `--body-file`;
   - `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`);
-  - a URL posicional (`gh issue comment https://github.com/<dono>/<repo>/issues/N`) é destino a mais, somado aos outros, e o pior decide (D4): a revisão de segurança do commit mostrou que, substituindo os outros, um token lido como URL sem que o `gh` o leia assim liberava um cwd público. Todo posicional é lido por `new URL`, e o que tem cara de URL do GitHub sem se ler entra como destino desconhecido.
+  - a URL posicional (`gh issue comment https://github.com/<dono>/<repo>/issues/N`) é destino a mais, somado aos outros, e o pior decide (D4): a revisão de segurança do commit mostrou que, substituindo os outros, um token lido como URL sem que o `gh` o leia assim liberava um cwd público. Todo posicional é lido por `new URL`, e o que tem cara de URL do GitHub sem se ler entra como destino desconhecido, assim como a URL com `..`, `%` ou contrabarra no caminho, que o `new URL` normalizaria para outro repositório. A busca de URL na rede da tarefa 9 é por token, sem regex com `S*` à frente.
 
   Ficam na Issue #707: corpo de `--body-file` em UTF-16 e `GH_REPO` por `Set-Item Env:`/`New-Item Env:`/`export "GH_REPO"=`.
 

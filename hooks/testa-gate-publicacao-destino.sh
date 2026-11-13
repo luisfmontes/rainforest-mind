@@ -929,6 +929,8 @@ confere702 "URL privada de Issue a partir de cwd privado passa" 0 "" Bash "$R702
 confere702 "URL publica no segundo posicional a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue close 3 https://github.com/dono/publico/issues/3 --comment termo702'
 confere702 "URL do GitHub ilegivel falha fechada" 2 "" Bash "$R702P" 'gh issue comment https://user@github.com:99999999/x --body termo702'
 confere702 "URL com usuario e porta le o host" 2 "" Bash "$R702P" 'gh issue comment https://u@github.com:443/dono/publico/issues/3 --body termo702'
+confere702 "URL com .. no caminho falha fechada" 2 "" Bash "$R702P" 'gh issue comment https://github.com/dono/priv/../publico/issues/3 --body termo702'
+confere702 "URL com %2e no caminho falha fechada" 2 "" Bash "$R702P" 'gh issue comment https://github.com/dono/priv/%2e%2e/publico/issues/3 --body termo702'
 GH702="node $SANDBOX_BIN/gh"
 confere702 "issue new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh issue new --title termo702 --body x'
 confere702 "pr new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh pr new --title t --body termo702'
