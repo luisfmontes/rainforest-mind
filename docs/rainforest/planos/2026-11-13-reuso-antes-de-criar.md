@@ -159,3 +159,13 @@ Passos:
    - o plano cobra o canal `catalogo` em toda tarefa de código;
    - o revisar reprova duplicata HIGH do que o diff cria.
 3. No `README.md`, na linha da tabela que descreve o estágio `plano` (`rg -n "busca:" README.md` acha a linha), acrescentar o canal `catalogo`. Na linha que descreve o `enxugar` ou o `revisar`, acrescentar a checagem de duplicata das funções novas. Uma frase em cada, sem seção nova.
+
+### 7. Fixture do `testa-conferir-fluxo.sh` ganha a linha `catalogo` [tipo: teste]
+atende: D2
+arquivos: `scripts/testa-conferir-fluxo.sh`
+depende de: 3
+mutacao: n/a
+  motivo: ajuste de fixture de teste; o comportamento novo é o da tarefa 3, e a mutação dela já é medida por `testa-conferir-busca.sh`
+pronto quando: com o checador da tarefa 3, a função `plano_no_formato` da bateria injeta também `- catalogo | pulado: fixture de bateria` logo depois da linha `- repo | fixture de bateria | busca injetada na copia`. Assim os quatro casos que a tarefa 3 deixou vermelhos voltam a fechar: "plano com cobertura fecha", "executar com catraca armada e lista completa fecha", "plano SEM design no disco nao fica preso" e "estado.cjs tambem ignora a cerca ao cruzar a lista". Provado por `bash scripts/testa-conferir-fluxo.sh`, que termina com `falhou: 0` e exit 0. Nenhum caso existente é apagado ou afrouxado.
+
+Emenda de 2026-11-13, durante o `executar`: a tarefa 3 passou a cobrar `busca:` em tarefa que edita código existente, e o `baterias-do-diff` dela não listou esta bateria, cujos planos de fixture fecham o `marcar plano`. A regressão foi achada pela varredura das 15 baterias que fecham plano com fixture. Só esta ficou vermelha. A `testa-estado.sh` passou do teto de 500 s e roda à parte.
