@@ -63,10 +63,13 @@ V="$S/docs/rainforest/varredura/t.txt"
 # scripts/conferir-esteira.cjs sem busca, e o `marcar --estagio plano` agora
 # recusa por isso antes de chegar aos casos desta secao. A copia recebe um bloco
 # `busca:` valido por tarefa; o caso que testa a busca e' testa-conferir-busca.sh.
+# Desde 2026-11-13 (design reuso-antes-de-criar) o `busca:` exige tambem o canal
+# `catalogo` em tarefa de codigo, e por isso a copia leva a linha `catalogo` com `pulado:`.
 plano_no_formato(){
   awk '/^pronto quando:/ {
          print "busca:";
          print "- repo | fixture de bateria | busca injetada na copia";
+         print "- catalogo | pulado: fixture de bateria";
          print "desfecho: construir";
          print "mutacao:";
          print "  arquivo: `scripts/conferir-fluxo.cjs`";

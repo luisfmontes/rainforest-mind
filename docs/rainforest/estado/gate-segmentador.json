@@ -1,0 +1,326 @@
+{
+  "slug": "gate-segmentador",
+  "titulo": "gate-segmentador",
+  "criado_em": "2026-11-11",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/gate-segmentador.md",
+    "em": "2026-11-11"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/gate-segmentador.md",
+    "tarefas": 6,
+    "paralelas": [],
+    "em": "2026-11-11"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-13",
+    "tarefas_ok": 27,
+    "tarefas": 27,
+    "em": "2026-11-13",
+    "pendente": "re-rodar node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador e fechar executar ok; depois revisar",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador",
+    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 3: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: vermelho | tarefa 10: pulada (n/a — D9 revogado na 4ª rodada (decisão d | tarefa 11: vermelho | tarefa 12: pulada (n/a — D9 revogado na 4ª rodada (decisão d | tarefa 13: pulada (n/a — D9 revogado na 4ª rodada (decisão d | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: pulada (n/a — remoção; não há comportamento novo  | tarefa 17: vermelho | tarefa 18: vermelho | tarefa 19: vermelho | tarefa 20: vermelho | tarefa 21: vermelho | tarefa 22: pulada (n/a — decodificação revogada na 8ª rodada | tarefa 23: pulada (n/a — só texto; o comportamento está medi | tarefa 24: vermelho | tarefa 25: vermelho | tarefa 26: pulada (n/a — só texto; o comportamento está medi | tarefa 27: pulada (n/a — só texto (Q1 A do Luís, 2026-11-13) | tarefa 6: pulada (n/a — só versão e texto; comportamento med | EXIT=0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (hs-1), (hs-2) e (hs-3)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (cb-1) e (cb-2)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (ad-1) e (ad-2)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (ps-1), (ps-3) e (ps-4)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (hc-1) e (crase-12)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso (wd-1)"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso (hc-3)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (cw-1), (cw-2) e (cw-3)"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (cw-5) e (cw-6)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "n/a",
+        "motivo": "D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (hs-5) e (hs-6)"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso (hs-7)"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "n/a",
+        "motivo": "remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (hs-9) e (hs-10)"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso (ad-6)"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (cw-8) e (cw-9)"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso (cw-11)"
+      },
+      {
+        "tarefa": 21,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (mx-1) a (mx-5)"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "n/a",
+        "motivo": "decodificação revogada na 8ª rodada (Q1 B do Luís, 2026-11-12); o código foi removido pela tarefa 24"
+      },
+      {
+        "tarefa": 23,
+        "resultado": "n/a",
+        "motivo": "só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3"
+      },
+      {
+        "tarefa": 24,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso (r8-1)"
+      },
+      {
+        "tarefa": 25,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (r8-2) a (r8-4)"
+      },
+      {
+        "tarefa": 26,
+        "resultado": "n/a",
+        "motivo": "só texto; o comportamento está medido pelas tarefas 24 e 25"
+      },
+      {
+        "tarefa": 27,
+        "resultado": "n/a",
+        "motivo": "só texto (Q1 A do Luís, 2026-11-13); nenhum comportamento muda"
+      }
+    ],
+    "reaberturas": 8
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "ab3e3a42a0e7126173b2289a987fe66d0ac28ac3",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a30f1f36aa3d4dffe",
+        "veredito": "ok",
+        "em": "2026-11-13",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a30f1f36aa3d4dffe.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-13",
+    "achados": 2,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a4f44b4a983a342f7",
+            "veredito": "reprovado",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a4f44b4a983a342f7.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a161a03052abdc24b",
+            "veredito": "reprovado",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a161a03052abdc24b.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a79ccf5d45d0cf3fc",
+            "veredito": "reprovado",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a79ccf5d45d0cf3fc.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae3ae1301a4ef74bc",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae3ae1301a4ef74bc.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a09b6f3b777c6f899",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a09b6f3b777c6f899.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 6,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a3428939db460d86c",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a3428939db460d86c.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 7,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a51e48d75a777d119",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a51e48d75a777d119.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 8,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae439b5976d94cee3",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae439b5976d94cee3.jsonl"
+          }
+        ]
+      }
+    ],
+    "rodadas_extra": [
+      {
+        "texto": "Luis (2026-11-12): opcao A - tirar o D9 inteiro (comentario volta ao da base, vai para a #692) e consertar o here-string de palavra com aspa",
+        "em": "2026-11-12"
+      },
+      {
+        "texto": "Luis (2026-11-12): 5a rodada liberada (Q1 recomendada) para revisar o conserto do $$' (tarefa 18); preexistentes da revisao 4 plantados na #692",
+        "em": "2026-11-12"
+      },
+      {
+        "texto": "Luis (2026-11-12): 6a rodada, opcao A - D8 pela semantica do bash (eval junta valores, -c leva o argumento em aspas duplas), 14 casos do fuzz na bateria, fuzz do revisor rodado localmente ate zerar HEAD 0/base 2 antes da revisao 6",
+        "em": "2026-11-12"
+      },
+      {
+        "texto": "Q1 A (Luís, 2026-11-12): dentro de eval/bash -c, palavra de aspas mistas com contrabarra que contém gh de escrita é ilegível e barra; a rede do D3 decodifica \\xHH e octal do ANSI-C; CHANGELOG restaurado; achados 4 e 5 como falso positivo aceito",
+        "em": "2026-11-12"
+      },
+      {
+        "texto": "Luís 2026-11-12, Q1 B: corrigir só o que deixa a branch pior que a main (tirar a decodificação de ANSI-C, voltando à 6ª rodada; regra da contrabarra só para eval/bash -c no bash); furos preexistentes vão para Issue; revisão 8 aprova se a branch não for mais fraca que a main",
+        "em": "2026-11-12"
+      },
+      {
+        "texto": "Q1 A do Luis (2026-11-13): aceitar o falso positivo do D3 com aspa qualquer em \"$(...)\", corrigir so texto (tarefa 27), mistaComGh na Issue #708, versao no merge com a main",
+        "em": "2026-11-13"
+      }
+    ],
+    "base": "17942d8a6e3ccbefb242eb960ce6cb9ce7a76d71",
+    "head": "ab3e3a42a0e7126173b2289a987fe66d0ac28ac3"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/gate-fechar-issue.cjs (payloads reais: echo \"$(echo )...gh issue close 12)\", cat <<< crase gh issue close 12 crase, cd \"$(dirname \"$0\")\" && gh issue comment 5 --body-file f.md, echo ok && ls); bash hooks/testa-gate-fechar-issue.sh; bash hooks/testa-gate-pr-flag-curta.sh; bash hooks/testa-gate-merge-auto.sh; bash hooks/testa-gate-receita-corpo.sh; bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash scripts/testa-conferir-versao.sh; node hooks/testa-gate-subagente-sem-gh.cjs; node scripts/conferir-versao.cjs",
+    "saida": "prova exit=2/2/2/0 (esperado 2/2/2/0) / 513 ok, 0 falha(s) / ok: 51 / ok: 14 / ok: 39 / 189 ok / 85 ok / 38 ok / ok: 102 / ok versao 2.13.3 (origin/main 2.13.2)",
+    "em": "2026-11-13",
+    "head": "72fe44c07be224aedd68bcda773446b46896a9db"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 711,
+    "em": "2026-11-13"
+  }
+}

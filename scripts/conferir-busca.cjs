@@ -6,9 +6,12 @@
  * Uso:
  *   node scripts/conferir-busca.cjs plano --slug <s> [--plano <arquivo>]
  *
- * Regra: tarefa `implementar` (ou sem tipo) cujo `arquivos:` declara caminho
- * concreto de código que não existe no commit HEAD precisa do bloco `busca:`
- * (uma linha por canal, e o canal `repo`) e de `desfecho:`. Teste e `.md` não
+ * Regra (revisada em 2026-11-13, design reuso-antes-de-criar): tarefa `implementar`
+ * (ou sem tipo) cujo `arquivos:` declara caminho concreto de código, novo ou já
+ * existente no HEAD, precisa do bloco `busca:` com o canal `catalogo` (resultado
+ * ou `pulado: <motivo>`) e de `desfecho:`. Quem cria arquivo novo também leva o
+ * canal `repo`. No resultado da linha `catalogo`, cada `arquivo:linha` é
+ * conferido contra o catálogo de funções. Teste e `.md` não
  * contam; glob é ignorado. A linha de canal `doc` é conferida em toda tarefa
  * que a declara, de qualquer tipo, sem exigir git: a consulta tem de ser a URL
  * http(s) da página oficial (design 2026-11-08-busca-doc, D1 e D2).
@@ -28,6 +31,7 @@ const RAIZ = process.env.RFM_ESTADO_ROOT
 
 const SCRIPT_DIR = path.dirname(__filename);
 const { extrairTarefas, lerMarkdown } = require(path.join(SCRIPT_DIR, 'conferir-fluxo.cjs'));
+const { definicoesDoArquivo, EXTENSOES } = require(path.join(SCRIPT_DIR, 'catalogo-funcoes.cjs'));
 
 const TIPOS_NAO_COBRADOS = ['docs', 'pesquisar', 'pesquisa', 'configurar', 'teste'];
 const DESFECHOS = ['adotar', 'estender', 'compor', 'enxertar', 'construir'];
@@ -102,6 +106,59 @@ function existeNoHead(repo, caminho) {
   const r = git(repo, ['cat-file', '-e', `HEAD:${caminho}`]);
   return r.status === 0;
 }
+
+/** Referência `arquivo:linha` sem crase: lê no caminho só letras, números, `_`, `.`, `/` e `-`. */
+const REFERENCIA = /([\p{L}\p{N}_.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/gu;
+
+/** Referência inteira entre crases: caminho com espaço e acento (`Ponto de Entrada/...`). */
+const CRASE = /`([^`]+?\.[A-Za-z][A-Za-z0-9]*):L?(\d+)`/g;
+
+/**
+ * Problemas das referências `arquivo:linha` do resultado de `catalogo` (D7). Ordem: fora do
+ * repositório, extensão que o catálogo não lê, arquivo que não existe, linha que não começa
+ * definição. Toda recusa cita `arquivo:linha`.
+ */
+function problemasDeReferencia(repo, resultado) {
+  const texto = resultado.replace(/https?:\/\/\S+/g, ' ').replace(/\\/g, '/');
+  const refs = [];
+  const resto = texto.replace(CRASE, (_, arq, lin) => { refs.push([arq, lin]); return ' '; });
+  const problemas = [];
+  const soltas = [];
+  let fim = 0;
+  for (const m of resto.matchAll(REFERENCIA)) {
+    const antes = resto.slice(fim, m.index);
+    const prefixo = antes.slice(antes.search(/\S*$/));
+    fim = m.index + m[0].length;
+    if (/^[A-Za-z]:$/.test(prefixo)) { refs.push([prefixo + m[1], m[2]]); continue; }
+    if (/^[(\["',;]*$/.test(prefixo)) refs.push([m[1], m[2]]);
+    else soltas.push(prefixo + m[0]);
+  }
+  for (const m of resto.replace(REFERENCIA, ' ').matchAll(SOLTA)) soltas.push(m[0]);
+  for (const t of soltas) problemas.push(`referência sem crase que o checador não lê por inteiro: ${t}; caminho com espaço, \`[\`, \`]\` ou \`$\` vai entre crases`);
+  for (const [arquivo, lin] of refs) {
+    const linha = Number(lin);
+    const ref = `${arquivo}:${linha}`;
+    if (/^(\/|[A-Za-z]:\/)/.test(arquivo) || /(^|\/)\.\.(\/|$)/.test(arquivo)) {
+      problemas.push(`referência fora do repositório: ${ref}`);
+      continue;
+    }
+    if (!EXTENSOES[path.extname(arquivo).toLowerCase()]) {
+      problemas.push(`extensão que o catálogo não lê: ${ref}`);
+      continue;
+    }
+    if (!fs.existsSync(path.join(repo, arquivo))) {
+      problemas.push(`arquivo não existe: ${ref}`);
+      continue;
+    }
+    if (!definicoesDoArquivo(repo, arquivo, 0).some((d) => d.linha === linha)) {
+      problemas.push(`não começa definição em ${ref}`);
+    }
+  }
+  return problemas;
+}
+
+/** Ocorrência `arquivo:linha` sem crase, com o que vier colado antes dela. */
+const SOLTA = /\S*\.[A-Za-z][A-Za-z0-9]*:L?\d+/gu;
 
 // ================================================================ Linhas do bloco
 
@@ -201,7 +258,7 @@ function cmdPlano() {
   const cobradas = tarefas.filter(tarefaCobrada);
   if (!cobradas.some((t) => candidatosDe(t).length > 0)) {
     if (recusas.length > 0) recusar(recusas);
-    console.log('ok: nenhuma tarefa cria caminho novo de código sem busca:');
+    console.log('ok: nenhuma tarefa de código sem busca:');
     return;
   }
 
@@ -220,24 +277,37 @@ function cmdPlano() {
     const candidatos = candidatosDe(tarefa);
     const caminhosNovos = candidatos.filter((c) => !existeNoHead(repo, c));
 
-    // Gatilho D7: caminho novo de código na tarefa. Não basta tocar arquivo existente.
-    const exige = caminhosNovos.length > 0;
+    // Gatilho D7 (revisado em 2026-11-13): toda tarefa cobrada que toca caminho de código, novo
+    // ou já existente. Quem cria arquivo novo leva também o canal `repo`.
+    const exige = candidatos.length > 0;
     if (!exige) continue;
     exigidas++;
 
-    const quem = `tarefa ${numero}. ${nome} cria \`${caminhosNovos[0]}\``
-      + (caminhosNovos.length > 1 ? ` (e mais ${caminhosNovos.length - 1})` : '');
+    const criaArquivo = caminhosNovos.length > 0;
+    const verbo = caminhosNovos.includes(candidatos[0]) ? 'cria' : 'edita';
+    const quem = `tarefa ${numero}. ${nome} ${verbo} \`${candidatos[0]}\``
+      + (candidatos.length > 1 ? ` (e mais ${candidatos.length - 1})` : '');
 
     if (!busca.presente) {
-      recusas.push(`${quem} sem bloco \`busca:\`. Falta: \`busca:\` seguido de ${FORMATO_LINHA}, com canal \`repo\`, e \`desfecho: ${DESFECHOS.join('|')}\`.`);
+      recusas.push(`${quem} sem bloco \`busca:\`. Falta: \`busca:\` seguido de ${FORMATO_LINHA}, com canal \`catalogo\`${criaArquivo ? ' e canal `repo`' : ''}, e \`desfecho: ${DESFECHOS.join('|')}\`.`);
       continue;
     }
 
+    let temCatalogo = false;
     let temRepo = false;
     let repoPulado = false;
     for (const linha of busca.linhas) {
       if (lerLinhaBusca(linha).canal === 'doc') continue;
       const { canal, pulado, problema } = lerLinhaBusca(linha);
+      if (canal === 'catalogo') {
+        temCatalogo = true;
+        if (!pulado && !problema) {
+          const campos = dividirCampos(linha);
+          for (const p of problemasDeReferencia(repo, campos.slice(1).join(' | '))) {
+            recusas.push(`${quem}; canal \`catalogo\`: ${p}.`);
+          }
+        }
+      }
       if (problema) {
         recusas.push(`${quem}; bloco \`busca:\` com linha inválida: ${problema}. Formato: ${FORMATO_LINHA}.`);
       } else if (canal === 'repo' && pulado) {
@@ -249,8 +319,13 @@ function cmdPlano() {
     }
     if (busca.linhas.length === 0) {
       recusas.push(`${quem}; \`busca:\` sem nenhuma linha. Falta: ${FORMATO_LINHA}.`);
-    } else if (!temRepo && !repoPulado) {
-      recusas.push(`${quem}; \`busca:\` sem o canal \`repo\`. Falta uma linha \`- repo | <consulta> | <resultado>\`.`);
+    } else {
+      if (!temCatalogo) {
+        recusas.push(`${quem}; \`busca:\` sem o canal \`catalogo\`. Falta uma linha \`- catalogo | listar --raiz <pasta> | <reaproveito X de arquivo:linha | nada equivalente>\` ou \`- catalogo | pulado: <motivo>\`.`);
+      }
+      if (criaArquivo && !temRepo && !repoPulado) {
+        recusas.push(`${quem}; \`busca:\` sem o canal \`repo\`. Falta uma linha \`- repo | <consulta> | <resultado>\`.`);
+      }
     }
 
     if (busca.desfecho === null || busca.desfecho === '') {
@@ -263,9 +338,9 @@ function cmdPlano() {
   if (recusas.length > 0) recusar(recusas);
 
   if (exigidas > 0) {
-    console.log(`ok: ${exigidas} tarefa(s) com caminho novo de código, todas com busca: e desfecho:`);
+    console.log(`ok: ${exigidas} tarefa(s) com caminho de código, todas com busca: e desfecho:`);
   } else {
-    console.log('ok: nenhuma tarefa cria caminho novo de código sem busca:');
+    console.log('ok: nenhuma tarefa de código sem busca:');
   }
 }
 

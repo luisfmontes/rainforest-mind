@@ -433,16 +433,16 @@ mutacao:
 prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
 pronto quando: payload real `Bash`, repositório público, `sp/a b.md` com `termo702`: `echo it` + contrabarra + `'s; gh issue create --title t --body-file "sp/a b.md"` sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
-### 3. Versão 2.13.3, CHANGELOG e README [tipo: docs]
+### 3. Versão 2.14.1, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
 depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:
-- a versão sobe de `2.13.2` para `2.13.3` em `.claude-plugin/plugin.json` e `.codex-plugin/plugin.json`; se a `origin/main` já estiver em `2.13.3` ou mais na hora, a versão é o próximo PATCH livre acima dela, e o resto deste critério lê esse número no lugar de `2.13.3`;
-- o badge da linha 7 do `README.md` troca `2.13.2` por `2.13.3` nas duas ocorrências (`vers%C3%A3o-2.13.2` e `alt="versão 2.13.2"`);
-- o `CHANGELOG.md` ganha, no topo, a seção `## 2.13.3 — 2026-11-13`, que cita a #702 e os verbos do D1;
+- a versão sobe de `2.14.0` para `2.14.1` em `.claude-plugin/plugin.json` e `.codex-plugin/plugin.json`; se a `origin/main` já estiver em `2.14.1` ou mais na hora, a versão é o próximo PATCH livre acima dela, e o resto deste critério lê esse número no lugar de `2.14.1`;
+- o badge da linha 7 do `README.md` troca `2.14.0` por `2.14.1` nas duas ocorrências (`vers%C3%A3o-2.14.0` e `alt="versão 2.14.0"`);
+- o `CHANGELOG.md` ganha, no topo, a seção `## 2.14.1 — 2026-11-13`, que cita a #702 e os verbos do D1;
 - a linha `gate-publicacao-destino.cjs` da tabela de hooks do README passa a citar o título e o corpo de `gh issue`/`gh pr`, com os verbos do D1 (inclusive `close` e `reopen`).
 
-Provado por `node scripts/conferir-versao.cjs` com exit 0 (ele só confere que a versão declarada é maior que a da `origin/main`; exit 2 quer dizer bump faltando), `grep -o "2.13.3" README.md | wc -l` devolvendo 2 ou mais (o `grep -c` conta linhas, e as duas ocorrências estão na mesma linha), e `grep -n "2.13.3" CHANGELOG.md .claude-plugin/plugin.json .codex-plugin/plugin.json` com uma linha por arquivo.
+Provado por `node scripts/conferir-versao.cjs` com exit 0 (ele só confere que a versão declarada é maior que a da `origin/main`; exit 2 quer dizer bump faltando), `grep -o "2.14.1" README.md | wc -l` devolvendo 2 ou mais (o `grep -c` conta linhas, e as duas ocorrências estão na mesma linha), e `grep -n "2.14.1" CHANGELOG.md .claude-plugin/plugin.json .codex-plugin/plugin.json` com uma linha por arquivo.

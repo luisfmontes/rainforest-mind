@@ -27,27 +27,56 @@
  * codigo, entao o falso positivo era diario e empurrava o agente a reescrever
  * comando legitimo ate passar. `palavras()` ja sabia respeitar aspas para achar
  * subcomando de git; a deteccao de escrita e que tinha ficado no regex cru.
+ *
+ * `opcoes.contrabarra` (Bash): fora de aspas simples, a contrabarra escapa o
+ * caractere seguinte, como no bash. So o `gate-fechar-issue` passa a opcao
+ * (D8 de gate-segmentador); sem ela o comportamento e o de sempre.
  */
-function tokensComAspas(cmd) {
+function tokensComAspas(cmd, opcoes = {}) {
   const out = [];
   let atual = "", aspa = null, temAlgo = false, citado = false, primeiraAspa = null;
+  // Modos de citação vistos na palavra: '"', "'" e "nu" (fora de aspas). Mais de
+  // um é palavra de aspas mistas (`"echo"' \"; x'`): `aspa` guarda só o da
+  // primeira aspa, e quem reduz escape pela primeira aspa reduz a palavra
+  // inteira com a regra errada. O token sai com `mista: true` (revisão 6 de
+  // gate-segmentador); sem mistura, o token não ganha o campo.
+  let modos = new Set();
+  const empurra = () => {
+    const t = { v: atual, q: citado, aspa: primeiraAspa };
+    if (modos.size > 1) t.mista = true;
+    out.push(t);
+  };
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
+    // D8 (gate-segmentador, Issue #689): com `opcoes.contrabarra` (Bash), fora
+    // de aspas simples a contrabarra escapa o caractere seguinte, que nao
+    // abre, fecha nem separa. Fora de aspas a contrabarra some (a remocao que
+    // o bash faz: `gh\ issue` e a palavra `gh issue`); dentro de aspas duplas
+    // o par fica cru para o `desempacota` reduzir (#313). Sem a opcao, nada muda.
+    if (opcoes.contrabarra && c === "\\" && aspa !== "'" && i + 1 < cmd.length) {
+      atual += aspa === null ? cmd[i + 1] : c + cmd[i + 1];
+      modos.add(aspa === null ? "nu" : aspa);
+      i += 1;
+      temAlgo = true;
+      continue;
+    }
     if (aspa) {
       if (c === aspa) aspa = null;
       else atual += c;
       temAlgo = true;
     } else if (c === '"' || c === "'") {
       aspa = c; temAlgo = true; citado = true;
+      modos.add(c);
       if (primeiraAspa === null) primeiraAspa = c;
     } else if (/\s/.test(c)) {
-      if (temAlgo) out.push({ v: atual, q: citado, aspa: primeiraAspa });
-      atual = ""; temAlgo = false; citado = false; primeiraAspa = null;
+      if (temAlgo) empurra();
+      atual = ""; temAlgo = false; citado = false; primeiraAspa = null; modos = new Set();
     } else {
       atual += c; temAlgo = true;
+      modos.add("nu");
     }
   }
-  if (temAlgo) out.push({ v: atual, q: citado, aspa: primeiraAspa });
+  if (temAlgo) empurra();
   return out;
 }
 
@@ -294,7 +323,12 @@ function textoAPartir(toks, i) {
   // duplas (#313), e remontar `'...'` como `"..."` fazia a reducao valer
   // para aspas simples — `bash -c 'gh issue \\<quebra>close 12'` virava
   // `gh issue close 12`, que o bash nao executa (achado da revisao).
-  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : t.v)).join(" ");
+  // Token sem aspas com espaco so nasce da opcao `contrabarra` (`gh\ pr\ merge`
+  // e UMA palavra): sai entre aspas DUPLAS com `\ " $ crase` escapados, que o
+  // `desempacota` reduz de volta ao valor exato (D8 de gate-segmentador). Aspas
+  // simples com `'\''` nao voltavam: `bash -c echo\ \'x\'\;\ gh ...` escondia o
+  // `gh` (revisao 5). Sem a opcao, nada muda.
+  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? '"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"' : t.v))).join(" ");
 }
 
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------

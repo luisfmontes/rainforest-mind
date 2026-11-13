@@ -1,0 +1,404 @@
+{
+  "slug": "2026-11-13-reuso-antes-de-criar",
+  "titulo": "Reuso antes de criar: catálogo lê Method TLPP, plano faz inventário de reuso, revisar roda enxugar no diff",
+  "criado_em": "2026-11-13",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-13-reuso-antes-de-criar.md",
+    "em": "2026-11-13"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-13-reuso-antes-de-criar.md",
+    "tarefas": 6,
+    "paralelas": [],
+    "em": "2026-11-13"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-13",
+    "tarefas_ok": 16,
+    "tarefas": 16,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "d57d098",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T11:52:53.976Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "d57d098",
+        "iteracao": 2,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:07:08.327Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "4c2b62c",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:07:08.327Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "d57d098",
+        "iteracao": 3,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:18:20.102Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1b1ed9f",
+        "iteracao": 2,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:18:20.102Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "d57d098",
+        "iteracao": 4,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1b1ed9f",
+        "iteracao": 3,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "ac3a82c",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "ac3a82c",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "d57d098",
+        "iteracao": 5,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:54:15.805Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1b1ed9f",
+        "iteracao": 4,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:54:15.805Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "ac3a82c",
+        "iteracao": 2,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:54:15.805Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "655833b",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:54:15.805Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "ac3a82c",
+        "iteracao": 2,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:54:15.805Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "4567873",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T14:28:10.846Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "4567873",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T14:28:10.846Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "1ed9198",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T14:36:54.451Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "8acfbbd",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:02:18.037Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "8acfbbd",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:02:18.037Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "fab5e27",
+        "iteracao": 2,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:14:35.006Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "fefcd30",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:30:57.524Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "5c164e8",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:50:12.425Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "3d59b7d",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T16:02:22.226Z"
+      }
+    ],
+    "em": "2026-11-13",
+    "comando": "bash scripts/testa-plugin-codex.sh",
+    "saida": "ok ancora corpo modo-dev: 15164 bytes sha256 0bb8052f..., exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 19"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 20"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (a)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve doc"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve doc"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "versao e changelog"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "ajuste de fixture de teste"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 21"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (k)"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve doc"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (p)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh caso 22b"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (s)"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (t)"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve doc"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "n/a",
+        "motivo": "re-medicao de ancora binaria"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "a21bbfa699e078c7b9d0fcb93b48a0e2416059b3",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a6a69cbc2d1e4fc70",
+        "veredito": "ok",
+        "em": "2026-11-13",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a6a69cbc2d1e4fc70.jsonl"
+      }
+    ],
+    "em": "2026-11-13",
+    "achados": 3,
+    "base": "17942d8a6e3ccbefb242eb960ce6cb9ce7a76d71",
+    "head": "a21bbfa699e078c7b9d0fcb93b48a0e2416059b3",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aecc916cd066b4712",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-aecc916cd066b4712.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a5c21af5a19984c1b",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a5c21af5a19984c1b.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a04cbf111b2286d4c",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a04cbf111b2286d4c.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a6472f32bbe91595f",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-a6472f32bbe91595f.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac8d22639e93768f2",
+            "veredito": "ok",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/aef7560a-1607-4a01-8d4c-d69fafe1980d/subagents/agent-ac8d22639e93768f2.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-13",
+    "comando": "bash scripts/testa-plugin-codex.sh; bash scripts/testa-conferir-busca.sh; node scripts/conferir-busca.cjs plano --slug 2026-11-13-reuso-antes-de-criar",
+    "saida": "ok ancora corpo modo-dev: 15164 bytes sha256 0bb8052f..., exit 0 | total=68 vermelhas:[] | ok: 9 tarefa(s); 48 baterias do diff verdes na rodada anterior, codigo de producao inalterado desde ela",
+    "sensor_externo": "bash scripts/testa-plugin-codex.sh",
+    "head": "c4efb9f551b064ba79b03fa6beddafa86a6fbdfc"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-13"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-13",
+      "de": "revisar",
+      "motivo": "revisao rodada 1 aprovou com 5 achados que cabem no PR: (1) regex de Method perde parentese aninhado, retorno de varias palavras, continuacao com ; e classe com ponto; (2) modo-dev Degrau 2b, travas-mecanicas e mensagens ok do conferir-busca com texto antigo; (3) campo-busca nao avisa prefixar caminho do listar com --raiz; (4) referencia com contrabarra, numero com ponto e URL saem com diagnostico errado; (5) so o ultimo campo da linha catalogo e conferido"
+    },
+    {
+      "em": "2026-11-13",
+      "de": "revisar",
+      "motivo": "revisao rodada 2 aprovou com 3 achados: (1) referencia com espaco ou acento no caminho vira arquivo nao existe; (2) juntarContinuacao cubico em cadeia longa de ;; (3) [id] e $id no nome viram falso vermelho"
+    },
+    {
+      "em": "2026-11-13",
+      "de": "revisar",
+      "motivo": "revisao rodada 3 aprovou com achado media: REFERENCIA com colchete e cifrao le pontuacao como parte do caminho ([src/x.js:3] vira arquivo nao existe); doc de campo-busca afirma que colchete vale sem crase"
+    },
+    {
+      "em": "2026-11-13",
+      "de": "revisar",
+      "motivo": "revisao rodada 4: falso verde de referencia com colchete ou cifrao sem crase (pages/[id].js:99 passa sem conferencia); recusa sem dica de crase; doc diz que acento pede crase; CHANGELOG nao cita tarefas 8 a 13"
+    },
+    {
+      "em": "2026-11-13",
+      "de": "verificar",
+      "motivo": "CI do PR 710: testa-plugin-codex.sh vermelho, ancora binaria do corpo de modo-dev em contrato-plugin-codex.cjs nao acompanhou a tarefa 10 (15164 bytes sha256 0bb8052f...)"
+    }
+  ],
+  "decididos": [
+    {
+      "pergunta": "Revisão 4 marcou [design] o falso verde de referência com colchete sem crase. Para o fluxo?",
+      "escolha": "Não para: a correção fecha o falso verde sem mexer em D<n>. Toda ocorrência .ext:N fora de crase é conferida ou recusada, nunca pulada.",
+      "porque": "O design não fixa a regex (grep vazio no design), só o D3: conferir cada arquivo:linha. A correção cumpre o D3.",
+      "estagio": "revisar",
+      "em": "2026-11-13T15:37:58.454Z"
+    }
+  ]
+}
