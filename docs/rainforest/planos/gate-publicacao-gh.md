@@ -149,8 +149,8 @@ busca:
 desfecho: compor
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento);`
-  para: `const locais = [{ cwd: cwdDoEvento, incerto: false }];`
+  de: `const mapas = origens.map((o) => ({ o, mapa: cwdPorSegmento(texto, o.cwd, ps) }));`
+  para: `const mapas = origens.map((o) => ({ o, mapa: [{ seg: texto, cwd: o.cwd, incerto: false }] }));`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd para repo publico antes do gh barra"`
 prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
@@ -218,8 +218,8 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 6
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `      textos.push({ origem: chave, texto: valor });`
-  para: `      if (!/[$\x60]/.test(valor)) textos.push({ origem: chave, texto: valor });`
+  de: `  const textos = [{ origem: "comando", texto: cmdOriginal }];`
+  para: `  const textos = [];`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --body com heredoc em subst de comando barra"`
 prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
@@ -234,16 +234,70 @@ pronto quando: payload real de PreToolUse, repositório público, saem 2:
 
 Saem 0: `gh pr close 5 -c limpo` e `gh pr review 5 -c -b limpo` (`-c` é booleana no `review`). Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
+Emenda da revisão 2 (Q2 A do Luís, 2026-11-13): o texto conferido passa a ser o comando inteiro (tarefa 8), e a mutação desta tarefa troca de linha: sem texto nenhum, os casos acima saem 0.
+
+### 8. O comando inteiro conta como texto [tipo: implementar]
+atende: D2, D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 7
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `  const textos = [{ origem: "comando", texto: cmdOriginal }];`
+  para: `  const textos = [{ origem: "comando", texto: segmento }];`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 variavel literal no mesmo comando barra"`
+prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse, repositório público, saem 2:
+- `printf 'termo702' | gh issue comment 3 -F -`;
+- `gh issue comment 3 -F - <<< "termo702"`;
+- `B="termo702 aqui"; gh issue create --title t --body "$B"`;
+- no PowerShell, `$b = @'` + `termo702` + `'@; gh issue create --title t --body $b`;
+- `cd <repo público cujo caminho tem termo702> && gh issue create --title ok --body limpo` (falso positivo aceito).
+
+Saem 0: `B="limpo"; gh issue create --title t --body "$B"` e `cd <repo privado cujo caminho tem termo702> && gh issue create --title ok --body limpo`. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+Forma prescrita: `textosDoSegmentoGh` abre `textos` com o comando inteiro e acrescenta só o conteúdo legível dos `--body-file`; `corposEmbutidos` e a leitura do valor de `--title`/`--body`/`--subject`/`--comment` saem.
+
+### 9. Rede para o `gh` que a segmentação perde [tipo: implementar]
+atende: D1, D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 8
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `  if (!achouGhTexto) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
+  para: `  if (false) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 apostrofo escapado no bash antes do gh barra"`
+prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse, repositório público, saem 2: `echo it` + contrabarra + `'s; gh issue create --title termo702 --body x` no Bash, e o here-string do PowerShell com `it's termo702` seguido de `gh issue create --title t --body-file n.md` na linha de baixo. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+Forma prescrita: quando nenhum segmento achou `gh issue|pr` de escrita e o texto cru casa `gh ... issue|pr <verbo>`, o comando inteiro é conferido; os destinos são todo `--repo`/`-R` e `GH_REPO=` do texto, o `GH_REPO` da sessão e o cwd do evento, incerto se o texto tem `cd`, `pushd`, `Set-Location` ou `-C`. O pior decide.
+
+### 10. O `cd` dentro e antes de wrapper [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 9
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `        if (w && w.interno) empilhar(w.interno, profundidade + 1, locais, ehPs(s));`
+  para: `        if (w && w.interno) empilhar(w.interno, profundidade + 1);`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd antes de bash -c para repo publico barra"`
+prova-na-base: verde — emenda da revisão 2: a base já é o código das tarefas 1 a 7, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse, a partir de um repositório privado, saem 2 `bash -c "cd <público> && gh issue create --title termo702 --body x"` e `cd <público> && bash -c "gh issue create --title termo702 --body x"`; a partir de um público, sai 0 `bash -c "cd <privado> && gh issue create --title termo702 --body x"`. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+Forma prescrita: cada segmento leva os cwds possíveis; o texto de dentro do wrapper roda o próprio `cwdPorSegmento` a partir de cada cwd do segmento do wrapper.
+
 ### 3. Versão 2.13.3, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 4, 5, 6, 7
+depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:
 - a versão sobe de `2.13.2` para `2.13.3` em `.claude-plugin/plugin.json` e `.codex-plugin/plugin.json`; se a `origin/main` já estiver em `2.13.3` ou mais na hora, a versão é o próximo PATCH livre acima dela, e o resto deste critério lê esse número no lugar de `2.13.3`;
 - o badge da linha 7 do `README.md` troca `2.13.2` por `2.13.3` nas duas ocorrências (`vers%C3%A3o-2.13.2` e `alt="versão 2.13.2"`);
 - o `CHANGELOG.md` ganha, no topo, a seção `## 2.13.3 — 2026-11-13`, que cita a #702 e os verbos do D1;
-- a linha `gate-publicacao-destino.cjs` da tabela de hooks do README passa a citar o título e o corpo de `gh issue`/`gh pr`.
+- a linha `gate-publicacao-destino.cjs` da tabela de hooks do README passa a citar o título e o corpo de `gh issue`/`gh pr`, com os verbos do D1 (inclusive `close` e `reopen`).
 
 Provado por `node scripts/conferir-versao.cjs` com exit 0 (ele só confere que a versão declarada é maior que a da `origin/main`; exit 2 quer dizer bump faltando), `grep -o "2.13.3" README.md | wc -l` devolvendo 2 ou mais (o `grep -c` conta linhas, e as duas ocorrências estão na mesma linha), e `grep -n "2.13.3" CHANGELOG.md .claude-plugin/plugin.json .codex-plugin/plugin.json` com uma linha por arquivo.

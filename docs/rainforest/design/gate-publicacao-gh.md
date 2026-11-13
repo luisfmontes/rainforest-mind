@@ -46,6 +46,11 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
 
   O D3 fica só para o que **não está escrito no comando**: valor de variável, saída de programa, arquivo de `--body-file` com variável no caminho sem corpo embutido. O cwd incerto segue o que o `cwdPorSegmento` diz. Grupo `{ gh ...; }` ou `( gh ... )` com termo num repositório privado barra: é falso positivo aceito, porque a regex que o evitava deixava passar `cd` que o `cwdPorSegmento` resolve e ela não.
 
+- **Emenda de D2 e D3 (revisão 2, Q2 A do Luís, 2026-11-13).** A revisão 2 mediu três formas de entregar o texto que o parse de flags não via, todas saindo 0 com termo num repositório público: here-string do PowerShell com apóstrofo ímpar (`it's`) seguido de `gh ... --body-file` (a segmentação perdia o `gh`), stdin (`printf 'termo' | gh issue comment 3 -F -`, `<<<`) e variável escrita no mesmo comando (`B="termo"; gh ... --body "$B"`). Cada rodada achava outra forma, porque o gate tentava reconstruir qual texto chega ao `gh`. Daí:
+  - o texto conferido é o **comando inteiro**, mais o conteúdo legível dos `--body-file`. A regra do D2 "nunca o comando inteiro" cai, e o falso positivo que ela evitava é aceito: termo só num caminho do mesmo comando (`cd <pasta> && gh issue create --repo <público> ...`) barra. Contorno: o `gh` em comando separado;
+  - quando nenhum segmento acha `gh issue|pr` de escrita e o texto cru tem um, o comando inteiro é conferido mesmo assim, com destinos tirados do texto (todo `--repo`/`-R`, todo `GH_REPO=`, o `GH_REPO` da sessão, o cwd do evento, incerto se o comando muda de diretório);
+  - o D3 fica só para o que o comando **não carrega**: arquivo lido por caminho com variável e saída de programa.
+
 - **D4 — Repositório de destino.**
   - **Com `--repo`/`-R`:** com `owner/repo` (ou URL `https://github.com/owner/repo`), a visibilidade é a desse repositório, por `visibilidadeDeUmRepo`.
   - **Sem `--repo`:** é a do repositório git do `cwd`, por `visibilidadeDoRepo(gitTop)`, que já falha fechada quando há qualquer remoto público.
@@ -68,7 +73,7 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
 
 ## Avaliado e descartado
 
-- **Conferir o comando inteiro como texto:** falso positivo com caminho de cliente (ver D2).
+- **Conferir o comando inteiro como texto:** descartado no primeiro desenho pelo falso positivo com caminho de cliente (ver D2); adotado na revisão 2 (emenda de D2 e D3), porque o parse de flags deixava passar stdin, variável e aspa ímpar.
 - **Falha fechada no ilegível:** ver D3.
 - **Novo hook separado:** a visibilidade, o cache, os achados e a mensagem já moram em `gate-publicacao-destino.cjs`. Um hook novo duplicaria tudo isso.
 

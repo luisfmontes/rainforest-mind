@@ -777,26 +777,6 @@ const FLAGS_GH_VALOR = {
   },
 };
 
-/**
- * Corpos que o próprio comando carrega: heredoc (bash) e here-string
- * (PowerShell, `@'...'@` e `@"..."@`). Quando o segmento tem `--body-file`,
- * eles contam sempre, exista o arquivo ou não: o comando pode reescrever o
- * arquivo antes do `gh`, ou mandá-lo por stdin (`--body-file -`). Revisão do
- * fluxo gate-publicacao-gh, 2026-11-13.
- */
-function corposEmbutidos(cmd) {
-  const { posicoesDeOperadorHeredoc, corpoDeHeredoc } = require("./lib/heredoc.cjs");
-  const saida = [];
-  try {
-    for (const pos of posicoesDeOperadorHeredoc(cmd)) {
-      const h = corpoDeHeredoc(cmd, pos);
-      if (h && h.corpo) saida.push({ origem: "heredoc", texto: h.corpo });
-    }
-  } catch {}
-  for (const m of String(cmd).matchAll(/@(["'])\r?\n([\s\S]*?)\r?\n\1@/g)) saida.push({ origem: "here-string", texto: m[2] });
-  return saida;
-}
-
 /** `owner/repo` do valor de `--repo`, `"?"` quando ilegível, `null` sem valor. */
 function normalizarRepoAlvo(valor) {
   if (valor == null || valor === "") return null;
@@ -846,8 +826,12 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   if (!VERBOS_GH_TEXTO[familia] || !VERBOS_GH_TEXTO[familia].has(verbo)) return null;
 
   const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
-  const textos = [];
-  let embutidosLidos = false;
+  // O comando inteiro conta como texto (Q2 A do Luís, 2026-11-13): valor de
+  // flag, heredoc, here-string, `printf ... |`, `<<<` e `B="..."; ... "$B"`
+  // estão todos escritos nele. Preço aceito: termo só num caminho do mesmo
+  // comando barra. Fora fica só o que o comando não carrega (arquivo lido por
+  // variável, saída de programa).
+  const textos = [{ origem: "comando", texto: cmdOriginal }];
   for (; i < toks.length; i += 1) {
     const tok = toks[i];
     if (!tok.startsWith("-") || tok === "-") continue;
@@ -865,19 +849,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
     if (valor === null) continue;
 
     if (chave === "--repo" || chave === "-R") { repoValor = valor; continue; }
-    const ehTitulo = chave === "--title" || (chave === "-t" && verbo !== "merge");
-    const ehSubject = verbo === "merge" && (chave === "--subject" || chave === "-t");
-    const ehComentario = (verbo === "close" || verbo === "reopen") && (chave === "--comment" || chave === "-c");
-    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject || ehComentario) {
-      // O texto LITERAL do valor conta sempre, com `$(...)` ou crase dentro:
-      // o heredoc de `--body "$(cat <<'EOF' ... EOF)"` e a crase de markdown
-      // estão escritos no comando. Só o que não está no comando (o valor de uma
-      // variável, a saída de um programa) fica sem conferência (D3, emenda).
-      textos.push({ origem: chave, texto: valor });
-      continue;
-    }
     if (chave === "--body-file" || chave === "-F") {
-      if (!embutidosLidos) { embutidosLidos = true; textos.push(...corposEmbutidos(cmdOriginal)); }
       if (/[$\x60]/.test(valor) || valor === "-") continue;
       let caminho = valor;
       try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(valor); } catch {}
@@ -885,7 +857,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
       try {
         textos.push({ origem: `${chave} ${valor}`, texto: fs.readFileSync(resolvido, "utf8") });
       } catch {
-        // Ilegível ou inexistente: os corpos embutidos do comando já entraram.
+        // Ilegível ou inexistente: o comando inteiro já entrou.
       }
     }
   }
@@ -985,7 +957,7 @@ function visibilidadeDoDestino(d) {
 function conferirGh(ev, cwdDoEvento, agente) {
   const cmd = ev.tool_input && ev.tool_input.command;
   if (typeof cmd !== "string" || !/\bgh\b/i.test(cmd)) return;
-  let segmentos, mapa, mascarado;
+  let segmentos, mascarado;
   try {
     const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
     const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
@@ -996,23 +968,36 @@ function conferirGh(ev, cwdDoEvento, agente) {
     // (revisão, 2026-11-13). O resíduo do cru (#706: `novo.md` vira `novo.mdF`)
     // não abre nada: com `--body-file`, os corpos embutidos contam sempre.
     mascarado = mascararCorposDeHeredoc(cmd);
+    // Cada segmento leva os cwds possíveis. O texto de dentro de um wrapper
+    // (`bash -c "cd x && gh ..."`) tem o próprio `cwdPorSegmento`, que parte
+    // de cada cwd possível do segmento do wrapper (revisão 2, 2026-11-13).
+    const ehPs = (s) => /^(?:&\s*)?["']?(?:pwsh|powershell)(?:\.exe)?["']?(?:\s|$)|^(?:iex|invoke-expression)\b/i.test(s.trim());
     segmentos = [];
-    const empilhar = (texto, profundidade) => {
+    const empilhar = (texto, profundidade, origens = [{ cwd: cwdDoEvento, incerto: false }], ps = ev.tool_name === "PowerShell") => {
+      const mapas = origens.map((o) => ({ o, mapa: cwdPorSegmento(texto, o.cwd, ps) }));
       for (const s of segmentosParaGate(texto)) {
-        segmentos.push(s);
+        const locais = [];
+        for (const { o, mapa: m } of mapas) {
+          for (const l of cwdsDoSegmentoGh(m, s, o.cwd)) locais.push({ cwd: l.cwd, incerto: l.incerto || o.incerto });
+        }
+        segmentos.push({ segmento: s, locais });
         if (profundidade >= 4) continue;
         let w = null;
         try { w = desempacotarWrapperDeString(s.trim(), { ferramenta: ev.tool_name }); } catch {}
         // `bash -c "gh ..."`, `sh -c`, `eval`, `powershell -Command`
-        if (w && w.interno) empilhar(w.interno, profundidade + 1);
+        if (w && w.interno) empilhar(w.interno, profundidade + 1, locais, ehPs(s));
       }
     };
     empilhar(cmd, 0);
-    mapa = cwdPorSegmento(cmd, cwdDoEvento, ev.tool_name === "PowerShell");
   } catch { return; }
 
-  for (const segmento of segmentos) {
-    const locais = cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento);
+  const memo = new Map();
+  const conferirMemo = (texto) => {
+    if (!memo.has(texto)) memo.set(texto, conferirConteudo(texto));
+    return memo.get(texto);
+  };
+  let achouGhTexto = false;
+  for (const { segmento, locais } of segmentos) {
     // O `--body-file` relativo se lê contra CADA cwd possível do segmento, e os
     // achados se somam: com o segmento repetido, cada ocorrência lê o seu.
     let r = null;
@@ -1022,11 +1007,12 @@ function conferirGh(ev, cwdDoEvento, agente) {
       if (!ri) break; // não é `gh` de texto, em cwd nenhum
       if (!r) r = ri;
       for (const { origem, texto } of ri.textos) {
-        const res = conferirConteudo(texto);
+        const res = conferirMemo(texto);
         if (res && res.achados) for (const a of res.achados) achados.push({ ...a, origem });
       }
     }
     if (!r) continue;
+    achouGhTexto = true;
     if (achados.length === 0) continue;
 
     // Falha fechada: o pior destino possível decide.
@@ -1042,6 +1028,41 @@ function conferirGh(ev, cwdDoEvento, agente) {
     process.stderr.write(mensagemBloqueioGh(achados, r.familia, r.verbo, Boolean(agente), vis));
     process.exit(2);
   }
+  if (!achouGhTexto) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
+}
+
+/**
+ * Rede da segmentação (revisão 2, 2026-11-13): uma aspa ímpar (`echo it\'s`,
+ * here-string com `it's`) fazia o `gh issue|pr` de escrita sumir dos
+ * segmentos, e o gate não conferia nada. Se o texto cru tem um `gh` de escrita
+ * que nenhum segmento achou, o comando inteiro é conferido e os destinos saem
+ * do texto: todo `--repo`/`-R`, todo `GH_REPO=`, o `GH_REPO` da sessão e o
+ * cwd do evento, incerto se o comando muda de diretório. O pior decide.
+ */
+const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?\b(issue|pr)\s+(create|comment|edit|close|reopen|review|merge)\b/i;
+function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
+  const m = cmd.match(GH_TEXTO_CRU);
+  if (!m) return;
+  const res = conferirMemo(cmd);
+  let achados = res && res.achados ? res.achados.map((a) => ({ ...a, origem: "comando" })) : [];
+  if (achados.length === 0) return;
+  const destinos = [];
+  for (const x of cmd.matchAll(/(?:--repo[=\s]+|(?:^|\s)-R\s*=?\s*)["']?([^\s"';|&]+)/gi)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
+  for (const x of cmd.matchAll(/\bGH_REPO\s*=\s*["']?([^\s"';|&]*)/g)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
+  if (process.env.GH_REPO) destinos.push({ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" });
+  const mudaDir = /(?:^|[\s;&|({])(?:cd|pushd|popd|chdir|set-location|sl|push-location|pop-location)\b|(?:^|\s)-C\s/i.test(cmd);
+  destinos.push({ cwd: cwdDoEvento, incerto: mudaDir });
+  let pior = null;
+  for (const d of destinos) {
+    const v = visibilidadeDoDestino(d);
+    if (v !== null && (pior === null || PESO_VISIBILIDADE[v] > PESO_VISIBILIDADE[pior])) pior = v;
+  }
+  if (pior === null || pior === "privada") return;
+  if (pior === "desconhecida-declarada") achados = achados.filter((a) => a.id !== "termo-privado");
+  if (achados.length === 0) return;
+  const vis = pior === "publica" ? "publica" : "desconhecida";
+  process.stderr.write(mensagemBloqueioGh(achados, m[1].toLowerCase(), m[2].toLowerCase(), Boolean(agente), vis));
+  process.exit(2);
 }
 
 function main() {

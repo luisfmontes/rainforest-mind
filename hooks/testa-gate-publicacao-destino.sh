@@ -844,7 +844,6 @@ confere702 "pr list passa" 0 "$PUB" Bash "$R702" 'gh pr list'
 confere702 "--body-file com variavel passa (ilegivel)" 0 "$PUB" Bash "$R702" 'gh issue create --title t --body-file $f'
 confere702 "--body com subst de comando passa (ilegivel)" 0 "$PUB" Bash "$R702" 'gh issue create --title t --body "$(cat x)"'
 confere702 "texto limpo passa" 0 "$PUB" Bash "$R702" 'gh issue create --title ok --body limpo'
-confere702 "termo so no caminho do cd passa" 0 "$PUB" Bash "$R702" 'cd /pasta/termo702 && gh issue create --title ok --body limpo'
 : > "$GH_INVOCATIONS"
 confere702 "issue view nao consulta visibilidade" 0 "$PUB" Bash "$R702" 'gh issue view 12'
 if grep -q "repo" "$GH_INVOCATIONS"; then falhou=$((falhou+1)); echo "  FALHA 702 issue view consultou gh repo view: $(tr '\n' ' ' < "$GH_INVOCATIONS")"
@@ -902,6 +901,23 @@ GH702="node $SANDBOX_BIN/gh-por-nome"
 confere702 "gh entre chaves em cwd privado barra (cwd incerto, falso positivo aceito)" 2 "" Bash "$R702P" '{ gh issue create --title termo702 --body x; }'
 GH702="node $SANDBOX_BIN/gh"
 
+# Revisao 2 e Q2 A do Luis (2026-11-13): o comando inteiro conta como texto
+confere702 "here-string PowerShell com apostrofo e --body-file barra" 2 "$PUB" PowerShell "$R702" $'@\'\nit\'s termo702\n\'@ | Set-Content n.md\ngh issue create --title t --body-file n.md'
+confere702 "apostrofo escapado no bash antes do gh barra" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title termo702 --body x"
+confere702 "printf em pipe para -F - barra" 2 "$PUB" Bash "$R702" "printf 'termo702' | gh issue comment 3 -F -"
+confere702 "here-string do bash para -F - barra" 2 "$PUB" Bash "$R702" 'gh issue comment 3 -F - <<< "termo702"'
+confere702 "variavel literal no mesmo comando barra" 2 "$PUB" Bash "$R702" 'B="termo702 aqui"; gh issue create --title t --body "$B"'
+confere702 "variavel PowerShell com here-string barra" 2 "$PUB" PowerShell "$R702" $'$b = @\'\ntermo702\n\'@; gh issue create --title t --body $b'
+confere702 "variavel literal limpa passa" 0 "$PUB" Bash "$R702" 'B="limpo"; gh issue create --title t --body "$B"'
+GH702="node $SANDBOX_BIN/gh-por-nome"
+RT702="$RAIZ/termo702-pub"; mk702 "$RT702" "https://github.com/dono/outro.git"
+RT702P="$RAIZ/termo702-dir/priv"; mkdir -p "$RAIZ/termo702-dir"; mk702 "$RT702P" "https://github.com/dono/priv.git"
+confere702 "termo so no caminho do cd para repo publico barra (falso positivo aceito)" 2 "" Bash "$R702P" "cd $(esc "$RT702") && gh issue create --title ok --body limpo"
+confere702 "termo so no caminho do cd para repo privado passa" 0 "" Bash "$R702" "cd $(esc "$RT702P") && gh issue create --title ok --body limpo"
+confere702 "cd dentro de bash -c para repo publico barra" 2 "" Bash "$R702P" "bash -c \"cd $R702E && gh issue create --title termo702 --body x\""
+confere702 "cd antes de bash -c para repo publico barra" 2 "" Bash "$R702P" "cd $R702E && bash -c \"gh issue create --title termo702 --body x\""
+confere702 "cd dentro de bash -c para repo privado passa" 0 "" Bash "$R702" "bash -c \"cd $R702PE && gh issue create --title termo702 --body x\""
+GH702="node $SANDBOX_BIN/gh"
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

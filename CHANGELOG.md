@@ -12,13 +12,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 2.13.3 — 2026-11-13
 
-- **O gate de publicação passa a conferir o texto de `gh issue` e `gh pr`.** Até aqui ele só via o que virava arquivo versionado (`Write`/`Edit` e `git commit`). O título, o corpo e o comentário de `gh issue create|comment|edit` e `gh pr create|comment|edit|review|merge` saíam sem conferência, e uma Issue pública chegou a sair com um termo da lista privada no corpo (Issue #702). O GitHub guarda o histórico de edição, então corrigir depois não apaga. Agora o gate lê `--title`, `--body`, o `--subject` do merge, o `--comment` de `close`/`reopen`, o arquivo do `--body-file`/`-F` e todo heredoc ou here-string do mesmo comando, no Bash, no PowerShell e dentro de `bash -c`/`sh -c`/`eval`. O texto escrito no comando conta mesmo dentro de `"$(...)"`, que é a forma de rotina do corpo de PR. O destino é, nesta ordem:
+- **O gate de publicação passa a conferir o texto de `gh issue` e `gh pr`.** Até aqui ele só via o que virava arquivo versionado (`Write`/`Edit` e `git commit`). O título, o corpo e o comentário de `gh issue create|comment|edit` e `gh pr create|comment|edit|review|merge` saíam sem conferência, e uma Issue pública chegou a sair com um termo da lista privada no corpo (Issue #702). O GitHub guarda o histórico de edição, então corrigir depois não apaga. Agora, quando o comando tem um `gh issue` ou `gh pr` que publica texto (`create`, `comment`, `edit`, `review`, `merge`, `close`, `reopen`), o gate confere o comando inteiro, no Bash, no PowerShell e dentro de `bash -c`/`sh -c`/`eval`, mais o conteúdo dos arquivos de `--body-file`/`-F` que dá para ler. Isso cobre título, corpo, heredoc, here-string, texto mandado por stdin (`printf ... | gh ... -F -`) e variável escrita no mesmo comando (`B="..."; gh ... --body "$B"`). O destino é, nesta ordem:
   - o `--repo`;
   - o `GH_REPO` do próprio comando;
   - o repositório do diretório em que o `gh` roda, que conta o `cd` antes dele;
   - o `GH_REPO` da sessão.
 
-  Havendo mais de um destino possível, o pior decide. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. O que não está escrito no comando (valor de variável, saída de programa) não é conferido.
+  Havendo mais de um destino possível, o pior decide. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. O que o comando não carrega (arquivo lido por caminho com variável, saída de programa) não é conferido. Falso positivo aceito: um termo que só aparece num caminho do mesmo comando (`cd <pasta> && gh issue create ...` com destino público) barra; rode o `gh` num comando separado.
 
 ## 2.13.2 — 2026-11-12
 
