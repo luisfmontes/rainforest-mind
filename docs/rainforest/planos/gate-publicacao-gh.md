@@ -34,10 +34,13 @@ pronto quando: payload real de PreToolUse, `HOME` de areia com o termo `termo702
   - `-F corpo.md`;
   - `--body-file=corpo.md`;
   - caminho absoluto;
-  - `cat > novo.md <<'EOF'` com o termo no heredoc, seguido de `&& gh pr create --body-file novo.md` (arquivo inexistente);
+  - heredoc que cria o arquivo: o comando é a string `"cat > novo.md <<'EOF' && gh pr create --title t --body-file novo.md\nx termo702\nEOF"` (com `\n` sendo quebra de linha real), e `novo.md` não existe no cwd;
   - `gh issue comment 5 --body-file corpo.md`;
   - `gh pr comment 5 -b termo702`;
   - `gh pr merge 5 --squash --body termo702`;
+  - `gh pr merge 5 -s --body termo702` (`-s` é `--squash`, booleana: não pode engolir o `--body`);
+  - `gh pr merge 5 -t termo702` (`-t` é `--subject` no `merge`);
+  - `gh issue create --title t --body-file corpo2.md` com `corpo2.md` cuja 1ª linha é `rainforest-gate: dados-de-exemplo` e a 2ª tem `termo702` (D5: sem isenção de marcador);
   - `gh pr review 5 --comment -b termo702`;
   - `gh issue edit 5 --title termo702`;
   - o caso (a) com `tool_name: "PowerShell"`.
@@ -54,35 +57,51 @@ Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `== resultado: N o
 
 Forma prescrita:
 - **Função nova de módulo `conferirGh(ev, cwdDoEvento, agente)`**, chamada em `main()` pela linha exata `if (nome === "Bash" || nome === "PowerShell") conferirGh(ev, cwdDoEvento, agente);`, colocada logo ANTES da linha que chama `conferirCommit`. Ela retorna (sem `process.exit`) quando não há achado, para o `conferirCommit` seguir. Barra com `process.exit(2)`.
-- **Laço sobre os segmentos.** Para cada segmento de `segmentosParaGate(cmd)`:
-  - tokeniza com `tokensComAspas(segmento)` (tokens `{ v }`);
-  - acha o primeiro token cujo executável normalizado é `gh` (`normalizarExecutavel` de `hooks/lib/heredoc.cjs`);
-  - lê família e verbo como os dois primeiros posicionais depois dele, pulando flags (a de valor pula também o token seguinte, pela lista `FLAGS_GH_VALOR` abaixo);
-  - só segue se o par está em `{issue: create|comment|edit, pr: create|comment|edit|review|merge}`, com família e verbo em minúsculas.
-- **Textos (D2).** Do resto dos tokens:
+- **Laço sobre os segmentos.** Para cada segmento de `segmentosParaGate(mascararCorposDeHeredoc(cmd))`:
+  - A máscara (`hooks/lib/heredoc.cjs`) vem antes porque `segmentosParaGate` sobre comando com heredoc cola no último token o último caractere do delimitador. Medido: `--body-file novo.md` vira `novo.mdF`.
+  - Tokeniza com `tokensComAspas(segmento)` (tokens `{ v }`).
+  - Acha o primeiro token cujo executável normalizado é `gh` (`normalizarExecutavel` de `hooks/lib/heredoc.cjs`).
+  - Lê família e verbo como os dois primeiros tokens depois dele que não começam com `-`. Uma flag antes deles só pula o token seguinte se for `--repo` ou `-R`.
+  - Só segue se o par está em `{issue: create|comment|edit, pr: create|comment|edit|review|merge}`, com família e verbo em minúsculas.
+- **Textos (D2).** Percorre os tokens depois do verbo, em ordem, por índice:
+  - token que não começa com `-` é ignorado (posicional);
   - a chave da flag longa vai em minúsculas até o `=`; a curta é `tok.slice(0, 2)`, com caixa;
-  - valor no token seguinte, depois de `=` ou colado à curta (`-bx`, `-b=x`);
-  - `--title`/`-t`, `--body`/`-b` e `--subject` (o `-s` só no verbo `merge`) dão `{ origem: <flag>, texto: <valor> }`, e valor com `$(` ou crase é ignorado (D3);
+  - o valor fica na mesma palavra (`--x=v`, `-bx`, `-b=v`) ou no token seguinte, e nesse caso o índice avança 2, então o valor nunca é testado como flag;
+  - `--body`/`-b`, `--title`, e `-t`, dão `{ origem: <flag como escrita>, texto: <valor> }`. O `-t` é `--title` fora do `merge` e `--subject` no `merge`, e o `--subject` só existe no `merge`;
+  - valor com `$(` ou crase é ignorado (D3);
   - `--body-file`/`-F` com valor que contém `$` ou crase, ou igual a `-`, é ignorado;
   - fora disso, o caminho passa por `normalizarMsys` (`hooks/lib/cwd-efetivo.cjs`) e, se relativo, resolve contra `cwdDoEvento`;
   - arquivo legível dá `{ origem: "--body-file <valor>", texto: <conteúdo> }`;
-  - com `ENOENT`, cada corpo de heredoc do comando INTEIRO (`posicoesDeOperadorHeredoc(cmd)` + `corpoDeHeredoc(cmd, pos).corpo`) dá `{ origem: "heredoc", texto }`;
-  - outros erros de leitura: ignorado.
-- **`FLAGS_GH_VALOR`** é um `Set` local com `--repo`, `-R`, `--title`, `-t`, `--body`, `-b`, `--body-file`, `-F`, `--base`, `-B`, `--head`, `-H`, `--label`, `-l`, `--assignee`, `-a`, `--milestone`, `-m`, `--project`, `-p`, `--reviewer`, `-r`, `--template`, `-T`, `--subject`, `-s`, `--add-label`, `--remove-label`, `--add-assignee`, `--remove-assignee`.
+  - com `ENOENT`, cada corpo de heredoc do comando ORIGINAL (`posicoesDeOperadorHeredoc(cmd)` + `corpoDeHeredoc(cmd, pos).corpo`) dá `{ origem: "heredoc", texto }`;
+  - outros erros de leitura: ignorado;
+  - `--repo`/`-R` guardam o valor em `repoAlvo` do segmento (a tarefa 2 o usa; nesta tarefa ele só é lido);
+  - outra flag consome o token seguinte **só** se estiver no conjunto de flags de valor do verbo, e flag fora do conjunto é booleana.
+- **Flags de valor, por verbo.** Constante de módulo `FLAGS_GH_VALOR` (objeto de `Set`).
+  - **Longas**, sem caixa, em todos os verbos: `--repo`, `--title`, `--body`, `--body-file`, `--subject`, `--base`, `--head`, `--label`, `--assignee`, `--milestone`, `--project`, `--reviewer`, `--template`, `--add-label`, `--remove-label`, `--add-assignee`, `--remove-assignee`, `--add-project`, `--remove-project`, `--add-reviewer`, `--remove-reviewer`, `--author-email`, `--match-head-commit`.
+  - **Curtas**, com caixa, sempre: `-R`, `-b`, `-F`.
+  - **Curtas a mais por verbo:**
+    - `create`: `-t`, `-a`, `-l`, `-m`, `-p`, `-T`, `-B`, `-H`, `-r`;
+    - `edit`: `-t`, `-m`, `-B`;
+    - `merge`: `-t`, `-A`;
+    - `comment` e `review`: nenhuma.
+
+    No `merge`, `-s`, `-m`, `-r` e `-d` são booleanas. No `review`, `-a`, `-c` e `-r` são booleanas.
 - **Sem texto, nada a conferir.** Sem nenhum texto em nenhum segmento, `conferirGh` retorna sem consultar visibilidade.
-- **Achados e visibilidade.** Com texto, os achados são `conferirConteudo(texto)` de cada texto, cada achado anotado com `origem`. Havendo achado, a visibilidade vem de `visibilidadeDoGh(...)` (tarefa 2; nesta tarefa, `visibilidadeDoRepo(gitTop)` com `gitTop` do `cwdDoEvento`, e sem `gitTop` retorna):
+- **Achados e visibilidade, por segmento.** Com texto no segmento, os achados são `conferirConteudo(texto)` de cada texto, cada achado anotado com `origem`. Havendo achado, decide a visibilidade daquele segmento, e o primeiro segmento com achado que sobrar barra. Nesta tarefa a visibilidade é `visibilidadeDoRepo(gitTop)`, com `gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"])`, e sem `gitTop` o segmento passa. A tarefa 2 troca essa linha pela do `repoAlvo`. Com a visibilidade:
   - `privada`: retorna;
   - `desconhecida` com `declaradaPrivada(gitTop)`: filtra `termo-privado`;
   - sobrando achado: escreve no stderr `mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade)` e sai 2.
 - **`mensagemBloqueioGh`** é função nova:
   - abre com `BLOQUEADO pelo gate de publicação do rainforest-mind.` e `Comando: gh <familia> <verbo>`;
   - lista cada achado com `[<id>]`, a origem e o `o_que`/`faca`;
-  - diz que o GitHub guarda o histórico de edição de Issue e PR, então corrigir depois não apaga;
-  - reaproveita o texto de saídas (subagente / janela principal) da `mensagemBloqueio` atual, sem o parágrafo de `git add`.
-- **Bateria:** seção nova `#702` no fim de `hooks/testa-gate-publicacao-destino.sh`, antes do placar.
-  - Repositório `R702` com remoto `https://github.com/dono/publico.git`, `HOME` de areia `H702` com `termo702` em `.rainforest/termos-proibidos.txt` e `RFM_ROOT` de areia própria (cache de visibilidade limpo).
-  - Payload por `node` com valores em `argv` (`{cwd, hook_event_name: "PreToolUse", tool_name, tool_input: {command}}`), nunca por printf.
-  - O dublê `gh` existente com `GH_RESPONSE`.
+  - traz a frase literal `O GitHub guarda o histórico de edição de Issue e PR: corrigir depois não apaga o texto publicado.`;
+  - termina com o mesmo bloco `saidas` (subagente / janela principal) de `mensagemBloqueio`, extraído para uma função `textoDeSaidas(ehSubagente)` que as duas mensagens chamam. O bloco fica em `hooks/gate-publicacao-destino.cjs`, `const saidas = ehSubagente ? ...` dentro de `mensagemBloqueio`. O parágrafo `ATENÇÃO — PreToolUse aborta...` não entra na mensagem nova.
+- **Bateria:** seção nova `#702` no fim de `hooks/testa-gate-publicacao-destino.sh`, imediatamente antes das linhas finais `echo`, `echo "== resultado: ..."` e `[ "$falhou" = 0 ]`.
+  - Reusa `$SANDBOX_BIN/gh`, `$SANDBOX_BIN/gh-por-nome` e `$GH_INVOCATIONS`, já definidos antes no arquivo.
+  - Monta `R702="$RAIZ/r702"` com `git init` e remoto `https://github.com/dono/publico.git`, e `H702="$RAIZ/home702"` com `termo702` em `$H702/.rainforest/termos-proibidos.txt`.
+  - `D702="$RAIZ/dados702"` é o `RFM_ROOT`. Antes de cada caso roda `rm -f "$D702/cache-visibilidade-repo.json"`, para a resposta pública cacheada de um caso não valer no seguinte.
+  - O payload sai de um helper `pay702 <tool_name> <cwd> <command>` em `node -e` com os valores em `argv`: `{cwd, hook_event_name: "PreToolUse", tool_name, tool_input: {command}}`. Nunca por printf.
+  - A medição é um helper `confere702 "<nome>" <exit esperado> <GH_RESPONSE> <tool_name> <cwd> <command>`. Ele roda o gate com `env HOME="$H702" RFM_ROOT="$D702" GH_RESPONSE=... RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS"` e soma em `ok`/`falhou`. Imprime `  ok   702 <nome>` ou `  FALHA 702 <nome>: esperava X, veio Y` mais as 10 primeiras linhas do stderr.
   - Nenhum caso afirma sobre o texto do fonte.
 
 ### 2. Destino pelo `--repo` [tipo: implementar]
@@ -102,7 +121,7 @@ prova: `grep -q "function visibilidadeDoAlvo" hooks/gate-publicacao-destino.cjs`
 pronto quando: payload real de PreToolUse `Bash` com o dublê `gh-por-nome` da bateria, que responde `isPrivate: true` só para repositório terminado em `/priv`:
 - (a) cwd num repositório com remoto `dono/priv` e `gh issue create --repo dono/publico --title termo702 --body x`: exit 2.
 - (b) cwd num repositório com remoto `dono/publico` e `gh issue create -R dono/priv --title termo702 --body x`: exit 0.
-- (c) cwd fora de repositório git e `gh issue create --repo=dono/publico --title termo702 --body x`: exit 2.
+- (c) cwd fora de repositório git (`$RAIZ/sem-git`, a variável `FORA` do topo da bateria) e `gh issue create --repo=dono/publico --title termo702 --body x`: exit 2.
 - (d) cwd fora de repositório git, sem `--repo`, com o mesmo título: exit 0.
 - (e) `--repo https://github.com/dono/publico` a partir de cwd privado: exit 2.
 - (f) `--repo $R` a partir de cwd privado, com o termo no título: exit 2 (destino `desconhecida`).
@@ -110,7 +129,8 @@ pronto quando: payload real de PreToolUse `Bash` com o dublê `gh-por-nome` da b
 Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0, e cada caso nomeado `702 ...` na saída.
 
 Forma prescrita:
-- `conferirGh` lê o `--repo`/`-R` do segmento (o token seguinte, `--repo=`, ou o colado ao `-R`) e normaliza para `owner/repo`:
+- Os casos usam `confere702` com `RAINFOREST_GH="node $SANDBOX_BIN/gh-por-nome"` no lugar do dublê de `GH_RESPONSE`. Um segundo repositório `R702P` tem remoto `https://github.com/dono/priv.git`.
+- O `repoAlvo` que a tarefa 1 já lê na mesma passada de tokens é normalizado para `owner/repo`:
   - URL `https://github.com/o/r(.git)` vira `o/r`;
   - valor com `$` ou crase vira o marcador `"?"`.
 - A linha exata `const vis = repoAlvo ? visibilidadeDoAlvo(repoAlvo) : visibilidadeDoRepo(gitTop);` decide a visibilidade.
@@ -127,8 +147,9 @@ depende de: 1, 2
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:
-- `node -e "console.log(require('./.claude-plugin/plugin.json').version)"` devolve `2.13.3`;
-- a seção `2.13.3` do `CHANGELOG.md` cita a #702 e os verbos do D1;
-- a linha `gate-publicacao-destino.cjs` da tabela do README cita o título e o corpo de `gh issue`/`gh pr`.
+- a versão sobe de `2.13.2` para `2.13.3` em `.claude-plugin/plugin.json` e `.codex-plugin/plugin.json`; se a `origin/main` já estiver em `2.13.3` ou mais na hora, a versão é o próximo PATCH livre acima dela, e o resto deste critério lê esse número no lugar de `2.13.3`;
+- o badge da linha 7 do `README.md` troca `2.13.2` por `2.13.3` nas duas ocorrências (`vers%C3%A3o-2.13.2` e `alt="versão 2.13.2"`);
+- o `CHANGELOG.md` ganha, no topo, a seção `## 2.13.3 — 2026-11-13`, que cita a #702 e os verbos do D1;
+- a linha `gate-publicacao-destino.cjs` da tabela de hooks do README passa a citar o título e o corpo de `gh issue`/`gh pr`.
 
-Provado por `node scripts/conferir-versao.cjs` e `grep -n "2.13.3" CHANGELOG.md .claude-plugin/*.json`.
+Provado por `node scripts/conferir-versao.cjs` com exit 0 (ele só confere que a versão declarada é maior que a da `origin/main`; exit 2 quer dizer bump faltando), `grep -c "2.13.3" README.md` devolvendo 2 ou mais, e `grep -n "2.13.3" CHANGELOG.md .claude-plugin/plugin.json .codex-plugin/plugin.json` com uma linha por arquivo.

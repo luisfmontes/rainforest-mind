@@ -17,7 +17,7 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
   Os segmentos saem de `segmentosParaGate` (exportado por `hooks/gate-subagente-sem-gh.cjs`, que já serve dois outros gates). Os tokens saem de `tokensComAspas` (`hooks/lib/tokens-comando.cjs`). A conferência roda **antes** de `conferirCommit`, porque `conferirCommit` sai 0 em comando que não é commit. — porquê: são as escritas de texto livre que o fluxo usa (corpo de Issue e de PR, comentário de evidência, mensagem de squash).
 
 - **D2 — Texto conferido.**
-  - **Valores:** o valor de `--title`/`-t`, `--body`/`-b` e `--subject`/`-s` (este só do `merge`). O valor pode vir no token seguinte, depois de `=` ou colado à flag curta.
+  - **Valores:** o valor de `--title`/`-t`, `--body`/`-b` e `--subject` (só do `merge`, onde o `-t` curto é o subject e o `-s` é `--squash`). O valor pode vir no token seguinte, depois de `=` ou colado à flag curta.
   - **Arquivo de corpo:** o conteúdo do arquivo de `--body-file`/`-F`. Caminho relativo resolve contra o `cwd` do evento; caminho MSYS (`/c/...`) passa por `normalizarMsys` (`hooks/lib/cwd-efetivo.cjs`).
   - **Heredoc:** quando o arquivo do `--body-file` não existe, conta o corpo de todo heredoc do mesmo comando, que é o caso em que o comando cria o arquivo antes do `gh`. Esses corpos saem de `posicoesDeOperadorHeredoc` + `corpoDeHeredoc` (`hooks/lib/heredoc.cjs`).
 
