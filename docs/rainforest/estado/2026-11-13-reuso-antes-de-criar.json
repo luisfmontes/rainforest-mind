@@ -18,10 +18,10 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 15,
-    "tarefas": 15,
+    "tarefas_ok": 16,
+    "tarefas": 16,
     "carimbos": [
       {
         "tarefa": 1,
@@ -186,8 +186,8 @@
       }
     ],
     "em": "2026-11-13",
-    "comando": "bash scripts/testa-conferir-busca.sh; bash scripts/testa-estado.sh; bash scripts/testa-teto-skills.sh",
-    "saida": "total=68 vermelhas:[] | 337 ok, 0 falhas | 21 OK, 0 FALHA",
+    "comando": "bash scripts/testa-plugin-codex.sh",
+    "saida": "ok ancora corpo modo-dev: 15164 bytes sha256 0bb8052f..., exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -263,6 +263,11 @@
         "tarefa": 15,
         "resultado": "n/a",
         "motivo": "tarefa so reescreve doc"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "n/a",
+        "motivo": "re-medicao de ancora binaria"
       }
     ]
   },
