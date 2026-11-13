@@ -126,18 +126,18 @@
     "reaberturas": 4
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "snapshot": {
-      "head": "3a7ebc36009f1647f515b2f588583aa420ab8130",
+      "head": "7b150e51767ec18ac40050dd7c709c28111c54dd",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a7ff28356e2b80e53",
+        "agente_id": "ad5b6161fcc3b86d3",
         "veredito": "reprovado",
         "em": "2026-11-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a7ff28356e2b80e53.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ad5b6161fcc3b86d3.jsonl"
       }
     ],
     "achados": 5,
@@ -179,9 +179,23 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a44550a6b0759492f.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7ff28356e2b80e53",
+            "veredito": "reprovado",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a7ff28356e2b80e53.jsonl"
+          }
+        ]
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      "revisao-5"
+    ],
     "rodadas_extra": [
       {
         "texto": "Luis 2026-11-13 (vai no automatico, recomendada A): 4a rodada com URL posicional como destino, apelido new, so termo privado no comando inteiro, rede le --body-file, baixas na #707",
