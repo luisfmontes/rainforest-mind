@@ -725,6 +725,29 @@ nao "declaração recuada (linha 2) fica fora do catálogo" "$T19" "lib/saldo.tl
 nao "nenhuma entrada calcular sem a classe (na linha 4)" "$T19" "lib/saldo.tlpp:4:calcular:advpl"
 linha "a Class SaldoProjeto (linha 1) continua saindo" "$T19" "lib/saldo.tlpp:1:SaldoProjeto:advpl"
 
+echo "== 20. novas: só a definição que o diff criou (design 2026-11-13-reuso-antes-de-criar) =="
+# Base tem velha() em a.js. O segundo commit acrescenta nova() em a.js e cria b.tlpp com Static Function.
+NV="$SBP/novas"
+montar_repo "$NV" 'a.js=function velha() {\n  return 1;\n}\n' || { echo "FALHA: montar_repo novas"; exit 1; }
+NVB="$(cd "$NV" && git rev-parse HEAD)"
+escrever "$NV" \
+  'a.js=function velha() {\n  return 1;\n}\nfunction nova() {\n  return 2;\n}\n' \
+  'b.tlpp=Static Function outra()\n    Return .T.\n' || { echo "FALHA: escrever novas"; exit 1; }
+( cd "$NV" && git add -A && git commit -q -m depois ) || { echo "FALHA: commit novas"; exit 1; }
+NVC="$(node "$CAT" novas --raiz "$(winpath "$NV")" --base "$NVB")"; EXIT=$?
+saiu "novas com --base do commit anterior sai 0" "$EXIT" 0
+T20="$(tuplas <<<"$NVC")"
+igual "exatamente duas entradas" "$(wc -l <<<"$T20" | tr -d ' ')" "2"
+linha "nova em a.js, na linha 4" "$T20" "a.js:4:nova:js"
+linha "outra em b.tlpp, na linha 1, como advpl" "$T20" "b.tlpp:1:outra:advpl"
+nao "velha, já na base, fica de fora" "$T20" ":velha:"
+igual "a ordem é a.js e depois b.tlpp" "$(cut -d: -f1 <<<"$T20" | tr '\n' ',')" "a.js,b.tlpp,"
+CHAVES20="$(node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{const c=JSON.parse(s);const ok=c.length===2&&c.every((e)=>["arquivo","linha","nome","assinatura","linguagem"].every((k)=>k in e));process.stdout.write(ok?"ok":"nao")})' <<<"$NVC")"
+igual "cada entrada tem arquivo, linha, nome, assinatura e linguagem" "$CHAVES20" "ok"
+ERR20="$(node "$CAT" novas --raiz "$(winpath "$NV")" --base naoexiste 2>&1 >/dev/null)"; EXIT=$?
+saiu "base que não existe sai 1" "$EXIT" 1
+igual "o stderr começa pela mensagem de base" "${ERR20%%$'\n'*}" "novas: base não resolvida: naoexiste"
+
 echo
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1

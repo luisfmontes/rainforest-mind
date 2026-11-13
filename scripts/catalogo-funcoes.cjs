@@ -52,11 +52,12 @@ const { baseDoDiff } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achad
 const DIRETORIOS_GERADOS = new Set(['node_modules', 'build', 'dist', '.dart_tool', '.git']);
 const MAX_CAMINHO_ASSINATURA = 200;
 
-const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|variacao|separar|conferir> [opções]
+const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|variacao|novas|separar|conferir> [opções]
   listar   [--raiz <dir>] [--contexto N] [--incluir-testes]
   maiores  [--raiz <dir>] [--top N]
   complexas [--raiz <dir>] [--top N]
   variacao [--raiz <dir>] [--base <ref>]
+  novas    [--raiz <dir>] [--base <ref>]
   separar  --catalogo <arq> --saida <dir> [--minimo 3]
   conferir --catalogo <arq> --grupos <arq>
 `;
@@ -418,6 +419,30 @@ function variacao(raiz, base) {
   return saida;
 }
 
+/**
+ * Definições do lado atual do diff de <base> cuja chave (arquivo e nome) não existe na base
+ * (design 2026-11-13-reuso-antes-de-criar). Arquivo novo tem a base vazia: todas as suas saem.
+ */
+function novas(raiz, base) {
+  const novas = [];
+  for (const rel of arquivosDoDiff(raiz, base)) {
+    const linguagem = EXTENSOES[path.extname(rel).toLowerCase()];
+    let texto;
+    try {
+      texto = fs.readFileSync(path.join(raiz, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    const textoBase = gitSaida(raiz, ['show', `${base}:./${rel}`]) ?? '';
+    const naBase = new Set(definicoesDoTexto(textoBase, linguagem, 0).map((d) => `${rel}\u0000${d.nome}`));
+    for (const d of definicoesDoTexto(texto, linguagem, 0)) {
+      const chave = `${rel}\u0000${d.nome}`;
+      if (!naBase.has(chave)) novas.push({ arquivo: rel, ...d });
+    }
+  }
+  return novas.sort((a, b) => (a.arquivo < b.arquivo ? -1 : a.arquivo > b.arquivo ? 1 : 0) || a.linha - b.linha);
+}
+
 function lerJson(arquivo, nome) {
   try {
     return JSON.parse(fs.readFileSync(arquivo, 'utf8'));
@@ -512,7 +537,7 @@ function conferir(catalogoArq, gruposArq) {
 
 function principal(argv) {
   const [sub, ...resto] = argv;
-  const subs = ['listar', 'maiores', 'complexas', 'variacao', 'separar', 'conferir'];
+  const subs = ['listar', 'maiores', 'complexas', 'variacao', 'novas', 'separar', 'conferir'];
   if (!subs.includes(sub)) {
     process.stderr.write(USO);
     process.exitCode = 1;
@@ -556,6 +581,17 @@ function principal(argv) {
       throw new ErroDeUso(`variacao: base não resolvida: ${base}`);
     }
     process.stdout.write(variacao(raiz, base).map((l) => l + '\n').join(''));
+    return;
+  }
+  if (sub === 'novas') {
+    const raiz = path.resolve(o.raiz || '.');
+    if (!repoGit(raiz)) throw new ErroDeUso('novas: --raiz não é repositório git');
+    const base = o.base || baseDoDiff(raiz);
+    if (!base) throw new ErroDeUso('novas: base não resolvida (sem origin/<padrão>); passe --base <ref>');
+    if (gitSaida(raiz, ['rev-parse', '--verify', '--quiet', `${base}^{commit}`]) === null) {
+      throw new ErroDeUso(`novas: base não resolvida: ${base}`);
+    }
+    process.stdout.write(JSON.stringify(novas(raiz, base)) + '\n');
     return;
   }
   if (sub === 'separar') {
