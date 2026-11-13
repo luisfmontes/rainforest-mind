@@ -152,4 +152,4 @@ pronto quando: com o diff da branch, o número da versão e a descrição batem 
 - o `CHANGELOG.md` ganha, no topo, a seção `## 2.13.3 — 2026-11-13`, que cita a #702 e os verbos do D1;
 - a linha `gate-publicacao-destino.cjs` da tabela de hooks do README passa a citar o título e o corpo de `gh issue`/`gh pr`.
 
-Provado por `node scripts/conferir-versao.cjs` com exit 0 (ele só confere que a versão declarada é maior que a da `origin/main`; exit 2 quer dizer bump faltando), `grep -c "2.13.3" README.md` devolvendo 2 ou mais, e `grep -n "2.13.3" CHANGELOG.md .claude-plugin/plugin.json .codex-plugin/plugin.json` com uma linha por arquivo.
+Provado por `node scripts/conferir-versao.cjs` com exit 0 (ele só confere que a versão declarada é maior que a da `origin/main`; exit 2 quer dizer bump faltando), `grep -o "2.13.3" README.md | wc -l` devolvendo 2 ou mais (o `grep -c` conta linhas, e as duas ocorrências estão na mesma linha), e `grep -n "2.13.3" CHANGELOG.md .claude-plugin/plugin.json .codex-plugin/plugin.json` com uma linha por arquivo.

@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.13.3 — 2026-11-13
+
+- **O gate de publicação passa a conferir o texto de `gh issue` e `gh pr`.** Até aqui ele só via o que virava arquivo versionado (`Write`/`Edit` e `git commit`). O título, o corpo e o comentário de `gh issue create|comment|edit` e `gh pr create|comment|edit|review|merge` saíam sem conferência, e uma Issue pública chegou a sair com um termo da lista privada no corpo (Issue #702). O GitHub guarda o histórico de edição, então corrigir depois não apaga. Agora o gate lê `--title`, `--body`, o `--subject` do merge, o arquivo do `--body-file`/`-F` e o heredoc que cria esse arquivo no mesmo comando, no Bash e no PowerShell. O destino é o `--repo` quando ele vem no comando, e o repositório do diretório quando não vem. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. Corpo que só se resolve na hora (`--body-file $f`, `--body "$(...)"`) não é conferido.
+
 ## 2.13.2 — 2026-11-12
 
 - **A captura de memória no fim da sessão não derruba mais os hooks de outros plugins.** O `observar.cjs`, que resume o transcrito no `SessionEnd`, tinha 25 s de orçamento por sessão pendente e esperava até 60 s por chamada ao modelo. Com várias sessões pendentes ou uma chamada lenta, passava do tempo que o Claude Code dá a todos os hooks de fim de sessão juntos, e os hooks de outros plugins saíam com `Hook cancelled` no meio do trabalho (Issue #701). Agora os 25 s valem para a execução inteira, cada chamada só tem o que sobra deles, e o processo do modelo é encerrado junto com o corte. O que não coube fica para a próxima sessão, como antes.
