@@ -1,0 +1,29 @@
+{
+  "slug": "observar-orcamento",
+  "titulo": "observar.cjs respeita o orçamento do SessionEnd (#701)",
+  "criado_em": "2026-11-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/observar-orcamento.md",
+    "aprovado_por": "Luís, trabalho autônomo nas Issues abertas (fila da sessão, 2026-11-12); #701 aberta depois do Hook cancelled que ele viu",
+    "em": "2026-11-12"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

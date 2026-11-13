@@ -1,0 +1,38 @@
+Data: 2026-11-12
+Termos: ORCAMENTO_MS, Hook cancelled
+
+$ gh issue list --state all --search "ORCAMENTO_MS" --limit 200 --json number,title,state
+[{"number":701,"state":"OPEN","title":"observar.cjs pode passar do orçamento do SessionEnd e cancelar os hooks irmãos"},{"number":198,"state":"CLOSED","title":"observar.cjs no SessionEnd estoura o orcamento COMPARTILHADO de 60s do CLI e mata os outros hooks — 19 sessoes vazadas"}]
+
+
+$ gh issue list --state all --search "Hook cancelled" --limit 200 --json number,title,state
+[{"number":701,"state":"OPEN","title":"observar.cjs pode passar do orçamento do SessionEnd e cancelar os hooks irmãos"},{"number":541,"state":"CLOSED","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":543,"state":"CLOSED","title":"testa-gate-teto-despachos: 12 processos juntos, um nega (exit 2) e o contador fecha em 11 na CI"},{"number":198,"state":"CLOSED","title":"observar.cjs no SessionEnd estoura o orcamento COMPARTILHADO de 60s do CLI e mata os outros hooks — 19 sessoes vazadas"}]
+
+
+$ gh pr list --state all --search "ORCAMENTO_MS" --limit 200 --json number,title,state
+[{"number":212,"state":"MERGED","title":"O orcamento do observar.cjs cabe no teto real do SessionEnd"}]
+
+
+$ gh pr list --state all --search "Hook cancelled" --limit 200 --json number,title,state
+[{"number":212,"state":"MERGED","title":"O orcamento do observar.cjs cabe no teto real do SessionEnd"}]
+
+
+$ git ls-remote --heads origin | grep -F "ORCAMENTO_MS"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "Hook cancelled"
+(vazio)
+
+$ git log --all --grep="ORCAMENTO_MS" --oneline
+1426ca72 gate-pergunta-memoria sem o canal do banco: 11 de 11 bloqueios eram falso positivo (2.1.2) (#626)
+00ee990b Colheita das observações: fluxo pulado, pedido de licença e pergunta que a memória responde viram trava (2.1.0) (#621)
+cfe66844 O orcamento do observar.cjs cabe no teto real do SessionEnd (fecha #198)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+
+$ git log --all --grep="Hook cancelled" --oneline
+cfe668449 O orcamento do observar.cjs cabe no teto real do SessionEnd (fecha #198)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
