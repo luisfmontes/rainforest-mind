@@ -758,10 +758,22 @@ const VERBOS_GH_TEXTO = {
 // `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`).
 const APELIDOS_GH = { new: "create" };
 
-/** `owner/repo` de uma URL de Issue ou PR do GitHub, ou null. */
+/**
+ * `owner/repo` de uma URL de Issue ou PR do GitHub; `"?"` quando o token tem
+ * cara de URL do GitHub e não se lê (falha fechada); null quando não é URL.
+ * Lida por `new URL`, que tira usuário e porta antes de olhar o host.
+ */
 function repoDaUrlGh(valor) {
-  const m = String(valor || "").match(/^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/(?:issues|pull)\/\d+(?:[\/?#]\S*)?$/i);
-  return m ? `${m[1]}/${m[2]}` : null;
+  const s = String(valor || "");
+  if (!/github\.|\/(?:issues|pull)\//i.test(s)) return null;
+  try {
+    const u = new URL(s);
+    if (!/^(?:www\.)?github\.com$/i.test(u.hostname)) return "?";
+    const m = u.pathname.match(/^\/([\w.-]+)\/([\w.-]+)\/(?:issues|pull)\/\d+/i);
+    return m ? `${m[1]}/${m[2]}` : "?";
+  } catch {
+    return "?";
+  }
 }
 
 const FLAGS_GH_VALOR = {
@@ -834,8 +846,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const familia = posicionais[0];
   const verbo = APELIDOS_GH[posicionais[1]] || posicionais[1];
   if (!VERBOS_GH_TEXTO[familia] || !VERBOS_GH_TEXTO[familia].has(verbo)) return null;
-  let repoUrl = null;
-  let viuPosicional = false;
+  const repoUrls = [];
 
   const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
   // O comando inteiro conta como texto (Q2 A do Luís, 2026-11-13): valor de
@@ -848,7 +859,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   for (; i < toks.length; i += 1) {
     const tok = toks[i];
     // `gh issue comment <URL>` publica no repositório da URL, não no do cwd (revisão 3).
-    if (!tok.startsWith("-")) { if (!viuPosicional) { viuPosicional = true; repoUrl = repoDaUrlGh(tok); } continue; }
+    if (!tok.startsWith("-")) { const u = repoDaUrlGh(tok); if (u) repoUrls.push(u); continue; }
     if (tok === "-") continue;
     const longa = tok.startsWith("--");
     const igual = tok.indexOf("=");
@@ -890,7 +901,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
   const prefixoLimpo = antesDoGh.every(ehAtribuicao)
     || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
-  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoUrl, repoPrefixo, prefixoLimpo };
+  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoUrls, repoPrefixo, prefixoLimpo };
 }
 
 function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
@@ -958,7 +969,7 @@ function destinosDoSegmentoGh(r, locais, mencoes) {
   // A URL posicional SOMA aos destinos, nunca os substitui: um token que o
   // gate lê como URL sem que o `gh` o leia assim não pode liberar um destino
   // público (revisão de segurança do commit, 2026-11-13). O pior decide.
-  return r.repoUrl ? [...base, { repo: r.repoUrl }] : base;
+  return r.repoUrls.length ? [...base, ...r.repoUrls.map((repo) => ({ repo }))] : base;
 }
 
 function destinosSemUrl(r, locais, mencoes) {
@@ -1088,7 +1099,7 @@ function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
   }
   if (achados.length === 0) return;
   const destinos = [];
-  for (const x of cmd.matchAll(/https?:\/\/(?:www\.)?github\.com\/[\w.-]+\/[\w.-]+\/(?:issues|pull)\/\d+/gi)) destinos.push({ repo: repoDaUrlGh(x[0]) || "?" });
+  for (const x of cmd.matchAll(/\S*(?:github\.|\/(?:issues|pull)\/)\S*/gi)) { const u = repoDaUrlGh(x[0].replace(/^["']|["']$/g, "")); if (u) destinos.push({ repo: u }); }
   for (const x of cmd.matchAll(/(?:--repo[=\s]+|(?:^|\s)-R\s*=?\s*)["']?([^\s"';|&]+)/gi)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   for (const x of cmd.matchAll(/\bGH_REPO\s*=\s*["']?([^\s"';|&]*)/g)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   if (process.env.GH_REPO) destinos.push({ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" });
