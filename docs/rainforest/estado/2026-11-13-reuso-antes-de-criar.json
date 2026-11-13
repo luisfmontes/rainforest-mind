@@ -20,13 +20,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 5,
-    "tarefas": 6,
+    "tarefas_ok": 6,
+    "tarefas": 7,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "6 versao 2.14.0",
-        "desde": "2026-11-13T14:30:00Z",
+        "tarefa": "7 fixture do conferir-fluxo",
+        "desde": "2026-11-13T15:30:00Z",
         "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d"
       }
     ],
