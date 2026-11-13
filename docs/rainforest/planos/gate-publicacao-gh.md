@@ -140,10 +140,49 @@ Forma prescrita:
 - Sem `repoAlvo` e sem `gitTop`, retorna sem achado.
 - O filtro de `declaradaPrivada(gitTop)` só se aplica quando `repoAlvo` é nulo.
 
+### 4. Destino pelo cwd do segmento [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 2
+busca:
+- repo | grep -n "function cwdPorSegmento" hooks/lib/cwd-efetivo.cjs | cwd por segmento já existe (:660) e serve o gate-fechar-issue
+desfecho: compor
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `const local = cwdDoSegmentoGh(mapa, segmento, cwdDoEvento);`
+  para: `const local = { cwd: cwdDoEvento, incerto: false };`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 cd para repo publico antes do gh barra"`
+prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse `Bash` com o dublê `gh-por-nome`. A partir do repositório privado, `cd <repo público> && gh issue create --title termo702 --body x` sai 2. A partir do público, `cd <repo privado> && ...` sai 0. `cd $X && ...` com o termo sai 2: cwd incerto e sem `--repo`, falha fechada. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+Emenda de 2026-11-13: a revisão de segurança automática do commit apontou que o destino era lido do cwd do evento, e um `cd` antes do `gh` publicava noutro repositório. É o D4 ("repositório git do `cwd`") lido pelo cwd em que o `gh` de fato roda.
+
+### 5. Destino pelo `GH_REPO` [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 4
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `let repoValor = repoDoAmbiente(toks.slice(0, iGh), cmdOriginal, segmento);`
+  para: `let repoValor = null;`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 GH_REPO publico no prefixo barra"`
+prova-na-base: verde — emenda depois do executar: o código de base já é o da tarefa 1, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse com o dublê `gh-por-nome`, todos com o termo no título:
+- `GH_REPO=dono/publico gh issue create ...` a partir do repositório privado sai 2.
+- `export GH_REPO=dono/priv; gh issue create ...` a partir do público sai 0.
+- `gh issue create ...; export GH_REPO=dono/priv` a partir do público sai 2, porque a atribuição depois do `gh` não conta.
+- No PowerShell, `$env:GH_REPO = "dono/publico"; gh issue create ...` a partir do privado sai 2.
+
+Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+Emenda de 2026-11-13, mesma origem da tarefa 4. O `gh` usa `GH_REPO` como `--repo` quando a flag falta, então ele entra na mesma precedência do D4: `--repo` primeiro, depois `GH_REPO`.
+
 ### 3. Versão 2.13.3, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2
+depende de: 1, 2, 4, 5
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:

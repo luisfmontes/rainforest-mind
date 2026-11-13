@@ -805,7 +805,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
   if (iGh === -1) return null;
 
-  let repoValor = null;
+  let repoValor = repoDoAmbiente(toks.slice(0, iGh), cmdOriginal, segmento);
   const posicionais = [];
   let i = iGh + 1;
   for (; i < toks.length && posicionais.length < 2; i += 1) {
@@ -883,21 +883,59 @@ function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) 
   return msg + textoDeSaidas(ehSubagente);
 }
 
+/**
+ * O `GH_REPO` que vale para o `gh` deste segmento, no lugar de um `--repo`
+ * ausente: prefixo do próprio comando (`GH_REPO=o/r gh ...`, `env GH_REPO=...`),
+ * atribuição ANTES do segmento (`export GH_REPO=...`, `$env:GH_REPO = ...`) ou o
+ * ambiente da sessão. Sem ele, o destino seria lido do cwd e um repositório
+ * público passaria como o privado do diretório (revisão de segurança, 2026-11-13).
+ */
+function repoDoAmbiente(prefixo, cmdOriginal, segmento) {
+  for (const t of prefixo) {
+    const m = t.match(/^GH_REPO=(.*)$/);
+    if (m) return m[1];
+  }
+  const cmd = String(cmdOriginal);
+  const pos = cmd.indexOf(segmento.trim());
+  const antes = pos === -1 ? cmd : cmd.slice(0, pos);
+  const atribuicoes = [
+    ...antes.matchAll(/(?:^|[\s;&|(])(?:export\s+)?GH_REPO=("[^"]*"|'[^']*'|[^\s;&|]+)/g),
+    ...antes.matchAll(/\$env:GH_REPO\s*=\s*("[^"]*"|'[^']*'|[^\s;&|]+)/gi),
+  ].sort((a, b) => a.index - b.index);
+  if (atribuicoes.length) return atribuicoes[atribuicoes.length - 1][1].replace(/^["']|["']$/g, "");
+  return process.env.GH_REPO || null;
+}
+
+/**
+ * O cwd em que ESTE segmento roda: `cd outro-repo && gh issue create` publica
+ * no repositório do `cd`, não no do evento. Segmento de dentro de `"$(...)"`
+ * (que `cwdPorSegmento` não separa) herda o cwd do segmento que o contém; sem
+ * correspondência, incerto.
+ */
+function cwdDoSegmentoGh(mapa, segmento, cwdDoEvento) {
+  const s = segmento.trim();
+  const item = mapa.find((m) => m.seg.trim() === s) || mapa.find((m) => m.seg.includes(s));
+  return item ? { cwd: item.cwd, incerto: Boolean(item.incerto) } : { cwd: cwdDoEvento, incerto: true };
+}
+
 function conferirGh(ev, cwdDoEvento, agente) {
   const cmd = ev.tool_input && ev.tool_input.command;
   if (typeof cmd !== "string" || !/\bgh\b/i.test(cmd)) return;
-  let segmentos;
+  let segmentos, mapa;
   try {
     const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
     const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
+    const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
     // A máscara vem antes: sobre heredoc cru, `segmentosParaGate` cola no último
     // token o último caractere do delimitador (`novo.md` vira `novo.mdF`).
-    segmentos = segmentosParaGate(mascararCorposDeHeredoc(cmd));
+    const mascarado = mascararCorposDeHeredoc(cmd);
+    segmentos = segmentosParaGate(mascarado);
+    mapa = cwdPorSegmento(mascarado, cwdDoEvento, ev.tool_name === "PowerShell");
   } catch { return; }
 
-  let gitTop;
   for (const segmento of segmentos) {
-    const r = textosDoSegmentoGh(segmento, cmd, cwdDoEvento);
+    const local = cwdDoSegmentoGh(mapa, segmento, cwdDoEvento);
+    const r = textosDoSegmentoGh(segmento, cmd, local.cwd);
     if (!r || r.textos.length === 0) continue;
     let achados = [];
     for (const { origem, texto } of r.textos) {
@@ -906,8 +944,13 @@ function conferirGh(ev, cwdDoEvento, agente) {
     }
     if (achados.length === 0) continue;
 
-    if (gitTop === undefined) gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
+    const gitTop = git(local.cwd, ["rev-parse", "--show-toplevel"]);
     const repoAlvo = r.repoAlvo;
+    if (!repoAlvo && local.incerto) {
+      // Não se sabe em que repositório o `gh` roda: falha fechada, como o resto do gate.
+      process.stderr.write(mensagemBloqueioGh(achados, r.familia, r.verbo, Boolean(agente), "desconhecida"));
+      process.exit(2);
+    }
     if (!repoAlvo && !gitTop) continue; // sem destino, o gh não publica
     const vis = repoAlvo ? visibilidadeDoAlvo(repoAlvo) : visibilidadeDoRepo(gitTop);
     if (vis === "privada") continue;

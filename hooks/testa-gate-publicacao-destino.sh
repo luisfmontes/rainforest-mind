@@ -812,7 +812,7 @@ confere702() { # nome, exit esperado, GH_RESPONSE, tool_name, cwd, command
   rm -f "$D702/cache-visibilidade-repo.json"
   local p s rc
   p=$(pay702 "$4" "$(esc "$5")" "$6")
-  s=$(printf '%s' "$p" | env HOME="$H702" RFM_ROOT="$D702" GH_RESPONSE="$3" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); rc=$?
+  s=$(printf '%s' "$p" | env -u GH_REPO HOME="$H702" RFM_ROOT="$D702" GH_RESPONSE="$3" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); rc=$?
   S702="$s"
   if [ "$rc" = "$2" ]; then ok=$((ok+1)); echo "  ok   702 $1 (exit $rc)"
   else falhou=$((falhou+1)); echo "  FALHA 702 $1: esperava $2, veio $rc"; echo "$s" | sed 's/^/         /' | head -10; fi
@@ -858,6 +858,18 @@ confere702 "--repo= fora de repo git barra" 2 "" Bash "$FORA" 'gh issue create -
 confere702 "sem --repo fora de repo git passa" 0 "" Bash "$FORA" 'gh issue create --title termo702 --body x'
 confere702 "--repo com URL a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo https://github.com/dono/publico --title termo702 --body x'
 confere702 "--repo com variavel a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo $R --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh"
+
+# Tarefa 4: cwd do segmento e GH_REPO (revisao de seguranca de 2026-11-13)
+GH702="node $SANDBOX_BIN/gh-por-nome"
+R702E="$(esc "$R702")"; R702PE="$(esc "$R702P")"
+confere702 "cd para repo publico antes do gh barra" 2 "" Bash "$R702P" "cd $R702E && gh issue create --title termo702 --body x"
+confere702 "cd para repo privado antes do gh passa" 0 "" Bash "$R702" "cd $R702PE && gh issue create --title termo702 --body x"
+confere702 "cd com variavel antes do gh barra (incerto)" 2 "" Bash "$R702P" 'cd $X && gh issue create --title termo702 --body x'
+confere702 "GH_REPO publico no prefixo barra" 2 "" Bash "$R702P" 'GH_REPO=dono/publico gh issue create --title termo702 --body x'
+confere702 "export GH_REPO privado antes do gh passa" 0 "" Bash "$R702" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "GH_REPO depois do gh nao conta" 2 "" Bash "$R702" 'gh issue create --title termo702 --body x; export GH_REPO=dono/priv'
+confere702 "PowerShell \$env:GH_REPO publico barra" 2 "" PowerShell "$R702P" '$env:GH_REPO = "dono/publico"; gh issue create --title termo702 --body x'
 GH702="node $SANDBOX_BIN/gh"
 
 echo
