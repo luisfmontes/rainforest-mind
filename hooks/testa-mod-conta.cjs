@@ -166,7 +166,7 @@ async function main() {
     console.log('frase manual: ' + f3);
     afirma('troca manual sai 0 e grava o evento', r3.rc === 0 && e3.length === 1, r3.out);
     afirma('troca manual vira aviso com a pasta, a conta e a marca de manual',
-      f3 === 'Conta: a pasta trabalho passou da conta trabalho para a conta pessoal (troca manual; não volta sozinha).', 'frase: ' + f3);
+      f3 === 'Conta: a pasta trabalho passou da conta trabalho para a conta pessoal (troca manual; volta sozinha se a conta chegar ao limite e a de casa tiver folga).', 'frase: ' + f3);
 
     // 4. Volta manual: trocar trabalho --pasta trabalho (de volta para a casa).
     const r4 = conta(caso, api, ['trocar', 'trabalho', '--pasta', 'trabalho']);
@@ -243,6 +243,11 @@ async function main() {
     const fmls = frase({ em: 1, tipo: 'manual_no_limite', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'seven_day de pessoal em 100%', manual: true, voltaEm: '2026-10-25T11:00:00Z', causa: 'sem_login_guardado' });
     afirma('manual_no_limite sem login guardado manda refazer o /login, não o /conta',
       fmls.includes('/login da conta trabalho') && !fmls.includes('/conta trabalho --pasta'), 'frase: ' + fmls);
+    // #693 D3: o toast do manual_no_limite não diz mais que a pasta manual nunca volta (com e sem login guardado).
+    const fm67 = frase({ em: 1, tipo: 'manual_no_limite', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'seven_day de pessoal em 100%', manual: true, voltaEm: '2026-10-25T11:00:00Z' });
+    afirma('manual_no_limite (com e sem login guardado) diz que a volta automática não aconteceu e não diz que a pasta não volta sozinha',
+      fm67.includes('a volta automática não aconteceu') && !fm67.includes('não volta sozinha')
+        && fmls.includes('a volta automática não aconteceu') && !fmls.includes('não volta sozinha'), 'frase: ' + fm67 + ' | ' + fmls);
     const frm = frase({ em: 1, tipo: 'reconciliado', pasta: 'trabalho', de: 'team', para: 'pessoal', motivo: 'estado alinhado ao login da pasta; sem_login_guardado', manual: true });
     afirma('reconciliado para fora de casa sem login guardado diz para refazer o /login da casa',
       frm.includes('fora de casa') && frm.includes('/login da conta trabalho') && !frm.includes('sem_login_guardado'), 'frase: ' + frm);

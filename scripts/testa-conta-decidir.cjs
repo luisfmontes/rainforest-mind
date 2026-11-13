@@ -180,7 +180,7 @@ caso("não volta antes do resets_at do limite que travou", () => {
 });
 
 // (d) pasta manual: nunca recebe ação automática
-caso("pasta trocada na mão não volta sozinha mesmo depois do reset", () => {
+caso("pasta manual abaixo do limite não volta sozinha mesmo depois do reset", () => {
   const agora = Date.parse("2026-10-14T00:00:00Z");
   const pastas = trocadaParaPessoal({ manual: true });
   const r = rodar(pastas, USO_REAL, { agora });
@@ -196,9 +196,9 @@ caso("pasta manual em casa não troca mesmo com a conta em 97%", () => {
 
 // (d2) #584: pasta manual fora de casa com a conta em uso no limite recebe 'avisar', e só isso
 const RESET_PESSOAL_7D = "2026-10-17T11:00:00.194407+00:00";
-caso("pasta manual com a conta em uso a 100% na semana devolve avisar", () => {
+caso("pasta manual com a conta em uso a 100% na semana devolve avisar (casa sem folga)", () => {
   const pastas = trocadaParaPessoal({ manual: true, travouPor: null });
-  const r = rodar(pastas, deriva("pessoal", "seven_day", "utilization", 100));
+  const r = rodar(pastas, deriva("pessoal", "seven_day", "utilization", 100, deriva("team", "seven_day", "utilization", 90)));
   return r.length === 1 && r[0].tipo === "avisar" && r[0].pasta === "trabalho" && r[0].conta === "pessoal"
     && /seven_day/.test(r[0].motivo) && /100/.test(r[0].motivo)
     && r[0].limite === "seven_day" && r[0].resetsAt === RESET_PESSOAL_7D;
@@ -210,20 +210,52 @@ caso("pasta manual com a conta em uso abaixo do limite não devolve nada", () =>
   return rodar(pastas, usos).length === 0;
 });
 
-caso("pasta manual com os dois limites passados avisa o que reseta por último", () => {
+caso("pasta manual com os dois limites passados avisa o que reseta por último (casa sem folga)", () => {
   const pastas = trocadaParaPessoal({ manual: true, travouPor: null });
-  const usos = deriva("pessoal", "five_hour", "utilization", 99, deriva("pessoal", "seven_day", "utilization", 100));
+  const usos = deriva("pessoal", "five_hour", "utilization", 99,
+    deriva("pessoal", "seven_day", "utilization", 100, deriva("team", "seven_day", "utilization", 90)));
   const r = rodar(pastas, usos);
   return r.length === 1 && r[0].tipo === "avisar" && r[0].limite === "seven_day";
 });
 
-caso("pasta manual no limite nunca recebe trocar nem voltar, nem depois do reset", () => {
+// (d3) D3 de conta-reserva-avisa: pasta manual no limite volta quando a casa tem folga
+caso("(d3-1) pasta manual no limite com a casa em folga recebe voltar, nunca trocar, nem depois do reset", () => {
   const agora = Date.parse("2026-10-14T00:00:00Z");
   const pastas = trocadaParaPessoal({ manual: true });
   const usos = deriva("pessoal", "seven_day", "utilization", 100,
     deriva("team", "five_hour", "utilization", 10, deriva("team", "seven_day", "utilization", 10)));
   const r = rodar(pastas, usos, { agora });
-  return r.length === 1 && r[0].tipo === "avisar" && !r.some((a) => a.tipo === "trocar" || a.tipo === "voltar");
+  return r.length === 1 && r[0].tipo === "voltar" && r[0].pasta === "trabalho" && r[0].conta === "team"
+    && /seven_day de pessoal em 100%/.test(r[0].motivo);
+});
+
+caso("(d3-2) pasta manual com a casa a 90% na semana fica em avisar, nunca voltar", () => {
+  const pastas = trocadaParaPessoal({ manual: true });
+  const usos = deriva("pessoal", "seven_day", "utilization", 100, deriva("team", "seven_day", "utilization", 90));
+  const r = rodar(pastas, usos);
+  return r.length === 1 && r[0].tipo === "avisar" && !r.some((a) => a.tipo === "voltar");
+});
+
+caso("(d3-3) pasta manual sem dado de uso da casa fica em avisar", () => {
+  const pastas = trocadaParaPessoal({ manual: true });
+  const usos = deriva("pessoal", "seven_day", "utilization", 100);
+  delete usos.team;
+  const r = rodar(pastas, usos);
+  return r.length === 1 && r[0].tipo === "avisar" && !r.some((a) => a.tipo === "voltar");
+});
+
+caso("(d3-4) pasta manual sem login estacionado fica em avisar", () => {
+  const pastas = trocadaParaPessoal({ manual: true });
+  delete pastas.trabalho.estacionado;
+  const r = rodar(pastas, deriva("pessoal", "seven_day", "utilization", 100));
+  return r.length === 1 && r[0].tipo === "avisar" && !r.some((a) => a.tipo === "voltar");
+});
+
+caso("(d3-5) pasta manual com o login estacionado a 29 min de vencer espera, sem avisar", () => {
+  const pastas = trocadaParaPessoal({ manual: true });
+  pastas.trabalho.estacionado = { expiresAt: new Date(AGORA + 29 * MIN).toISOString() };
+  const r = rodar(pastas, deriva("pessoal", "seven_day", "utilization", 100));
+  return r.length === 1 && r[0].tipo === "esperar" && r[0].pasta === "trabalho" && !r.some((a) => a.tipo === "avisar");
 });
 
 // (e) esperar quando a credencial que se moveria tem menos de 30 min de vida

@@ -1,0 +1,96 @@
+{
+  "slug": "aviso-contexto-compactar",
+  "titulo": "aviso-contexto-compactar",
+  "criado_em": "2026-11-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/aviso-contexto-compactar.md",
+    "aprovado_por": "Luís, 2026-11-12: quero que com esse aviso ele dê a ideia de compactar antes de começar",
+    "em": "2026-11-12"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/aviso-contexto-compactar.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-11-12"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-12",
+    "comando": "bash scripts/testa-uso-contexto.sh",
+    "saida": "ok: 28   falhou: 0",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-uso-contexto.sh, caso \"uso acima do limiar avisa com tokens, limiar e estagio\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "tarefa só descreve a mudança e sobe a versão"
+      }
+    ],
+    "em": "2026-11-12"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "03afebe6fd91c6cec8095e218ceb9910364fcce5",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "adbda2fd1cc25a438",
+        "veredito": "ok",
+        "em": "2026-11-12",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-adbda2fd1cc25a438.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "e5449dd8",
+    "head": "03afebe6",
+    "em": "2026-11-12",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a31c63134f1d92b4a",
+            "veredito": "ok",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a31c63134f1d92b4a.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-uso-contexto.sh && node scripts/conferir-versao.cjs --sem-fetch",
+    "saida": "ok: 28   falhou: 0 | ok versao 2.13.1",
+    "sensor_externo": "bash scripts/testa-uso-contexto.sh",
+    "em": "2026-11-12",
+    "head": "03afebe6fd91c6cec8095e218ceb9910364fcce5"
+  },
+  "fechar": {
+    "status": "ok",
+    "em": "2026-11-12",
+    "acao": "merge"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-12",
+      "de": "verificar",
+      "motivo": "Luís 2026-11-12: não pedir /compact ao usuário; o autocompact compacta sozinho e o fluxo segue"
+    }
+  ]
+}

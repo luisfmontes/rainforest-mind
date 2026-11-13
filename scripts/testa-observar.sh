@@ -636,7 +636,7 @@ cp "$FATIA_DIR/projects/proj-fatia/sgrande.jsonl" "$ORC_DIR/projects/proj-fatia/
 cat > "$ORC_DIR/duble-lento.cjs" <<'DUBLE_LENTO'
 module.exports.chamarLLM = async (texto) => {
   // Mais lento que o orçamento do teste, para estourar já na primeira fatia.
-  await new Promise((r) => setTimeout(r, 250));
+  await new Promise((r) => setTimeout(r, 1500));
   return 'resumo lento de ' + texto.length;
 };
 DUBLE_LENTO
@@ -648,7 +648,7 @@ db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_proces
   .run('proj-fatia','sgrande',process.env.RFM_ROOT + '/projects/proj-fatia/sgrande.jsonl',Number(process.env.TAM_GRANDE),0,'2026-08-20T05:00:00Z');
 db.close();
 ")
-SAIDA_ORC=$(RFM_ROOT="$ORC_DIR" TESTADOR_ORCAMENTO_MS=100 TESTADOR_CHAMAR_LLM="$ORC_DIR/duble-lento.cjs" \
+SAIDA_ORC=$(RFM_ROOT="$ORC_DIR" TESTADOR_ORCAMENTO_MS=2500 TESTADOR_CHAMAR_LLM="$ORC_DIR/duble-lento.cjs" \
   node "$SRC/scripts/observar.cjs" 2>&1)
 ESTADO_ORC=$(cd "$SRC" && RFM_ROOT="$ORC_DIR" node --no-warnings -e "
 const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
@@ -663,7 +663,7 @@ OFFSET_ORC="${ESTADO_ORC%%:*}"; OBS_ORC="${ESTADO_ORC##*:}"
 # O que prova o orçamento: parou ANTES do fim (menos observações que fatias) e
 # a marca ficou num ponto INTERMEDIÁRIO — nem 0 (não perdeu o que fez) nem o
 # fim do arquivo (não fingiu ter terminado).
-if echo "$SAIDA_ORC" | grep -q "orcamento de 100ms atingido"; then
+if echo "$SAIDA_ORC" | grep -q "orcamento de 2500ms atingido"; then
   ok=$((ok+1)); echo "  ok    a passada anunciou a parada por orcamento"
 else
   falhou=$((falhou+1)); echo "  FALHA nao houve parada por orcamento: $(echo "$SAIDA_ORC" | tail -1)"
@@ -675,7 +675,104 @@ else
   falhou=$((falhou+1)); echo "  FALHA esperava parada intermediaria, veio $OBS_ORC observacao(oes) e marca em $OFFSET_ORC de $TAM_GRANDE"
 fi
 
-rm -rf "$FATIA_DIR" "$CAIXA_MUT" "$ORC_DIR"
+echo "  8.d — #701: duas marcas dividem UM orcamento por execucao"
+# Antes da #701 cada marca ganhava um orcamento novo, e a varredura do hook
+# (sem --sessao) somava 25 s por marca pendente.
+DUAS_DIR="$(novo_sandbox)"; mkdir -p "$DUAS_DIR/projects/proj-fatia"
+cp "$FATIA_DIR/projects/proj-fatia/sgrande.jsonl" "$DUAS_DIR/projects/proj-fatia/sgrande.jsonl" 2>/dev/null
+cp "$FATIA_DIR/projects/proj-fatia/sgrande.jsonl" "$DUAS_DIR/projects/proj-fatia/sgrande2.jsonl" 2>/dev/null
+cp "$ORC_DIR/duble-lento.cjs" "$DUAS_DIR/duble-lento.cjs"
+RFM_ROOT="$DUAS_DIR" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+(cd "$SRC" && RFM_ROOT="$DUAS_DIR" TAM_GRANDE="$TAM_GRANDE" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+const ins = db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)');
+for (const s of ['sgrande', 'sgrande2']) ins.run('proj-fatia', s, process.env.RFM_ROOT + '/projects/proj-fatia/' + s + '.jsonl', Number(process.env.TAM_GRANDE), 0, '2026-08-20T05:00:00Z');
+db.close();
+")
+SAIDA_DUAS=$(RFM_ROOT="$DUAS_DIR" TESTADOR_ORCAMENTO_MS=2500 TESTADOR_CHAMAR_LLM="$DUAS_DIR/duble-lento.cjs" \
+  node "$SRC/scripts/observar.cjs" 2>&1)
+INTOCADAS=$(cd "$SRC" && RFM_ROOT="$DUAS_DIR" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
+process.stdout.write(String(db.prepare('SELECT count(*) c FROM marca_dagua WHERE offset_processado = 0').get().c));
+db.close();
+")
+if echo "$SAIDA_DUAS" | grep -q "marca(s) ficam para a proxima sessao" && [ "$INTOCADAS" = "1" ]; then
+  ok=$((ok+1)); echo "  ok    a segunda marca ficou para a proxima sessao (1 intocada)"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava 1 marca intocada e o aviso, veio $INTOCADAS: $(echo "$SAIDA_DUAS" | tail -2 | tr '\n' ' ')"
+fi
+
+echo "  8.e — #701: a chamada a LLM e cortada no que sobra do orcamento"
+PARADO_DIR="$(novo_sandbox)"; mkdir -p "$PARADO_DIR/projects/proj-fatia"
+cp "$FATIA_DIR/projects/proj-fatia/sgrande.jsonl" "$PARADO_DIR/projects/proj-fatia/sgrande.jsonl" 2>/dev/null
+cat > "$PARADO_DIR/duble-parado.cjs" <<'DUBLE_PARADO'
+module.exports.chamarLLM = async (texto) => {
+  // Bem mais lento que o orcamento: so o corte por chamada faz a passada parar a tempo.
+  await new Promise((r) => setTimeout(r, 5000));
+  return 'resumo parado de ' + texto.length;
+};
+DUBLE_PARADO
+RFM_ROOT="$PARADO_DIR" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+(cd "$SRC" && RFM_ROOT="$PARADO_DIR" TAM_GRANDE="$TAM_GRANDE" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-fatia','sgrande',process.env.RFM_ROOT + '/projects/proj-fatia/sgrande.jsonl',Number(process.env.TAM_GRANDE),0,'2026-08-20T05:00:00Z');
+db.close();
+")
+# O processo vive ate o dublê terminar (~5 s): a medida e o decorrido impresso.
+SAIDA_PARADO=$(RFM_ROOT="$PARADO_DIR" TESTADOR_ORCAMENTO_MS=2500 TESTADOR_CHAMAR_LLM="$PARADO_DIR/duble-parado.cjs" \
+  node "$SRC/scripts/observar.cjs" 2>&1)
+DECORRIDO=$(echo "$SAIDA_PARADO" | sed -n 's/.*atingido durante a fatia 1 (decorrido \([0-9]*\)ms).*/\1/p' | head -1)
+ESTADO_PARADO=$(cd "$SRC" && RFM_ROOT="$PARADO_DIR" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
+const m = db.prepare('SELECT offset_processado o FROM marca_dagua').get();
+const n = db.prepare('SELECT count(*) c FROM observacoes').get().c;
+db.close();
+process.stdout.write(m.o + ':' + n);
+")
+if [ -n "$DECORRIDO" ] && [ "$DECORRIDO" -lt 3500 ] && [ "$ESTADO_PARADO" = "0:0" ]; then
+  ok=$((ok+1)); echo "  ok    cortou a fatia 1 em ${DECORRIDO}ms, sem observacao e com a marca em 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava corte abaixo de 3500ms e marca 0:0, veio decorrido=[$DECORRIDO] estado=$ESTADO_PARADO: $(echo "$SAIDA_PARADO" | tail -2 | tr '\n' ' ')"
+fi
+
+echo "  8.f — #701: no caminho real, o processo do modelo morre no corte"
+# Filho de verdade: o proprio node como "claude", com um --require que trava o
+# filho (e so ele: o argv dele traz o prompt) por 40 s. Sem o kill no corte, o
+# node do observar esperaria o filho; o tempo total mede se ele morreu.
+REAL_DIR="$(novo_sandbox)"; mkdir -p "$REAL_DIR/projects/proj-fatia"
+cp "$FATIA_DIR/projects/proj-fatia/sgrande.jsonl" "$REAL_DIR/projects/proj-fatia/sgrande.jsonl" 2>/dev/null
+cat > "$REAL_DIR/dorme.cjs" <<'DORME'
+if (process.argv.slice(1).some((a) => String(a).includes('Resuma'))) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40000);
+}
+DORME
+RFM_ROOT="$REAL_DIR" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+(cd "$SRC" && RFM_ROOT="$REAL_DIR" TAM_GRANDE="$TAM_GRANDE" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-fatia','sgrande',process.env.RFM_ROOT + '/projects/proj-fatia/sgrande.jsonl',Number(process.env.TAM_GRANDE),0,'2026-08-20T05:00:00Z');
+db.close();
+")
+NODE_EXE=$(node -p process.execPath)
+# Caminho no formato do node (no Git Bash, /tmp/... nao serve ao --require).
+DORME_NODE=$(cd "$REAL_DIR" && node -p "require('path').join(process.cwd(), 'dorme.cjs')")
+INICIO_REAL=$(date +%s%N)
+SAIDA_REAL=$(env -u TESTADOR_CHAMAR_LLM RFM_ROOT="$REAL_DIR" TESTADOR_ORCAMENTO_MS=2500 RFM_CLAUDE_EXECUTAVEL="$NODE_EXE" \
+  NODE_OPTIONS="--require $DORME_NODE" node "$SRC/scripts/observar.cjs" 2>&1)
+TOTAL_REAL=$(( ($(date +%s%N) - INICIO_REAL) / 1000000 ))
+if echo "$SAIDA_REAL" | grep -q "atingido durante a fatia 1" && [ "$TOTAL_REAL" -lt 6000 ]; then
+  ok=$((ok+1)); echo "  ok    filho morto no corte: observar saiu em ${TOTAL_REAL}ms com orcamento de 2500ms"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava corte na fatia 1 e saida em menos de 6000ms, veio ${TOTAL_REAL}ms: $(echo "$SAIDA_REAL" | tail -2 | tr '\n' ' ')"
+fi
+
+rm -rf "$FATIA_DIR" "$CAIXA_MUT" "$ORC_DIR" "$DUAS_DIR" "$PARADO_DIR" "$REAL_DIR"
 
 # ============ Teste 15: --help imprime sem tocar no banco ============
 echo

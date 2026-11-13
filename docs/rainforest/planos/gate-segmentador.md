@@ -724,7 +724,7 @@ arquivos: `CHANGELOG.md`
 depende de: 22
 mutacao: n/a
   motivo: só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3
-pronto quando: o `CHANGELOG.md` tem o mesmo número de linhas da base mais as linhas da entrada `## 2.12.3` (uma ocorrência de `## 2.12.2`, nenhuma linha truncada), e a entrada 2.12.3 diz, pelo comportamento, que a palavra de aspas mistas dentro de `eval`/`bash -c` com `gh` de escrita e o ANSI-C dentro de `"$(...)"` passam a barrar, e nomeia os dois falsos positivos aceitos da emenda do D4 com o contorno — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1`, `git diff --stat e3d7896d -- CHANGELOG.md` mostrando só inserções, e a leitura da entrada contra a D3, a D4 e a D8.
+pronto quando: o `CHANGELOG.md` tem o mesmo número de linhas da base mais as linhas da entrada `## 2.13.3` (antes 2.12.3) (uma ocorrência de `## 2.12.2`, nenhuma linha truncada), e a entrada 2.12.3 diz, pelo comportamento, que a palavra de aspas mistas dentro de `eval`/`bash -c` com `gh` de escrita e o ANSI-C dentro de `"$(...)"` passam a barrar, e nomeia os dois falsos positivos aceitos da emenda do D4 com o contorno — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1`, `git diff --stat e3d7896d -- CHANGELOG.md` mostrando só inserções, e a leitura da entrada contra a D3, a D4 e a D8.
 
 ### 24. A rede do D3 volta a não decodificar ANSI-C (revisão 7) [tipo: implementar]
 atende: D3
@@ -770,7 +770,7 @@ arquivos: `CHANGELOG.md`
 depende de: 25
 mutacao: n/a
   motivo: só texto; o comportamento está medido pelas tarefas 24 e 25
-pronto quando: a entrada 2.12.3 do `CHANGELOG.md` não diz mais que o ANSI-C dentro de `"$(...)"` barra, cita a Issue #694 para essa classe, e diz que a regra da palavra mista vale só no bash (no PowerShell e em `cmd`/`pwsh` a contrabarra é literal), coerente com as emendas da D3 e da D8 — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1` e pela leitura da entrada contra a D3 e a D8.
+pronto quando: a entrada 2.13.3 (antes 2.12.3) do `CHANGELOG.md` não diz mais que o ANSI-C dentro de `"$(...)"` barra, cita a Issue #694 para essa classe, e diz que a regra da palavra mista vale só no bash (no PowerShell e em `cmd`/`pwsh` a contrabarra é literal), coerente com as emendas da D3 e da D8 — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1` e pela leitura da entrada contra a D3 e a D8.
 
 ### 27. Texto da revisão 8: falso positivo aceito, D8 e cabeçalho do (cm-8) [tipo: docs]
 atende: D4, D8
@@ -786,5 +786,5 @@ arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
 depende de: 5, 7, 17
 mutacao: n/a
   motivo: só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10
-pronto quando: `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-2.12.3-` e `alt="versão 2.12.3"`, topo do CHANGELOG `## 2.12.3 — 2026-11-11`) dizem 2.12.3; a entrada do CHANGELOG diz, pelo comportamento, que here-string, contrabarra antes de aspa (Bash) e `"$(...)"` com interior complexo deixam de esconder `gh issue close`/`gh pr merge` do gate (Issue 689), nomeia o falso positivo aceito do D4 (`"$(...)"` com interior complexo fora da forma canônica, seguido de `gh` de escrita, é barrado; contorno: `gh` em comando separado, corpo por `--body-file`/`-F`) diz que `bash -c` rodado pelo PowerShell (e `pwsh -Command` pelo Bash) segue as regras de aspas do wrapper (D7), diz que comentário de shell com apóstrofo não esconde mais as linhas seguintes (D9), e diz que o commit por heredoc canônico (`"$(cat <<'EOF' ... EOF
+pronto quando: `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-2.13.3-` e `alt="versão 2.13.3"`, topo do CHANGELOG `## 2.13.3 — 2026-11-13`) dizem 2.13.3 (renumerada de 2.12.3 no merge com a `origin/main` da rodada 9); a entrada do CHANGELOG diz, pelo comportamento, que here-string, contrabarra antes de aspa (Bash) e `"$(...)"` com interior complexo deixam de esconder `gh issue close`/`gh pr merge` do gate (Issue 689), nomeia o falso positivo aceito do D4 (`"$(...)"` com interior complexo fora da forma canônica, seguido de `gh` de escrita, é barrado; contorno: `gh` em comando separado, corpo por `--body-file`/`-F`) diz que `bash -c` rodado pelo PowerShell (e `pwsh -Command` pelo Bash) segue as regras de aspas do wrapper (D7), diz que comentário de shell com apóstrofo não esconde mais as linhas seguintes (D9), e diz que o commit por heredoc canônico (`"$(cat <<'EOF' ... EOF
 )"`) que cita `gh` de escrita entre crases volta a passar (D6) — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A4 '^## ' CHANGELOG.md`
