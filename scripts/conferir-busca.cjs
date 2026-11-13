@@ -108,7 +108,7 @@ function existeNoHead(repo, caminho) {
 }
 
 /** Referência `arquivo:linha` dentro do resultado de uma linha `catalogo`. A regex é a do design. */
-const REFERENCIA = /([\w.\/-]+\.[A-Za-z0-9]+):L?(\d+)/g;
+const REFERENCIA = /([\w.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)/g;
 
 /**
  * Problemas das referências `arquivo:linha` do resultado de `catalogo` (D7). Ordem: fora do
@@ -116,14 +116,13 @@ const REFERENCIA = /([\w.\/-]+\.[A-Za-z0-9]+):L?(\d+)/g;
  * definição. Toda recusa cita `arquivo:linha`.
  */
 function problemasDeReferencia(repo, resultado) {
+  const texto = resultado.replace(/https?:\/\/\S+/g, ' ').replace(/\\/g, '/');
   const problemas = [];
-  for (const m of resultado.matchAll(REFERENCIA)) {
+  for (const m of texto.matchAll(REFERENCIA)) {
     const arquivo = m[1];
     const linha = Number(m[2]);
     const ref = `${arquivo}:${linha}`;
-    // A classe da regex não tem `\` nem `:`: o que vem antes do casamento também conta.
-    const antes = resultado.slice(0, m.index);
-    if (/^\//.test(arquivo) || /(^|\/)\.\.(\/|$)/.test(arquivo) || /\\$/.test(antes)) {
+    if (/^\//.test(arquivo) || /(^|\/)\.\.(\/|$)/.test(arquivo)) {
       problemas.push(`referência fora do repositório: ${ref}`);
       continue;
     }
@@ -240,7 +239,7 @@ function cmdPlano() {
   const cobradas = tarefas.filter(tarefaCobrada);
   if (!cobradas.some((t) => candidatosDe(t).length > 0)) {
     if (recusas.length > 0) recusar(recusas);
-    console.log('ok: nenhuma tarefa cria caminho novo de código sem busca:');
+    console.log('ok: nenhuma tarefa de código sem busca:');
     return;
   }
 
@@ -285,7 +284,7 @@ function cmdPlano() {
         temCatalogo = true;
         if (!pulado && !problema) {
           const campos = dividirCampos(linha);
-          for (const p of problemasDeReferencia(repo, campos[campos.length - 1])) {
+          for (const p of problemasDeReferencia(repo, campos.slice(1).join(' | '))) {
             recusas.push(`${quem}; canal \`catalogo\`: ${p}.`);
           }
         }
@@ -322,7 +321,7 @@ function cmdPlano() {
   if (exigidas > 0) {
     console.log(`ok: ${exigidas} tarefa(s) com caminho de código, todas com busca: e desfecho:`);
   } else {
-    console.log('ok: nenhuma tarefa cria caminho novo de código sem busca:');
+    console.log('ok: nenhuma tarefa de código sem busca:');
   }
 }
 

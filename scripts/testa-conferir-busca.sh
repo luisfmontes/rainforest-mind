@@ -7,6 +7,9 @@
 # `pulado:`, `desfecho:` valido) e' conferida, e o que nao cria codigo novo passa.
 # O `estado.cjs marcar --estagio plano` recusa o plano sem o bloco e aceita com ele,
 # e a `cobertura` aceita o campo novo em vez de recusa-lo como campo desconhecido.
+# A referencia `arquivo:linha` do resultado `catalogo` le contrabarra (Windows), ignora
+# URL e so aceita extensao que comeca com letra; e confere cada campo da linha, nao so o
+# ultimo. Secao 9, casos (k) a (o).
 #
 # Fixture: repositorio git temporario montado AQUI, com um unico arquivo commitado
 # (scripts/existente.cjs). Planos sao escritos por `tarefa`, um bloco por tarefa,
@@ -336,6 +339,30 @@ caso "catalogo (i): nada equivalente com construir passa" 0 'ok:' CHK plano --sl
 # catalogo (j): linha catalogo sem desfecho é recusada.
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3' ''; } > "$P"
 caso "catalogo (j): catalogo sem desfecho é recusado" 2 'falta `desfecho:`' CHK plano --slug t --plano "$P"
+
+# catalogo (k): contrabarra do Windows no resultado vira barra antes da checagem. Sem a
+# normalização, `src\x.js:3` casaria só `x.js:3`, que não existe, e a recusa sairia.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src\x.js:3' 'desfecho: adotar'; } > "$P"
+caso "catalogo (k): reaproveito soma de src\x.js:3 (contrabarra) passa como src/x.js:3" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (l): caminho absoluto do Windows fica fora do repositório.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de C:\abs\x.js:3' 'desfecho: adotar'; } > "$P"
+caso "catalogo (l): reaproveito soma de C:\abs\x.js:3 é recusado (fora do repositório)" 2 'referência fora do repositório' CHK plano --slug t --plano "$P"
+
+# catalogo (m): versão com ponto (10.30:15, v1.2:3) e URL com porta não são referência.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | nada equivalente na versão 10.30:15, v1.2:3 nem em https://host.com:8080/x.js:3' 'desfecho: construir'; } > "$P"
+caso "catalogo (m): versão 10.30:15, v1.2:3 e URL com porta passam sem referência" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (n): referência em campo do meio da linha também é conferida (antes só o último campo).
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:4 | adoto' 'desfecho: adotar'; } > "$P"
+caso "catalogo (n): src/x.js:4 no campo do meio é recusado, citado na saída" 2 'src/x\.js:4' CHK plano --slug t --plano "$P"
+
+# catalogo (o): prefixo L antes da linha é aceito; a linha continua conferida.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:L3' 'desfecho: adotar'; } > "$P"
+caso "catalogo (o): reaproveito soma de src/x.js:L3 passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:L4' 'desfecho: adotar'; } > "$P"
+caso "catalogo (o): src/x.js:L4 é recusado (não começa definição)" 2 'não começa definição em src/x\.js:4' CHK plano --slug t --plano "$P"
 
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
