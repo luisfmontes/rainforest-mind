@@ -51,6 +51,15 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
   - quando nenhum segmento acha `gh issue|pr` de escrita e o texto cru tem um, o comando inteiro é conferido mesmo assim, com destinos tirados do texto (todo `--repo`/`-R`, todo `GH_REPO=`, o `GH_REPO` da sessão, o cwd do evento, incerto se o comando muda de diretório);
   - o D3 fica só para o que o comando **não carrega**: arquivo lido por caminho com variável e saída de programa.
 
+- **Emenda da revisão 3 (rodada extra, decisão do Luís, 2026-11-13).** O comando inteiro passou a acender todos os detectores, e o `gh` de rotina barrava sem termo nenhum: `--body-file C:/Users/<nome>/...` (caminho de home), `--author-email` (e-mail), nome de arquivo com data (telefone). Daí:
+  - o comando inteiro conta **só contra a lista de termos privados**, que é o que o Q2 A decidiu;
+  - o valor literal de `--title`/`--body`/`--subject`/`--comment` e o conteúdo legível dos `--body-file` seguem com todos os detectores;
+  - a rede do `gh` que a segmentação perde também lê os `--body-file`;
+  - `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`);
+  - a URL posicional (`gh issue comment https://github.com/<dono>/<repo>/issues/N`) é destino, com a precedência do `--repo` (D4).
+
+  Ficam na Issue #707: corpo de `--body-file` em UTF-16 e `GH_REPO` por `Set-Item Env:`/`New-Item Env:`/`export "GH_REPO"=`.
+
 - **D4 — Repositório de destino.**
   - **Com `--repo`/`-R`:** com `owner/repo` (ou URL `https://github.com/owner/repo`), a visibilidade é a desse repositório, por `visibilidadeDeUmRepo`.
   - **Sem `--repo`:** é a do repositório git do `cwd`, por `visibilidadeDoRepo(gitTop)`, que já falha fechada quando há qualquer remoto público.

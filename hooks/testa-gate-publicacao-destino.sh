@@ -877,7 +877,7 @@ mkdir -p "$R702P/sub"; printf 'nada
 confere702 "segmento repetido le o --body-file de cada cwd" 2 "" Bash "$R702P" "cd $R702PE && gh issue create --title t --body-file corpo.md; cd $R702E && gh issue create --title t --body-file corpo.md"
 confere702 "GH_REPO repetido no prefixo, um publico, barra" 2 "" Bash "$R702P" 'GH_REPO=dono/priv GH_REPO=dono/publico gh issue create --title termo702 --body x'
 confere702 "segmento gh repetido em cwd privado e publico barra" 2 "" Bash "$R702P" "cd $R702PE && gh issue create --title termo702 --body x; cd $R702E && gh issue create --title termo702 --body x"
-confere702 "GH_REPO depois do gh nao conta" 2 "" Bash "$R702" 'gh issue create --title termo702 --body x; export GH_REPO=dono/priv'
+confere702 "GH_REPO publico depois do gh nao conta" 0 "" Bash "$R702P" 'gh issue create --title termo702 --body x; export GH_REPO=dono/publico'
 confere702 "PowerShell \$env:GH_REPO publico barra" 2 "" PowerShell "$R702P" '$env:GH_REPO = "dono/publico"; gh issue create --title termo702 --body x'
 GH702="node $SANDBOX_BIN/gh"
 
@@ -919,6 +919,18 @@ confere702 "cd antes de bash -c para repo publico barra" 2 "" Bash "$R702P" "cd 
 confere702 "cd dentro de bash -c para repo privado passa" 0 "" Bash "$R702" "bash -c \"cd $R702PE && gh issue create --title termo702 --body x\""
 confere702 "GH_REPO privado no prefixo depois de heredoc passa em cwd publico" 0 "" Bash "$R702" $'cat > n.md <<\'EOF\'\nlimpo\nEOF\nGH_REPO=dono/priv gh issue create --title termo702 --body x'
 GH702="node $SANDBOX_BIN/gh"
+# Revisao 3 (2026-11-13, rodada extra liberada pelo Luis)
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "URL de Issue publica a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue comment https://github.com/dono/publico/issues/3 --body termo702'
+confere702 "URL de PR publico a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh pr merge https://github.com/dono/publico/pull/5 --squash --body termo702'
+confere702 "URL de Issue privada a partir de cwd publico passa" 0 "" Bash "$R702" 'gh issue comment https://github.com/dono/priv/issues/3 --body termo702'
+GH702="node $SANDBOX_BIN/gh"
+confere702 "issue new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh issue new --title termo702 --body x'
+confere702 "pr new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh pr new --title t --body termo702'
+confere702 "--body-file com caminho de home passa" 0 "$PUB" Bash "$R702" 'gh pr create --title Fix --body-file C:/Users/Fulano/AppData/Local/Temp/x/body.md'
+confere702 "--author-email no merge passa" 0 "$PUB" Bash "$R702" 'gh pr merge 5 --squash --author-email fulano@empresa.com.br'
+confere702 "e-mail no valor de --body ainda barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body 'fale com fulano@empresa.com.br'"
+confere702 "gh perdido na segmentacao le o --body-file" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title t -F corpo.md"
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

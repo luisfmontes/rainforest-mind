@@ -743,17 +743,26 @@ function conferirCommit(ev, cwdDoEvento, agente) {
  * 2026-11-12 a #701 saiu com um termo da lista privada no corpo, e o mesmo texto
  * escrito num design no mesmo dia foi barrado aqui.
  *
- * Confere só o texto que vira Issue ou PR (valor de flag, arquivo do
- * `--body-file`, heredoc que cria esse arquivo), nunca o comando inteiro: um
- * `cd` para a pasta de um cliente antes do `gh` seria falso positivo em toda
- * Issue que sessão de cliente abre aqui. Valor ilegível (variável, `$(...)`)
- * passa — falhar fechado barraria o `--body-file $f` de rotina do PowerShell
- * em qualquer repositório (design gate-publicacao-gh, D3).
+ * Confere o valor de `--title`/`--body`/`--subject`/`--comment` e o arquivo
+ * legível do `--body-file` com todos os detectores, e o comando inteiro só
+ * contra a lista de termos privados (Q2 A do Luís e revisão 3, 2026-11-13):
+ * stdin, variável escrita no comando, heredoc e here-string ficam cobertos para
+ * o termo, e um caminho de home, um e-mail de `--author-email` ou um nome de
+ * arquivo com data não barram o `gh` de rotina. Fora fica o que o comando não
+ * carrega (arquivo lido por variável, saída de programa), design D3.
  */
 const VERBOS_GH_TEXTO = {
   issue: new Set(["create", "comment", "edit", "close", "reopen"]),
   pr: new Set(["create", "comment", "edit", "review", "merge", "close", "reopen"]),
 };
+// `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`).
+const APELIDOS_GH = { new: "create" };
+
+/** `owner/repo` de uma URL de Issue ou PR do GitHub, ou null. */
+function repoDaUrlGh(valor) {
+  const m = String(valor || "").match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/(?:issues|pull)\/\d+/i);
+  return m ? `${m[1]}/${m[2]}` : null;
+}
 
 const FLAGS_GH_VALOR = {
   longas: new Set([
@@ -822,8 +831,10 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
     posicionais.push(t.toLowerCase());
   }
   if (posicionais.length < 2) return null;
-  const [familia, verbo] = posicionais;
+  const familia = posicionais[0];
+  const verbo = APELIDOS_GH[posicionais[1]] || posicionais[1];
   if (!VERBOS_GH_TEXTO[familia] || !VERBOS_GH_TEXTO[familia].has(verbo)) return null;
+  let repoUrl = null;
 
   const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
   // O comando inteiro conta como texto (Q2 A do Luís, 2026-11-13): valor de
@@ -831,10 +842,13 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   // estão todos escritos nele. Preço aceito: termo só num caminho do mesmo
   // comando barra. Fora fica só o que o comando não carrega (arquivo lido por
   // variável, saída de programa).
+  // Só o termo privado conta na origem "comando" (revisão 3): ver conferirGh.
   const textos = [{ origem: "comando", texto: cmdOriginal }];
   for (; i < toks.length; i += 1) {
     const tok = toks[i];
-    if (!tok.startsWith("-") || tok === "-") continue;
+    // `gh issue comment <URL>` publica no repositório da URL, não no do cwd (revisão 3).
+    if (!tok.startsWith("-")) { if (!repoUrl) repoUrl = repoDaUrlGh(tok); continue; }
+    if (tok === "-") continue;
     const longa = tok.startsWith("--");
     const igual = tok.indexOf("=");
     const chave = longa ? (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase() : tok.slice(0, 2);
@@ -849,6 +863,13 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
     if (valor === null) continue;
 
     if (chave === "--repo" || chave === "-R") { repoValor = valor; continue; }
+    const ehTitulo = chave === "--title" || (chave === "-t" && verbo !== "merge");
+    const ehSubject = verbo === "merge" && (chave === "--subject" || chave === "-t");
+    const ehComentario = (verbo === "close" || verbo === "reopen") && (chave === "--comment" || chave === "-c");
+    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject || ehComentario) {
+      textos.push({ origem: chave, texto: valor });
+      continue;
+    }
     if (chave === "--body-file" || chave === "-F") {
       if (/[$\x60]/.test(valor) || valor === "-") continue;
       let caminho = valor;
@@ -868,7 +889,8 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
   const prefixoLimpo = antesDoGh.every(ehAtribuicao)
     || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
-  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoPrefixo, prefixoLimpo };
+  const repoFlag = repoUrl || normalizarRepoAlvo(repoValor);
+  return { familia, verbo, textos, repoFlag, repoPrefixo, prefixoLimpo };
 }
 
 function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
@@ -1008,7 +1030,7 @@ function conferirGh(ev, cwdDoEvento, agente) {
       if (!r) r = ri;
       for (const { origem, texto } of ri.textos) {
         const res = conferirMemo(texto);
-        if (res && res.achados) for (const a of res.achados) achados.push({ ...a, origem });
+        if (res && res.achados) for (const a of res.achados) if (origem !== "comando" || a.id === "termo-privado") achados.push({ ...a, origem });
       }
     }
     if (!r) continue;
@@ -1039,14 +1061,26 @@ function conferirGh(ev, cwdDoEvento, agente) {
  * do texto: todo `--repo`/`-R`, todo `GH_REPO=`, o `GH_REPO` da sessão e o
  * cwd do evento, incerto se o comando muda de diretório. O pior decide.
  */
-const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?\b(issue|pr)\s+(create|comment|edit|close|reopen|review|merge)\b/i;
+const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?\b(issue|pr)\s+(create|new|comment|edit|close|reopen|review|merge)\b/i;
 function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
   const m = cmd.match(GH_TEXTO_CRU);
   if (!m) return;
   const res = conferirMemo(cmd);
-  let achados = res && res.achados ? res.achados.map((a) => ({ ...a, origem: "comando" })) : [];
+  let achados = res && res.achados ? res.achados.filter((a) => a.id === "termo-privado").map((a) => ({ ...a, origem: "comando" })) : [];
+  // O arquivo de `--body-file`/`-F` legível também conta (revisão 3).
+  for (const x of cmd.matchAll(/(?:--body-file[=\s]+|(?:^|\s)-F\s*=?\s*)["']?([^\s"';|&]+)/gi)) {
+    if (/[$\x60]/.test(x[1]) || x[1] === "-") continue;
+    let caminho = x[1];
+    try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(caminho); } catch {}
+    const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwdDoEvento, caminho);
+    let texto = null;
+    try { texto = fs.readFileSync(resolvido, "utf8"); } catch {}
+    const r = texto === null ? null : conferirMemo(texto);
+    if (r && r.achados) for (const a of r.achados) achados.push({ ...a, origem: `--body-file ${x[1]}` });
+  }
   if (achados.length === 0) return;
   const destinos = [];
+  for (const x of cmd.matchAll(/(?:https?:\/\/)?(?:www\.)?github\.com\/[\w.-]+\/[\w.-]+\/(?:issues|pull)\/\d+/gi)) destinos.push({ repo: repoDaUrlGh(x[0]) || "?" });
   for (const x of cmd.matchAll(/(?:--repo[=\s]+|(?:^|\s)-R\s*=?\s*)["']?([^\s"';|&]+)/gi)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   for (const x of cmd.matchAll(/\bGH_REPO\s*=\s*["']?([^\s"';|&]*)/g)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
   if (process.env.GH_REPO) destinos.push({ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" });
@@ -1061,7 +1095,8 @@ function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
   if (pior === "desconhecida-declarada") achados = achados.filter((a) => a.id !== "termo-privado");
   if (achados.length === 0) return;
   const vis = pior === "publica" ? "publica" : "desconhecida";
-  process.stderr.write(mensagemBloqueioGh(achados, m[1].toLowerCase(), m[2].toLowerCase(), Boolean(agente), vis));
+  const v2 = m[2].toLowerCase();
+  process.stderr.write(mensagemBloqueioGh(achados, m[1].toLowerCase(), APELIDOS_GH[v2] || v2, Boolean(agente), vis));
   process.exit(2);
 }
 

@@ -128,7 +128,14 @@
         ]
       }
     ],
-    "em_voo": []
+    "em_voo": [],
+    "liberado_em": "2026-11-13",
+    "rodadas_extra": [
+      {
+        "texto": "Luis 2026-11-13 (vai no automatico, recomendada A): 4a rodada com URL posicional como destino, apelido new, so termo privado no comando inteiro, rede le --body-file, baixas na #707",
+        "em": "2026-11-13"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

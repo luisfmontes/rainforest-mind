@@ -307,10 +307,80 @@ pronto quando: payload real de PreToolUse, a partir de um repositório privado, 
 
 Forma prescrita: cada segmento leva os cwds possíveis; o texto de dentro do wrapper roda o próprio `cwdPorSegmento` a partir de cada cwd do segmento do wrapper.
 
+### 11. URL posicional de Issue ou PR é destino [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 10
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `    if (!tok.startsWith("-")) { if (!repoUrl) repoUrl = repoDaUrlGh(tok); continue; }`
+  para: `    if (!tok.startsWith("-")) continue;`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 URL de Issue publica a partir de cwd privado barra"`
+prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse `Bash`, cwd num repositório privado: `gh issue comment https://github.com/dono/publico/issues/3 --body termo702` e `gh pr merge https://github.com/dono/publico/pull/5 --squash --body termo702` saem 2; de um cwd público, `gh issue comment https://github.com/dono/priv/issues/3 --body termo702` sai 0. A rede da tarefa 9 também soma a URL aos destinos. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+### 12. Só o termo privado olha o comando inteiro [tipo: implementar]
+atende: D2
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 11
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `if (origem !== "comando" || a.id === "termo-privado") achados.push`
+  para: `achados.push`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --body-file com caminho de home passa"`
+prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
+pronto quando: payload real, repositório público: `gh pr create --title Fix --body-file C:/Users/Fulano/AppData/Local/Temp/x/body.md` e `gh pr merge 5 --squash --author-email fulano@empresa.com.br` saem 0 (a base saía 0); `gh issue create --title termo702 --body x` segue saindo 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+### 13. Valor literal de flag com todos os detectores [tipo: implementar]
+atende: D2
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 12
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `      textos.push({ origem: chave, texto: valor });`
+  para: `      void valor;`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 e-mail no valor de --body ainda barra"`
+prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
+pronto quando: payload real, repositório público: `gh issue create --title t --body 'fale com fulano@empresa.com.br'` sai 2 pelo detector de e-mail, que a origem `comando` não aplica mais. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+### 14. A rede do gh perdido lê o --body-file [tipo: implementar]
+atende: D1, D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 13
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `    try { texto = fs.readFileSync(resolvido, "utf8"); } catch {}`
+  para: `    try { texto = null; } catch {}`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 gh perdido na segmentacao le o --body-file"`
+prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
+pronto quando: payload real, repositório público, `corpo.md` com `termo702`: `echo it` + contrabarra + `'s; gh issue create --title t -F corpo.md` sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+### 15. Apelido new de create [tipo: implementar]
+atende: D1
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 14
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `const APELIDOS_GH = { new: "create" };`
+  para: `const APELIDOS_GH = {};`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 issue new e apelido de create e barra"`
+prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
+pronto quando: payload real, repositório público: `gh issue new --title termo702 --body x` e `gh pr new --title t --body termo702` saem 2 (`gh issue create --help` lista `ALIASES: gh issue new`). Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
 ### 3. Versão 2.13.3, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10
+depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:
