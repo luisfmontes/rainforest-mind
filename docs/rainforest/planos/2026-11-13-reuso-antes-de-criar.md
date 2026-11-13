@@ -315,7 +315,7 @@ desfecho: estender
 mutacao:
   arquivo: `scripts/conferir-busca.cjs`
   de: `if (/^[(\["',;]*$/.test(prefixo)) refs.push([m[1], m[2]]);`
-  para: `refs.push([m[1], m[2]]);`
+  para: `if (true) refs.push([m[1], m[2]]);`
   bateria: `bash scripts/testa-conferir-busca.sh`
   fixture: `testa-conferir-busca.sh, caso novo "catalogo (t): lib/Foo$Bar.js:1 sem crase é recusado pedindo crase"`
 prova: `node -e "const s=require('fs').readFileSync('scripts/conferir-busca.cjs','utf8');process.exit(s.includes('const SOLTA')?0:1)"`
