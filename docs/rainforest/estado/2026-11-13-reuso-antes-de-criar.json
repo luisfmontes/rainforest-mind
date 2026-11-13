@@ -18,10 +18,10 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 12,
-    "tarefas": 12,
+    "tarefas_ok": 13,
+    "tarefas": 13,
     "carimbos": [
       {
         "tarefa": 1,
@@ -162,11 +162,18 @@
         "iteracao": 2,
         "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
         "ts": "2026-11-13T15:14:35.006Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "fefcd30",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T15:30:57.524Z"
       }
     ],
     "em": "2026-11-13",
-    "comando": "bash scripts/testa-conferir-busca.sh; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-teto-skills.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-conferir-fluxo.sh",
-    "saida": "total=58 vermelhas:[] | baseline VERDE 206 ok | 21 OK, 0 FALHA | ok: 57 falhou: 0 | ok: 142 falhou: 0",
+    "comando": "bash scripts/testa-conferir-busca.sh; bash scripts/testa-teto-skills.sh",
+    "saida": "total=61 vermelhas:[] | 21 OK, 0 FALHA",
     "mutacao": [
       {
         "tarefa": 1,
@@ -227,6 +234,11 @@
         "tarefa": 12,
         "resultado": "vermelho",
         "fixture": "testa-catalogo-funcoes.sh caso 22b"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh catalogo (s)"
       }
     ]
   },
