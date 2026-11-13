@@ -939,6 +939,16 @@ confere702 "--body-file com caminho de home passa" 0 "$PUB" Bash "$R702" 'gh pr 
 confere702 "--author-email no merge passa" 0 "$PUB" Bash "$R702" 'gh pr merge 5 --squash --author-email fulano@empresa.com.br'
 confere702 "e-mail no valor de --body ainda barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body 'fale com fulano@empresa.com.br'"
 confere702 "gh perdido na segmentacao le o --body-file" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title t -F corpo.md"
+# Revisao 4 (2026-11-13): continuacao do PowerShell, gh perdido depois de outro, corpo embutido com todos os detectores
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "continuacao do PowerShell com --repo publico na linha de baixo barra" 2 "" PowerShell "$R702P" $'gh issue create --title "Fix" `\n  --repo dono/publico --body "termo702"'
+confere702 "continuacao do PowerShell com --repo privado na linha de baixo passa" 0 "" PowerShell "$R702P" $'gh issue create --title "termo702" `\n  --repo dono/priv --body x'
+GH702="node $SANDBOX_BIN/gh"
+confere702 "continuacao do PowerShell com --body-file na linha de baixo barra" 2 "$PUB" PowerShell "$R702" $'gh issue create --title "Fix" `\r\n  --body-file corpo.md'
+confere702 "gh perdido depois de outro gh achado barra" 2 "$PUB" Bash "$R702" "gh issue close 1 --comment ok; echo it\'s; gh issue comment 3 -F corpo.md"
+confere702 "JID em heredoc do --body-file barra" 2 "$PUB" Bash "$R702" $'cat > n.md <<\'EOF\'\nveja 5511999998888@s.whatsapp.net\nEOF\ngh issue create --title t --body-file n.md'
+mkdir -p "$R702/sp"; printf 'termo702\n' > "$R702/sp/a b.md"
+confere702 "rede le --body-file entre aspas com espaco" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title t --body-file \"sp/a b.md\""
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

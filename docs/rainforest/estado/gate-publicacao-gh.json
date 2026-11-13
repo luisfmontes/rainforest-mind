@@ -19,7 +19,7 @@
     "em": "2026-11-13"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-13",
     "tarefas_ok": 15,
     "tarefas": 15,
@@ -103,26 +103,30 @@
       }
     ],
     "em": "2026-11-13",
-    "reaberturas": 3
+    "reaberturas": 4,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-13"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "139f72532907eb2ba5d80b8be401dd68863e8251",
+      "head": "3a7ebc36009f1647f515b2f588583aa420ab8130",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a44550a6b0759492f",
+        "agente_id": "a7ff28356e2b80e53",
         "veredito": "reprovado",
         "em": "2026-11-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a44550a6b0759492f.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a7ff28356e2b80e53.jsonl"
       }
     ],
-    "achados": 7,
+    "achados": 5,
     "em": "2026-11-13",
-    "tentativas": 3,
+    "tentativas": 4,
     "voltas": [
       {
         "volta": 1,
@@ -147,16 +151,32 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-adb8e84375badd389.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a44550a6b0759492f",
+            "veredito": "reprovado",
+            "em": "2026-11-13",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a44550a6b0759492f.jsonl"
+          }
+        ]
       }
     ],
     "em_voo": [],
-    "liberado_em": "2026-11-13",
     "rodadas_extra": [
       {
         "texto": "Luis 2026-11-13 (vai no automatico, recomendada A): 4a rodada com URL posicional como destino, apelido new, so termo privado no comando inteiro, rede le --body-file, baixas na #707",
         "em": "2026-11-13"
+      },
+      {
+        "texto": "Modo automatico do Luis (2026-11-13), recomendada: 5a rodada com continuacao do PowerShell, rede por contagem, corpo embutido com todos os detectores, rede com aspas; residuos na #707",
+        "em": "2026-11-13"
       }
-    ]
+    ],
+    "liberado_em": "2026-11-13"
   },
   "verificar": {
     "status": "pendente"

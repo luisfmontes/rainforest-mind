@@ -234,7 +234,7 @@ mutacao:
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
   timeout: `1200000`
-  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 --body com heredoc em subst de comando barra"`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 printf em pipe para -F - barra"`
 prova-na-base: verde — emenda da revisão 1: a base já é o código das tarefas 1 a 5, e a prova é a mutação acima
 pronto quando: payload real de PreToolUse, repositório público, saem 2:
 - `--body "$(cat <<'EOF'` + `termo702 aqui` + `EOF` + `)"`;
@@ -247,7 +247,7 @@ pronto quando: payload real de PreToolUse, repositório público, saem 2:
 
 Saem 0: `gh pr close 5 -c limpo` e `gh pr review 5 -c -b limpo` (`-c` é booleana no `review`). Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
-Emenda da revisão 2 (Q2 A do Luís, 2026-11-13): o texto conferido passa a ser o comando inteiro (tarefa 8), e a mutação desta tarefa troca de linha: sem texto nenhum, os casos acima saem 0.
+Emenda da revisão 2 (Q2 A do Luís, 2026-11-13): o texto conferido passa a ser o comando inteiro (tarefa 8), e a mutação desta tarefa troca de linha. Emenda da revisão 4: com o valor literal das flags de volta (tarefa 13), a fixture passa a ser o texto que só o comando inteiro carrega (`printf` em pipe).
 
 ### 8. O comando inteiro conta como texto [tipo: implementar]
 atende: D2, D3
@@ -279,7 +279,7 @@ arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-dest
 depende de: 8
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `  if (!achouGhTexto) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
+  de: `  if (ghTextoSegmentos < nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   para: `  if (false) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   timeout: `900000`
@@ -377,10 +377,66 @@ mutacao:
 prova-na-base: verde — emenda da revisão 3: a base já é o código das tarefas 1 a 10, e a prova é a mutação acima
 pronto quando: payload real, repositório público: `gh issue new --title termo702 --body x` e `gh pr new --title t --body termo702` saem 2 (`gh issue create --help` lista `ALIASES: gh issue new`), e `gh issue new --title t --body 'fale com fulano@empresa.com.br'` sai 2 pelo detector de e-mail, que a rede do `gh` perdido não aplica: sem o apelido, só o termo privado seria pego. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
 
+### 16. Continuação de linha do PowerShell [tipo: implementar]
+atende: D1, D4
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 15
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `  const cmd = juntarContinuacaoPs(ev.tool_name, cmdBruto);`
+  para: `  const cmd = cmdBruto;`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 continuacao do PowerShell com --repo publico na linha de baixo barra"`
+prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
+pronto quando: payload real de PreToolUse `PowerShell`: de um cwd privado, `gh issue create --title "Fix"` + crase + quebra + `--repo dono/publico --body "termo702"` sai 2 e o mesmo com `--repo dono/priv` sai 0; de um cwd público, `gh issue create --title "Fix"` + crase + CRLF + `--body-file corpo.md` (com `termo702`) sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+### 17. A rede roda quando a segmentação acha menos gh que o texto [tipo: implementar]
+atende: D1, D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 16
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `  if (ghTextoSegmentos < nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
+  para: `  if (ghTextoSegmentos === 0) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 gh perdido depois de outro gh achado barra"`
+prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
+pronto quando: payload real `Bash`, repositório público, `corpo.md` com `termo702`: `gh issue close 1 --comment ok; echo it` + contrabarra + `'s; gh issue comment 3 -F corpo.md` sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+### 18. Corpo de heredoc e here-string com todos os detectores [tipo: implementar]
+atende: D2
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 17
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `  textos.push(...corposEmbutidos(cmdOriginal));`
+  para: `  void corposEmbutidos;`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 JID em heredoc do --body-file barra"`
+prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
+pronto quando: payload real `Bash`, repositório público: `cat > n.md <<'EOF'` + `veja 5511999998888@s.whatsapp.net` + `EOF` + `gh issue create --title t --body-file n.md` sai 2 pelo detector de JID, que a origem `comando` não aplica. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
+### 19. A rede lê --body-file entre aspas [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: 18
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `    const arq = x[1] || x[2] || x[3];`
+  para: `    const arq = x[3];`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  timeout: `900000`
+  fixture: `testa-gate-publicacao-destino.sh, seção "#702", caso "702 rede le --body-file entre aspas com espaco"`
+prova-na-base: verde — emenda da revisão 4: a base já é o código das tarefas 1 a 15, e a prova é a mutação acima
+pronto quando: payload real `Bash`, repositório público, `sp/a b.md` com `termo702`: `echo it` + contrabarra + `'s; gh issue create --title t --body-file "sp/a b.md"` sai 2. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com `0 falha(s)` e exit 0.
+
 ### 3. Versão 2.13.3, CHANGELOG e README [tipo: docs]
 atende: D7
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+depende de: 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
 mutacao: n/a
   motivo: tarefa só de texto e número de versão, sem comportamento a inverter
 pronto quando: com o diff da branch, o número da versão e a descrição batem com o design:

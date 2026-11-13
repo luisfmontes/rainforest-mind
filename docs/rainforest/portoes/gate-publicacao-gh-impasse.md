@@ -18,3 +18,14 @@ Here-string com apóstrofo ímpar (a segmentação perdia o `gh`), stdin (`print
 A janela confirmou ainda que `gh issue new` é apelido de `create` (`gh issue create --help`).
 
 **Decisão (Luís, 2026-11-13, "vai no automático" sobre a recomendada):** quarta rodada. URL posicional como destino, `new` como apelido de `create`, só o termo privado olha o comando inteiro (caminho, e-mail e telefone voltam aos valores de flag e ao conteúdo dos arquivos), a rede lê o `--body-file`, comentário e caso da bateria corrigidos, baixas na #707.
+
+## Revisão 4
+1. **[alta]** Continuação de linha do PowerShell (crase + quebra) deixava `--repo dono/publico` e `--body-file` da linha de baixo fora do segmento do `gh`.
+2. **[media]** Um `gh` perdido depois de outro achado escapava: a rede só rodava sem nenhum achado.
+3. **[media] [design]** JID e credencial em heredoc/here-string saíam 0: a emenda da revisão 3 deixou o corpo embutido só contra a lista de termos.
+4. **[baixa]** A rede lia mal `--body-file` entre aspas com espaço, com `)` ou crase grudados, e relativo depois de `cd`.
+5. **[baixa]** Bateria sem caso de continuação do PowerShell.
+
+Nenhuma regressão contra a base; URL posicional, apelido `new` e filtro de termo passaram.
+
+**Decisão (modo automático do Luís, 2026-11-13, recomendada):** quinta rodada com 1 a 4 consertados (tarefas 16 a 19), o item 3 restaurando o D2 original para corpo embutido. `xargs -I{}`, `cd` relativo na rede e JID por stdin/variável vão para a #707.

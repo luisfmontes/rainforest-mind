@@ -60,6 +60,14 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
 
   Ficam na Issue #707: corpo de `--body-file` em UTF-16 e `GH_REPO` por `Set-Item Env:`/`New-Item Env:`/`export "GH_REPO"=`.
 
+- **Emenda da revisão 4 (decidido sem o Luís no modo automático, 2026-11-13).** A revisão 4 achou três furos de segmentação e um de detector:
+  - a continuação de linha do PowerShell (crase + quebra) separava o `--repo`/`--body-file` da linha de baixo do `gh`; agora as linhas se juntam antes de segmentar;
+  - um `gh` perdido depois de outro já achado escapava, porque a rede só rodava sem nenhum achado; agora ela roda sempre que a segmentação acha menos `gh issue|pr` de escrita do que o texto cru tem;
+  - corpo de heredoc e de here-string volta a contar com **todos** os detectores, como no D2 original: é texto que vira Issue ou PR. O resto do comando segue só contra a lista de termos (emenda da revisão 3);
+  - a rede lê `--body-file` entre aspas e sem `)` ou crase grudados.
+
+  Ficam na Issue #707: `xargs -I{}`, `--body-file` relativo depois de `cd` lido pela rede, e dado sensível que não é termo (JID, telefone) mandado por `printf ... |`, `<<<` ou variável.
+
 - **D4 — Repositório de destino.**
   - **Com `--repo`/`-R`:** com `owner/repo` (ou URL `https://github.com/owner/repo`), a visibilidade é a desse repositório, por `visibilidadeDeUmRepo`.
   - **Sem `--repo`:** é a do repositório git do `cwd`, por `visibilidadeDoRepo(gitTop)`, que já falha fechada quando há qualquer remoto público.

@@ -802,6 +802,25 @@ const FLAGS_GH_VALOR = {
   },
 };
 
+/**
+ * Corpos que o próprio comando carrega: heredoc (bash) e here-string
+ * (PowerShell, `@'...'@` e `@"...@"`). Contam com TODOS os detectores, porque
+ * são texto que vira Issue ou PR; o resto do comando conta só contra a lista
+ * de termos privados (revisão 4, 2026-11-13: JID em heredoc saía 0).
+ */
+function corposEmbutidos(cmd) {
+  const { posicoesDeOperadorHeredoc, corpoDeHeredoc } = require("./lib/heredoc.cjs");
+  const saida = [];
+  try {
+    for (const pos of posicoesDeOperadorHeredoc(cmd)) {
+      const h = corpoDeHeredoc(cmd, pos);
+      if (h && h.corpo) saida.push({ origem: "heredoc", texto: h.corpo });
+    }
+  } catch {}
+  for (const m of String(cmd).matchAll(/@(["'])\r?\n([\s\S]*?)\r?\n\1@/g)) saida.push({ origem: "here-string", texto: m[2] });
+  return saida;
+}
+
 /** `owner/repo` do valor de `--repo`, `"?"` quando ilegível, `null` sem valor. */
 function normalizarRepoAlvo(valor) {
   if (valor == null || valor === "") return null;
@@ -860,6 +879,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   // variável, saída de programa).
   // Só o termo privado conta na origem "comando" (revisão 3): ver conferirGh.
   const textos = [{ origem: "comando", texto: cmdOriginal }];
+  textos.push(...corposEmbutidos(cmdOriginal));
   for (; i < toks.length; i += 1) {
     const tok = toks[i];
     // `gh issue comment <URL>` publica no repositório da URL, não no do cwd (revisão 3).
@@ -999,9 +1019,18 @@ function visibilidadeDoDestino(d) {
   return v === "desconhecida" && declaradaPrivada(gitTop) ? "desconhecida-declarada" : v;
 }
 
+/** Junta a continuação de linha do PowerShell (crase + quebra de linha). */
+function juntarContinuacaoPs(ferramenta, cmd) {
+  return ferramenta === "PowerShell" ? cmd.replace(/\x60\r?\n/g, " ") : cmd;
+}
+
 function conferirGh(ev, cwdDoEvento, agente) {
-  const cmd = ev.tool_input && ev.tool_input.command;
-  if (typeof cmd !== "string" || !/\bgh\b/i.test(cmd)) return;
+  const cmdBruto = ev.tool_input && ev.tool_input.command;
+  if (typeof cmdBruto !== "string" || !/\bgh\b/i.test(cmdBruto)) return;
+  // Continuação de linha do PowerShell (crase + quebra de linha): o
+  // `segmentosParaGate` quebrava ali, e o `--repo`/`--body-file` da linha de
+  // baixo ficava num segmento que ninguém lia (revisão 4, 2026-11-13).
+  const cmd = juntarContinuacaoPs(ev.tool_name, cmdBruto);
   let segmentos, mascarado;
   try {
     const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
@@ -1041,7 +1070,7 @@ function conferirGh(ev, cwdDoEvento, agente) {
     if (!memo.has(texto)) memo.set(texto, conferirConteudo(texto));
     return memo.get(texto);
   };
-  let achouGhTexto = false;
+  let ghTextoSegmentos = 0;
   for (const { segmento, locais } of segmentos) {
     // O `--body-file` relativo se lê contra CADA cwd possível do segmento, e os
     // achados se somam: com o segmento repetido, cada ocorrência lê o seu.
@@ -1057,7 +1086,7 @@ function conferirGh(ev, cwdDoEvento, agente) {
       }
     }
     if (!r) continue;
-    achouGhTexto = true;
+    ghTextoSegmentos += 1;
     if (achados.length === 0) continue;
 
     // Falha fechada: o pior destino possível decide.
@@ -1073,7 +1102,10 @@ function conferirGh(ev, cwdDoEvento, agente) {
     process.stderr.write(mensagemBloqueioGh(achados, r.familia, r.verbo, Boolean(agente), vis));
     process.exit(2);
   }
-  if (!achouGhTexto) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
+  // A rede roda quando a segmentação achou menos `gh` de texto do que o texto
+  // cru tem: um `gh` perdido depois de outro achado escapava (revisão 4).
+  const nCru = (cmd.match(GH_TEXTO_CRU_G) || []).length;
+  if (ghTextoSegmentos < nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
 }
 
 /**
@@ -1085,21 +1117,27 @@ function conferirGh(ev, cwdDoEvento, agente) {
  * cwd do evento, incerto se o comando muda de diretório. O pior decide.
  */
 const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?\b(issue|pr)\s+(create|new|comment|edit|close|reopen|review|merge)\b/i;
+const GH_TEXTO_CRU_G = new RegExp(GH_TEXTO_CRU.source, "gi");
 function conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo) {
   const m = cmd.match(GH_TEXTO_CRU);
   if (!m) return;
   const res = conferirMemo(cmd);
   let achados = res && res.achados ? res.achados.filter((a) => a.id === "termo-privado").map((a) => ({ ...a, origem: "comando" })) : [];
+  for (const c of corposEmbutidos(cmd)) {
+    const rc = conferirMemo(c.texto);
+    if (rc && rc.achados) for (const a of rc.achados) achados.push({ ...a, origem: c.origem });
+  }
   // O arquivo de `--body-file`/`-F` legível também conta (revisão 3).
-  for (const x of cmd.matchAll(/(?:--body-file[=\s]+|(?:^|\s)-F\s*=?\s*)["']?([^\s"';|&]+)/gi)) {
-    if (/[$\x60]/.test(x[1]) || x[1] === "-") continue;
-    let caminho = x[1];
+  for (const x of cmd.matchAll(/(?:--body-file[=\s]+|(?:^|\s)-F\s*=?\s*)(?:"([^"]+)"|'([^']+)'|([^\s"';|&()\x60]+))/gi)) {
+    const arq = x[1] || x[2] || x[3];
+    if (/[$\x60]/.test(arq) || arq === "-") continue;
+    let caminho = arq;
     try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(caminho); } catch {}
     const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwdDoEvento, caminho);
     let texto = null;
     try { texto = fs.readFileSync(resolvido, "utf8"); } catch {}
     const r = texto === null ? null : conferirMemo(texto);
-    if (r && r.achados) for (const a of r.achados) achados.push({ ...a, origem: `--body-file ${x[1]}` });
+    if (r && r.achados) for (const a of r.achados) achados.push({ ...a, origem: `--body-file ${arq}` });
   }
   if (achados.length === 0) return;
   const destinos = [];
