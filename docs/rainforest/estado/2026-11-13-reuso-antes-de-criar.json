@@ -20,19 +20,19 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-11-13",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 6,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "3 canal catalogo no conferir-busca",
+        "tarefa": "5 revisar confere duplicata das novas",
         "desde": "2026-11-13T13:00:00Z",
         "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d"
       },
       {
         "agente": "executor",
-        "tarefa": "5 revisar confere duplicata das novas",
-        "desde": "2026-11-13T13:00:00Z",
+        "tarefa": "4 docs do canal catalogo",
+        "desde": "2026-11-13T13:30:00Z",
         "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d"
       }
     ],
@@ -71,6 +71,34 @@
         "iteracao": 2,
         "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
         "ts": "2026-11-13T12:18:20.102Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "d57d098",
+        "iteracao": 4,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1b1ed9f",
+        "iteracao": 3,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "ac3a82c",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "ac3a82c",
+        "iteracao": 1,
+        "sessao": "aef7560a-1607-4a01-8d4c-d69fafe1980d",
+        "ts": "2026-11-13T12:37:30.839Z"
       }
     ],
     "em": "2026-11-13"
