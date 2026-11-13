@@ -1,0 +1,14 @@
+Data: 2026-11-11
+Termos: here-string, contrabarra, segmentosParaGate
+
+$ gh issue list --state all --search "here-string" --limit 200 --json number,title,state
+[{"number":689,"state":"OPEN","title":"gate-fechar-issue: here-string com palavra nua e aspa escapada escondem gh issue close"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"}]
+
+
+$ gh issue list --state all --search "contrabarra" --limit 200 --json number,title,state
+[{"number":689,"state":"OPEN","title":"gate-fechar-issue: here-string com palavra nua e aspa escapada escondem gh issue close"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"},{"number":223,"state":"CLOSED","title":"despachar-codex monta comando como string de shell: injecao por --saida e por config"},{"number":442,"state":"CLOSED","title":"Comando impresso pelos gates de fluxo nao cola em PowerShell"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"}]
+
+
+$ gh issue list --state all --search "segmentosParaGate" --limit 200 --json number,title,state
+[{"number":689,"state":"OPEN","title":"gate-fechar-issue: here-string com palavra nua e aspa escapada escondem gh issue close"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"}]
+
