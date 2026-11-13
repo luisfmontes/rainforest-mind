@@ -37,7 +37,7 @@ Tarefa que edita arquivo existente (`arquivos: scripts/conferir-busca.cjs`) não
 
 ```
 busca:
-- catalogo | listar --raiz scripts | reaproveito recusar de scripts/conferir-busca.cjs:206
+- catalogo | listar --raiz scripts | reaproveito recusar de scripts/conferir-busca.cjs:205
 desfecho: estender
 ```
 
@@ -58,7 +58,7 @@ desfecho: estender
   no HEAD. Tarefa que só edita arquivo existente não precisa dele.
 - Os outros canais sugeridos: `livro` (`vigias/livro-de-repos.md`), `ideias`
   (`ideias.jsonl`), `memoria`, `web` e `doc` (seção abaixo). O `catalogo` é outro canal:
-  vale em toda tarefa que toca código, e o `repo` não o substitui.
+  vale em toda tarefa que `## Quando conta` cobra, e o `repo` não o substitui.
 - `pulado:` não vale para o `repo`: `- repo | pulado: <motivo>` é recusa, mesmo com
   motivo. Quando a busca no repo não acha nada, o resultado diz isso:
   `- repo | rg "..." scripts | nada reaproveitável`.
@@ -67,19 +67,26 @@ desfecho: estender
 
 ## Canal `catalogo`
 
-Toda tarefa que toca código declara este canal. Ele procura função que já existe no
-repositório antes de a tarefa criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
+Tarefa `implementar` (ou sem tipo) que declara arquivo de código em `arquivos:` declara este
+canal (`## Quando conta`). Ele procura função que já existe no repositório antes de a tarefa
+criar outra. Vem do design `2026-11-13-reuso-antes-de-criar`.
 
 - Forma: `- catalogo | listar --raiz <pasta> | <resultado>`. O resultado diz
   `reaproveito <nome> de <arquivo>:<linha>` quando acha função equivalente, ou
   `nada equivalente`.
+- `listar --raiz <pasta>` imprime o caminho **relativo à pasta**: `listar --raiz scripts`
+  acha `conferir-busca.cjs`, sem o prefixo `scripts/`. A referência no resultado leva o
+  caminho **relativo ao repositório**, com a pasta na frente: `scripts/conferir-busca.cjs:118`.
+  O checador lê o arquivo a partir da raiz do repo, então sem a pasta ele não acha.
 - `- catalogo | pulado: <motivo>` vale para tarefa que não cria função, por exemplo uma
   correção dentro de uma função que já existe. O motivo não pode ser vazio.
-- Conferência: só o resultado é lido, e só quando a linha não é `pulado:`. Toda ocorrência
-  de `arquivo:linha` no resultado é casada com `([\w.\/-]+\.[A-Za-z0-9]+):L?(\d+)`; o `L`
-  antes do número é opcional. Cada referência passa pelas quatro recusas, nesta ordem, e
-  sai com o primeiro motivo que casar:
-  1. fora do repositório: caminho absoluto, com `..` ou com `\` antes;
+- Conferência: só quando a linha não é `pulado:`, toda ocorrência de `arquivo:linha` em
+  qualquer campo depois do canal (consulta e resultado) é casada com
+  `([\w.\/-]+\.[A-Za-z][A-Za-z0-9]*):L?(\d+)`; o `L` antes do número é opcional. A
+  contrabarra vale como barra, e URL (`http://` ou `https://`) não conta como referência.
+  Cada referência passa pelas quatro recusas, nesta ordem, e sai com o primeiro motivo
+  que casar:
+  1. fora do repositório: caminho absoluto (`/...` ou `C:\...`) ou com segmento `..`;
   2. extensão que o catálogo não lê. As extensões são as de `EXTENSOES` em
      `hooks/lib/definicoes.cjs`: `.js`, `.cjs`, `.mjs`, `.ts`, `.tsx`, `.jsx`, `.py`,
      `.prw`, `.prx`, `.tlpp`, `.ch` e `.dart`;
@@ -99,7 +106,8 @@ repositório antes de a tarefa criar outra. Vem do design `2026-11-13-reuso-ante
   - não julga se `nada equivalente` é verdade. Isso é do `revisar` (D7a do design);
   - não confere se a função citada faz o mesmo que a tarefa cria. Só confere que a linha
     é início de definição;
-  - não roda o `listar` e não lê a consulta, só confere que ela existe;
+  - não roda o `listar`; a consulta não é executada, só é varrida para `arquivo:linha` e
+    precisa existir;
   - não exige as palavras `reaproveito` nem `nada equivalente`.
 
 ## Canal `doc`
@@ -165,10 +173,10 @@ Outra palavra é recusa.
 `node scripts/conferir-busca.cjs plano --slug <slug>`, que o
 `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o
 primeiro caminho declarado (com `cria` quando é novo e `edita` quando já existe) e o que
-falta. Para as referências do canal `catalogo`, o checador lê só os arquivos citados no
-resultado, com `definicoesDoArquivo` exportada por `scripts/catalogo-funcoes.cjs`. Não
-catalogo o repo inteiro. O git só é exigido quando alguma tarefa `implementar` (ou sem
-tipo) declara em `arquivos:` um caminho que não é glob, teste nem `.md`, novo ou
+falta. Para as referências do canal `catalogo`, o checador lê só os arquivos citados nos
+campos depois do canal, com `definicoesDoArquivo` exportada por `scripts/catalogo-funcoes.cjs`.
+O checador não cataloga o repo inteiro. O git só é exigido quando alguma tarefa
+`implementar` (ou sem tipo) declara em `arquivos:` um caminho que não é glob, teste nem `.md`, novo ou
 existente, porque é contra o HEAD que se confere se ele é novo. Sem
 nenhuma, o checador roda fora de repositório git: sai 0, ou 2 se houver linha `doc`
 inválida (`## Canal \`doc\``). Com alguma e fora de git, sai 69 (`nao-verificavel:`),
