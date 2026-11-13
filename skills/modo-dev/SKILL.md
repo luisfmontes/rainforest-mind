@@ -163,7 +163,7 @@ fechamento de rodada; incidente 2026-09-23).
 
 **Degrau 2.** Já existe neste codebase? Reusar helper/padrão existente.
 
-**Degrau 2b.** Procurei fora antes de construir? Quem cria arquivo novo de código no plano declara a busca no campo `busca:` (canal `repo`, resultado ou `pulado:`, e `desfecho:` adotar, estender, compor, enxertar ou construir); sem ele o checador recusa. Fora do plano, a mesma regra: nomear o que se olhou e o que se achou antes de escrever.
+**Degrau 2b.** Procurei fora antes de construir? Toda tarefa `implementar` (ou sem tipo) do plano que declara arquivo de código em `arquivos:`, nova ou que edita arquivo existente, leva no campo `busca:` o canal `catalogo` (resultado `reaproveito X de arquivo:linha`, `nada equivalente` ou `pulado: <motivo>`); o canal `repo` é obrigatório só quando a tarefa cria arquivo. `desfecho:` segue como hoje (adotar, estender, compor, enxertar ou construir), e sem o bloco o checador recusa. Fora do plano, a mesma regra: nomear o que se olhou e o que se achou antes de escrever.
 
 **Degrau 3.** Stdlib resolve? Usar. Plataforma nativa resolve? Usar.
 

@@ -1,0 +1,159 @@
+Data: 2026-11-13
+Termos: reuso, catalogo-funcoes, Method, duplicata, inventario, enxugar
+
+$ gh issue list --state all --search "reuso" --limit 200 --json number,title,state
+[{"number":632,"state":"CLOSED","title":"testa-rodar-longo.sh intermitente no CI Windows: filho do vigia morto sobrevive ao caso final"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":263,"state":"CLOSED","title":"gate-mensagem-commit nao reconhece flag curta agrupada (-am, -qm) e nao isenta corpo de heredoc"}]
+
+
+$ gh issue list --state all --search "catalogo-funcoes" --limit 200 --json number,title,state
+[{"number":648,"state":"CLOSED","title":"complexas: componente React tipado fora do catálogo e limites da leitura"}]
+
+
+$ gh issue list --state all --search "Method" --limit 200 --json number,title,state
+[{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"}]
+
+
+$ gh issue list --state all --search "duplicata" --limit 200 --json number,title,state
+[{"number":648,"state":"CLOSED","title":"complexas: componente React tipado fora do catálogo e limites da leitura"},{"number":610,"state":"CLOSED","title":"Portaria aceita só fluxo/<slug> exato: sem worktree por tarefa no despacho paralelo"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"}]
+
+
+$ gh issue list --state all --search "inventario" --limit 200 --json number,title,state
+[{"number":399,"state":"CLOSED","title":"limpar e leitor de estado tratam o inventário como retrato do presente"},{"number":225,"state":"CLOSED","title":"portaria: negação 'sem estágio ativo' lista o mesmo slug uma vez por worktree (~170 linhas repetidas)"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"}]
+
+
+$ gh issue list --state all --search "enxugar" --limit 200 --json number,title,state
+[{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"}]
+
+
+$ gh pr list --state all --search "reuso" --limit 200 --json number,title,state
+[{"number":633,"state":"MERGED","title":"testa-rodar-longo confere a identidade do processo, nao so o PID (#632, 2.2.1)"},{"number":593,"state":"MERGED","title":"Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0)"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"}]
+
+
+$ gh pr list --state all --search "catalogo-funcoes" --limit 200 --json number,title,state
+[{"number":657,"state":"MERGED","title":"Variação de complexidade por função no enxugar --diff (2.7.0)"},{"number":646,"state":"MERGED","title":"Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0)"},{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"},{"number":651,"state":"MERGED","title":"Branch com slug datado e componentes React no complexas (2.5.1)"},{"number":655,"state":"MERGED","title":"Leitor cego no plano e diagnóstico cego no depurar (2.6.0)"}]
+
+
+$ gh pr list --state all --search "Method" --limit 200 --json number,title,state
+[{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"}]
+
+
+$ gh pr list --state all --search "duplicata" --limit 200 --json number,title,state
+[{"number":647,"state":"MERGED","title":"Estado: fechar ok do lgpd-e-duplicata (PR #646 mergeado)"},{"number":646,"state":"MERGED","title":"Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0)"},{"number":599,"state":"MERGED","title":"Lote 6, seguimento: nome da junction com cwd dentro dela"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"},{"number":597,"state":"MERGED","title":"Apoio ao dev, lote 5: harness (1.79.0)"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"},{"number":651,"state":"MERGED","title":"Branch com slug datado e componentes React no complexas (2.5.1)"},{"number":55,"state":"MERGED","title":"O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"}]
+
+
+$ gh pr list --state all --search "inventario" --limit 200 --json number,title,state
+[{"number":366,"state":"MERGED","title":"Arrumacao: erros das vigias e estado vazio do inventario"},{"number":646,"state":"MERGED","title":"Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0)"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "enxugar" --limit 200 --json number,title,state
+[{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"},{"number":657,"state":"MERGED","title":"Variação de complexidade por função no enxugar --diff (2.7.0)"},{"number":646,"state":"MERGED","title":"Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0)"},{"number":324,"state":"MERGED","title":"prompts: tira arqueologia datada e drift da regra 10"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"}]
+
+
+$ git ls-remote --heads origin | grep -F "reuso"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "catalogo-funcoes"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "Method"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "duplicata"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "inventario"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "enxugar"
+(vazio)
+
+$ git log --all --grep="reuso" --oneline
+2508d757 Plano: decisão de API de framework cita a doc oficial no canal doc (2.9.0) (#667)
+ccb0dd47 testa-rodar-longo confere a identidade do processo, nao so o PID (#632, 2.2.1) (#633)
+da8396dd Painel puro: cache, preco, fatias e figuras da barra (desk-no-mod 1)
+0ef8cc97 extrai cortarBytes para hooks/lib/bytes.cjs, corrige comentario mentiroso
+e1b87680 integra tarefa 3: o bloco de memoria corta por observacao e avisa no topo
+55e396a6 orcamento: modo --agregado mede o teto real do SessionStart inteiro (Tarefa 2)
+48c2c805 Corrigir os tres avisos da revisao do lote absorver-plugin-terceiro
+99aea25a T5: Régua medida da escada, com fronteira de honestidade
+404d4449 Achado da revisao: a guarda de reuso de PID nao cobria o PID RAIZ
+897b5d2c Mata a descendencia orfa quando o timeout do spawnSync corta o filho direto
+164260ac T13: retry da fase 2 reusa o mapa de anonimato e monta o pacote sobre todos
+3e3e6aaa T13: retry da fase 2 reusa o mapa de anonimato e monta o pacote sobre todos
+839b414a Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco (#96)
+a79e116d Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco (#96)
+
+$ git log --all --grep="catalogo-funcoes" --oneline
+0c0adc21 Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0) (#646)
+
+$ git log --all --grep="Method" --oneline
+e1d2592c0 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d27 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+
+$ git log --all --grep="duplicata" --oneline
+2ad359fd Estado: fechar ok do lgpd-e-duplicata (PR #646 mergeado) (#647)
+0c0adc21 Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0) (#646)
+dc88603a Lote 6, seguimento: nome da junction com cwd dentro dela (#599)
+b593073e Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0) (#598)
+89dbf3b8 Apoio ao dev, lote 5: harness (1.79.0) (#597)
+a50e25ce Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0) (#595)
+36e24861 memoria-sessao: trava o orcamento do bloco de memoria com aviso no topo
+1199d207 Adicionar modo --commit ao conferir-publicacao (D10)
+e3a701c1 Adicionar conferir-duplicacao e avisos de allowlist/duplicata no saude
+31b862f5 Tira identificador de empregador, cliente e projeto interno do repositorio publico
+2d667805 Tarefa 6 (Issue #170): Seção 9 afirma piso, não número exato
+82a29482 Tarefas 10-11: Host reescrito para o upstream; bateria orfa removida
+a506712c Tarefas 10-11: Host reescrito para o upstream; bateria orfa removida
+9c742108 Tarefa 20: bloco de projeto truncado recusa a regeneracao com erro — nada de duplicata calada
+86ce0765 Tarefa 20: bloco de projeto truncado recusa a regeneracao com erro — nada de duplicata calada
+7b5e93a5 O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta (#55)
+fe9e5591 O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta (#55)
+f6c4bec0 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+1d5b6312 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+0391bbbf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+1427619b O /relatorio vira gerador de Issue, e a anonimizacao vira exit code
+54d9fed9 O /relatorio vira gerador de Issue, e a anonimizacao vira exit code
+7945fdd3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+6da760f3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+4e055f1c A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+12ca0281 A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+
+$ git log --all --grep="inventario" --oneline
+4cd818f7 Merge pull request #366 from luisfmontes/fluxo/arrumacao-2026-10-01
+d475701e Arrumacao: erros das vigias de 21 a 30/09 e estado vazio do inventario
+ae681310 integra o conserto da #259: cortarBytes tem fonte unico, e o inventario ve hooks/
+0730206d conferir-duplicacao --funcoes passa a varrer hooks/ (incluindo hooks/lib/)
+a433d15e Merge pull request #190 from luisfmontes/fluxo/inventario-do-acervo
+3ac0ceff Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo
+8ce21bc3 Arqueologia do inventario fechada: tres mapas, conferidos na saida real
+d82a3255 Mapa de arqueologia: acervo git — branches, worktrees, Issues e residuo
+faffa3f9 Manifesto admite os cinco agentes que faltavam, e abre o fluxo do inventario
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+7945fdd3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+6da760f3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+
+$ git log --all --grep="enxugar" --oneline
+132b1ea2 Variação de complexidade por função no enxugar --diff (2.7.0) (#657)
+32be77c2 Complexidade por função no enxugar (2.5.0) (#649)
+0c0adc21 Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0) (#646)
+97e6f29e Achado 1 (FEITO): Implementar checagem de invariantes em references/regra-<n>.md
+2dfa734c Corta as duas catracas caseiras: conferir-mutacao.cjs ja faz isso
+5de339c0 Adiciona trava contra falsos positivos na skill enxugar
+edfcc236 Tarefa 4: Skill enxugar (análise de código morto e inflação)
+a317711f Plano: 7 tarefas para os 7 itens do acoplamento do ponytail
+
+$ cat <dados>/ideias.jsonl
+{"id":"pergunta-no-repo-e-escopo-e-eu-respondi-o-inventario-todo","titulo":"A pasta da sessao ja delimitava a pergunta, e eu respondi com o inventario das tres frentes"}
+{"id":"checklist-de-inventario-anterior-no-despacho","titulo":"Despacho que reescreve artefato recebe o inventario anterior e um script confere item a item (previousSymbols)"}
+{"id":"perguntei-desenho-de-telas-que-ja-existiam","titulo":"Propus desenhar telas com o usuario quando o inventario ja estava nos docs"}
+{"id":"complexidade-no-diff-do-enxugar","titulo":"Variação de complexidade por função no enxugar --diff"}
+
+

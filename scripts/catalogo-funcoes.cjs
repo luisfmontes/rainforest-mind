@@ -51,12 +51,15 @@ const { baseDoDiff } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achad
 
 const DIRETORIOS_GERADOS = new Set(['node_modules', 'build', 'dist', '.dart_tool', '.git']);
 const MAX_CAMINHO_ASSINATURA = 200;
+const INICIO_ADVPL = /^\s*(?:method|class|(?:static\s+|user\s+)?function)\b/i;
+const MAX_CONTINUACAO = 50;
 
-const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|variacao|separar|conferir> [opções]
+const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|variacao|novas|separar|conferir> [opções]
   listar   [--raiz <dir>] [--contexto N] [--incluir-testes]
   maiores  [--raiz <dir>] [--top N]
   complexas [--raiz <dir>] [--top N]
   variacao [--raiz <dir>] [--base <ref>]
+  novas    [--raiz <dir>] [--base <ref>]
   separar  --catalogo <arq> --saida <dir> [--minimo 3]
   conferir --catalogo <arq> --grupos <arq>
 `;
@@ -165,19 +168,34 @@ function definicoesDoArquivo(raiz, rel, contextoN) {
   return definicoesDoTexto(texto, linguagem, contextoN);
 }
 
+/**
+ * ADVPL: a linha `i` junta as seguintes enquanto a juntada terminar em `;`, e o `;` vira um espaço.
+ * Só a linha que começa a definição junta; as de continuação seguem sendo lidas sozinhas no laço.
+ */
+function juntarContinuacao(linhas, i) {
+  let juntada = linhas[i];
+  let j = i;
+  while (/;\s*$/.test(juntada) && j + 1 < linhas.length && j - i < MAX_CONTINUACAO) {
+    j++;
+    juntada = juntada.replace(/\s*;\s*$/, ' ') + linhas[j].trim();
+  }
+  return juntada;
+}
+
 /** Definições de um texto já lido: serve ao disco e ao lado da base do `variacao`, sem gravar arquivo. */
 function definicoesDoTexto(texto, linguagem, contextoN) {
   const linhas = texto.split(/\r?\n/);
-  const conjuntos = linguagem === 'dart' || linguagem === 'js' ? ['topo', 'metodo'] : ['topo'];
+  const conjuntos = ['dart', 'js', 'advpl'].includes(linguagem) ? ['topo', 'metodo'] : ['topo'];
   const achados = [];
   linhas.forEach((linha, i) => {
+    const casavel = linguagem === 'advpl' && INICIO_ADVPL.test(linha) ? juntarContinuacao(linhas, i) : linha;
     for (const conjunto of conjuntos) {
-      const nome = casar(linha, linguagem, conjunto);
+      const nome = casar(casavel, linguagem, conjunto);
       if (!nome) continue;
       achados.push({
         linha: i + 1,
         nome,
-        assinatura: linha.trim().slice(0, MAX_CAMINHO_ASSINATURA),
+        assinatura: casavel.trim().slice(0, MAX_CAMINHO_ASSINATURA),
         contexto: linhas.slice(i + 1, i + 1 + contextoN).join('\n'),
         linguagem,
       });
@@ -418,6 +436,30 @@ function variacao(raiz, base) {
   return saida;
 }
 
+/**
+ * Definições do lado atual do diff de <base> cuja chave (arquivo e nome) não existe na base
+ * (design 2026-11-13-reuso-antes-de-criar). Arquivo novo tem a base vazia: todas as suas saem.
+ */
+function novas(raiz, base) {
+  const novas = [];
+  for (const rel of arquivosDoDiff(raiz, base)) {
+    const linguagem = EXTENSOES[path.extname(rel).toLowerCase()];
+    let texto;
+    try {
+      texto = fs.readFileSync(path.join(raiz, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    const textoBase = gitSaida(raiz, ['show', `${base}:./${rel}`]) ?? '';
+    const naBase = new Set(definicoesDoTexto(textoBase, linguagem, 0).map((d) => `${rel}\u0000${d.nome}`));
+    for (const d of definicoesDoTexto(texto, linguagem, 0)) {
+      const chave = `${rel}\u0000${d.nome}`;
+      if (!naBase.has(chave)) novas.push({ arquivo: rel, ...d });
+    }
+  }
+  return novas.sort((a, b) => (a.arquivo < b.arquivo ? -1 : a.arquivo > b.arquivo ? 1 : 0) || a.linha - b.linha);
+}
+
 function lerJson(arquivo, nome) {
   try {
     return JSON.parse(fs.readFileSync(arquivo, 'utf8'));
@@ -512,7 +554,7 @@ function conferir(catalogoArq, gruposArq) {
 
 function principal(argv) {
   const [sub, ...resto] = argv;
-  const subs = ['listar', 'maiores', 'complexas', 'variacao', 'separar', 'conferir'];
+  const subs = ['listar', 'maiores', 'complexas', 'variacao', 'novas', 'separar', 'conferir'];
   if (!subs.includes(sub)) {
     process.stderr.write(USO);
     process.exitCode = 1;
@@ -558,6 +600,17 @@ function principal(argv) {
     process.stdout.write(variacao(raiz, base).map((l) => l + '\n').join(''));
     return;
   }
+  if (sub === 'novas') {
+    const raiz = path.resolve(o.raiz || '.');
+    if (!repoGit(raiz)) throw new ErroDeUso('novas: --raiz não é repositório git');
+    const base = o.base || baseDoDiff(raiz);
+    if (!base) throw new ErroDeUso('novas: base não resolvida (sem origin/<padrão>); passe --base <ref>');
+    if (gitSaida(raiz, ['rev-parse', '--verify', '--quiet', `${base}^{commit}`]) === null) {
+      throw new ErroDeUso(`novas: base não resolvida: ${base}`);
+    }
+    process.stdout.write(JSON.stringify(novas(raiz, base)) + '\n');
+    return;
+  }
   if (sub === 'separar') {
     if (!o.catalogo || !o.saida) throw new ErroDeUso('separar pede --catalogo e --saida');
     const minimo = inteiro(o.minimo, 3, 'minimo');
@@ -574,13 +627,17 @@ function principal(argv) {
   process.exitCode = todasValidas ? 0 : 1;
 }
 
-try {
-  principal(process.argv.slice(2));
-} catch (e) {
-  if (e instanceof ErroDeUso) {
-    process.stderr.write(`${e.message}\n${USO}`);
-  } else {
-    process.stderr.write(`erro: ${e.message}\n`);
+module.exports = { definicoesDoArquivo, definicoesDoTexto, EXTENSOES };
+
+if (require.main === module) {
+  try {
+    principal(process.argv.slice(2));
+  } catch (e) {
+    if (e instanceof ErroDeUso) {
+      process.stderr.write(`${e.message}\n${USO}`);
+    } else {
+      process.stderr.write(`erro: ${e.message}\n`);
+    }
+    process.exitCode = 1;
   }
-  process.exitCode = 1;
 }

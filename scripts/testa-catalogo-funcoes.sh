@@ -22,6 +22,14 @@
 #  17. variacao: só as funções tocadas, antes e depois, com nova, removida, (=), ordem, pareamento
 #      por ordem, remoção pura, py como não medido, sem diff, --base explícito e os dois erros.
 #  18. variacao (revisão 1): base com nome de pasta, lacunas (base)/(atual), --raiz subpasta.
+#  19. advpl: Method ... Class entra como Classe:metodo na linha da implementação; a declaração
+#      recuada dentro da classe fica de fora; a Class continua saindo.
+#  21. advpl: Method com parêntese aninhado, retorno composto (as ... Of ...), classe com ponto e
+#      continuação com ; (a linha de baixo junta no lugar do ;; a entrada sai na primeira linha).
+#  22. advpl: cadeia de 3000 linhas com ; termina em menos de 20 s; a definição da linha 1 sai
+#      uma vez, e a juntada para no teto de MAX_CONTINUACAO.
+#  22b. advpl: 2000 Function seguidas, cada uma terminada em ;, terminam em menos de 20 s; cada
+#      uma sai uma vez (2000 entradas), e o teto de MAX_CONTINUACAO limita o custo.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -708,6 +716,83 @@ for (const b of blocos) {
 process.stdout.write(erro || "ok");
 ' "$(winpath "$SBP/cx-real.txt")" "$(winpath "$SBP/cx-cat.json")")"
 igual "5 blocos em ordem, cada um no começo que o listar dá, contribuições depois do começo" "$CONF11" "ok"
+
+echo "== 19. advpl: Method ... Class entra como Classe:metodo, na linha da implementação =="
+# Declaração recuada dentro do corpo da classe (linha 2) não entra; a implementação (linha 4) entra
+# com o nome composto; a Class (linha 1) continua saindo como antes.
+FXADV="$SBP/fixture-advpl"
+montar_repo "$FXADV" \
+  'lib/saldo.tlpp=Class SaldoProjeto\n    Method calcular()\nEndClass\nMethod calcular(cProj as character) as logical Class SaldoProjeto\n    Return .T.\n' || { echo "FALHA: montar_repo advpl"; exit 1; }
+node "$CAT" listar --raiz "$(winpath "$FXADV")" > "$SBP/c19.json" 2> "$SBP/e19.txt"; EXIT=$?
+saiu "listar do fixture advpl sai 0" "$EXIT" 0
+T19="$(tuplas < "$SBP/c19.json")"
+linha "implementação Method ... Class entra como SaldoProjeto:calcular na linha 4" "$T19" "lib/saldo.tlpp:4:SaldoProjeto:calcular:advpl"
+nao "declaração recuada (linha 2) fica fora do catálogo" "$T19" "lib/saldo.tlpp:2:"
+nao "nenhuma entrada calcular sem a classe (na linha 4)" "$T19" "lib/saldo.tlpp:4:calcular:advpl"
+linha "a Class SaldoProjeto (linha 1) continua saindo" "$T19" "lib/saldo.tlpp:1:SaldoProjeto:advpl"
+
+echo "== 20. novas: só a definição que o diff criou (design 2026-11-13-reuso-antes-de-criar) =="
+# Base tem velha() em a.js. O segundo commit acrescenta nova() em a.js e cria b.tlpp com Static Function.
+NV="$SBP/novas"
+montar_repo "$NV" 'a.js=function velha() {\n  return 1;\n}\n' || { echo "FALHA: montar_repo novas"; exit 1; }
+NVB="$(cd "$NV" && git rev-parse HEAD)"
+escrever "$NV" \
+  'a.js=function velha() {\n  return 1;\n}\nfunction nova() {\n  return 2;\n}\n' \
+  'b.tlpp=Static Function outra()\n    Return .T.\n' || { echo "FALHA: escrever novas"; exit 1; }
+( cd "$NV" && git add -A && git commit -q -m depois ) || { echo "FALHA: commit novas"; exit 1; }
+NVC="$(node "$CAT" novas --raiz "$(winpath "$NV")" --base "$NVB")"; EXIT=$?
+saiu "novas com --base do commit anterior sai 0" "$EXIT" 0
+T20="$(tuplas <<<"$NVC")"
+igual "exatamente duas entradas" "$(wc -l <<<"$T20" | tr -d ' ')" "2"
+linha "nova em a.js, na linha 4" "$T20" "a.js:4:nova:js"
+linha "outra em b.tlpp, na linha 1, como advpl" "$T20" "b.tlpp:1:outra:advpl"
+nao "velha, já na base, fica de fora" "$T20" ":velha:"
+igual "a ordem é a.js e depois b.tlpp" "$(cut -d: -f1 <<<"$T20" | tr '\n' ',')" "a.js,b.tlpp,"
+CHAVES20="$(node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{const c=JSON.parse(s);const ok=c.length===2&&c.every((e)=>["arquivo","linha","nome","assinatura","linguagem"].every((k)=>k in e));process.stdout.write(ok?"ok":"nao")})' <<<"$NVC")"
+igual "cada entrada tem arquivo, linha, nome, assinatura e linguagem" "$CHAVES20" "ok"
+ERR20="$(node "$CAT" novas --raiz "$(winpath "$NV")" --base naoexiste 2>&1 >/dev/null)"; EXIT=$?
+saiu "base que não existe sai 1" "$EXIT" 1
+igual "o stderr começa pela mensagem de base" "${ERR20%%$'\n'*}" "novas: base não resolvida: naoexiste"
+
+echo "== 21. advpl: Method com parêntese aninhado, retorno composto, classe com ponto e continuação com ; =="
+# Uma entrada por Method, na linha que começa a definição; a linha 8 é a continuação e não entra.
+FX21="$SBP/fixture-advpl-21"
+montar_repo "$FX21" \
+  'lib/extra.tlpp=Method Baz(a := Array(3)) Class Foo\n    Return\nMethod Qux(a) as Array Of Object Class Foo\n    Return\nMethod Corge() Class Foo.Sub\n    Return\nMethod Quux(a, ;\n    b) Class Foo\n    Return\n' || { echo "FALHA: montar_repo advpl 21"; exit 1; }
+node "$CAT" listar --raiz "$(winpath "$FX21")" > "$SBP/c21.json" 2> "$SBP/e21.txt"; EXIT=$?
+saiu "listar do fixture advpl 21 sai 0" "$EXIT" 0
+T21="$(tuplas < "$SBP/c21.json")"
+igual "exatamente quatro entradas" "$(wc -l <<<"$T21" | tr -d ' ')" "4"
+linha "Method com parêntese aninhado entra como Foo:Baz na linha 1" "$T21" "lib/extra.tlpp:1:Foo:Baz:advpl"
+linha "retorno as ... Of ... entra como Foo:Qux na linha 3" "$T21" "lib/extra.tlpp:3:Foo:Qux:advpl"
+linha "classe com ponto entra como Foo.Sub:Corge na linha 5" "$T21" "lib/extra.tlpp:5:Foo.Sub:Corge:advpl"
+linha "continuação com ; junta e entra como Foo:Quux na linha 7" "$T21" "lib/extra.tlpp:7:Foo:Quux:advpl"
+nao "nenhuma entrada na linha 8 (continuação)" "$T21" "lib/extra.tlpp:8:"
+
+echo "== 22. advpl: cadeia de 3000 linhas com ; termina em menos de 20 s =="
+# Fixture montada por laço do shell (3000 linhas não cabem no argumento do node). Sem o teto de
+# MAX_CONTINUACAO, a juntada da linha 1 e de cada linha da cadeia cresce até o fim do arquivo.
+FX22="$SBP/fixture-advpl-22"
+mkdir -p "$FX22/lib"
+{ echo 'User Function Grande()'; for _ in $(seq 3000); do echo '  cSql += "x" + ;'; done; echo '  "y"'; } > "$FX22/lib/longo.prw"
+montar_repo "$FX22" || { echo "FALHA: montar_repo advpl 22"; exit 1; }
+timeout 20 node "$CAT" listar --raiz "$(winpath "$FX22")" > "$SBP/c22.json" 2> "$SBP/e22.txt"; EXIT=$?
+saiu "listar do fixture advpl 22 sai 0 em menos de 20 s" "$EXIT" 0
+T22="$(tuplas < "$SBP/c22.json")"
+igual "exatamente uma entrada para lib/longo.prw" "$(grep -c '^lib/longo.prw:' <<<"$T22")" "1"
+linha "Grande entra na linha 1" "$T22" "lib/longo.prw:1:Grande:advpl"
+
+echo "== 22b. advpl: 2000 Function seguidas, cada uma terminada em ;, terminam em menos de 20 s =="
+# Teto de MAX_CONTINUACAO: cada uma das 2000 linhas que abrem definição junta no máximo o teto.
+# Sem ele, a juntada de cada linha vai até o fim do arquivo: custo quadrático, passa dos 20 s.
+FX22B="$SBP/fixture-advpl-22b"
+mkdir -p "$FX22B/lib"
+{ for n in $(seq 2000); do echo "Function f$n(a, ;"; done; echo '  b)'; } > "$FX22B/lib/muitas.prw"
+montar_repo "$FX22B" || { echo "FALHA: montar_repo advpl 22b"; exit 1; }
+timeout 20 node "$CAT" listar --raiz "$(winpath "$FX22B")" > "$SBP/c22b.json" 2> "$SBP/e22b.txt"; EXIT=$?
+saiu "listar do fixture advpl 22b sai 0 em menos de 20 s" "$EXIT" 0
+N22B="$(node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{process.stdout.write(String(JSON.parse(s).filter((e)=>e.arquivo==="lib/muitas.prw").length))})' < "$SBP/c22b.json")"
+igual "exatamente 2000 entradas com arquivo lib/muitas.prw" "$N22B" "2000"
 
 echo
 echo "ok: $ok   falhou: $falhou"

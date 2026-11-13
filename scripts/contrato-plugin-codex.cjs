@@ -49,11 +49,13 @@ const ANCORA_CORPOS_SKILLS = {
   fechar: { bytes: 14793, sha256: '829a9869c54d6ec942039039f35a634d8af5748a59a477e48fc693c53e978e0c' },
   // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
   // acrescentou texto de proposito (E4, E25, E27, E30).
-  // modo-dev re-medido em 2026-10-24: o fluxo apoio-ao-dev-lote-1 (tarefa 4, D7)
+  // modo-dev re-medido em 2026-11-13: o fluxo reuso-antes-de-criar (tarefa 10)
+  // reescreveu de proposito o degrau 2b (canal `catalogo` em toda tarefa de codigo).
+  // Antes, em 2026-10-24: o fluxo apoio-ao-dev-lote-1 (tarefa 4, D7)
   // acrescentou de proposito o degrau 2b, que aponta para o campo `busca:` do plano.
   // Antes, em 2026-09-30: o fluxo semear-travas (tarefa 9) acrescentou de proposito
   // a linha do substituir.cjs.
-  'modo-dev': { bytes: 14931, sha256: '2e0379cd5e2571167d745623c136b5bc7878af7d4f3a994d2bb7b80f68d33939' },
+  'modo-dev': { bytes: 15164, sha256: '0bb8052fbadc56addbf9ac484ecc0b479f8e5c23a0727339c456c552981cf1d4' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
   // regua re-medido em 2026-10-30: a secao "O que falsificaria esta skill" foi para
   // references/o-que-falsificaria.md (folga no teto de 16 KB, 2.2.2).
