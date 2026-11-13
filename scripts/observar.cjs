@@ -336,8 +336,13 @@ async function chamarLLM(textoDaPassada, tetoMs = 60000) {
     const timeout = Math.min(60000, tetoMs);
     let child = null;
     const timer = setTimeout(() => {
-      console.error(`AVISO: chamada à LLM expirou (timeout ${timeout}ms)`);
       if (child) child.kill();
+      if (timeout < 60000) {
+        // Corte pelo orçamento da execução, não falha do modelo.
+        resolve(ESTOUROU);
+        return;
+      }
+      console.error(`AVISO: chamada à LLM expirou (timeout ${timeout}ms)`);
       resolve(null);
     }, timeout);
 
@@ -482,29 +487,33 @@ function debug(msg) {
   }
 }
 
-// Processa uma marca d'água específica: lê, formata, passa à LLM, grava observação.
-// Com fatiamento: se o texto é maior que TETO_ARGUMENTO, divide em múltiplas chamadas.
-// Retorna true se processou com sucesso, false se pulou ou falhou.
 // #701: orçamento por EXECUÇÃO, não por marca. Ver o comentário longo dentro de
 // processarMarca para o porquê dos 25 s.
 const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 25000;
+// Abaixo disto não vale subir um processo do modelo: ele seria cortado antes de
+// responder (a latência medida é de 5 a 7 s por chamada).
+const PISO_CHAMADA_MS = 1000;
 const ESTOUROU = Symbol('estourou');
 
-// Corta a chamada (inclusive a do dublê de teste) no que sobra do orçamento. O
-// `+ 1000` faz o timer daqui sempre vencer o de chamarLLM, para o corte sair
-// como orçamento e não como "LLM retornou null".
+// Corta a chamada no que sobra do orçamento. No caminho real é o timer de
+// chamarLLM que corta: mata o processo do modelo e devolve ESTOUROU. O race
+// daqui, 50 ms depois, só corta o dublê de teste, que não tem processo.
 async function chamarComTeto(texto, tetoMs) {
   let timer;
   try {
     return await Promise.race([
-      chamarLLM(texto, tetoMs + 1000),
-      new Promise((resolve) => { timer = setTimeout(() => resolve(ESTOUROU), tetoMs); }),
+      chamarLLM(texto, tetoMs),
+      new Promise((resolve) => { timer = setTimeout(() => resolve(ESTOUROU), tetoMs + 50); }),
     ]);
   } finally {
     clearTimeout(timer);
   }
 }
 
+// Processa uma marca d'água específica: lê, formata, passa à LLM, grava observação.
+// Com fatiamento: se o texto é maior que TETO_ARGUMENTO, divide em múltiplas chamadas.
+// Retorna 'orcamento' se parou pelo orçamento da execução, true se processou tudo,
+// false se pulou ou falhou.
 async function processarMarca(conexao, marca, relogio) {
   // Calcular a janela: ler a partir de offset_processado (até onde foi processado).
   // Tarefa 12 (D14): offset_processado é o ponto já processado.
@@ -634,7 +643,7 @@ async function processarMarca(conexao, marca, relogio) {
     // Chamar LLM
     console.log(`processando fatia ${i + 1}/${fatias.length} com ${eventos.length} evento(s) (sessao=${marca.sessao})...`);
     const tetoMs = relogio.orcamento - (Date.now() - relogio.inicio);
-    if (tetoMs <= 0) {
+    if (tetoMs < PISO_CHAMADA_MS) {
       if (i === 0) {
         console.log(`orcamento de ${relogio.orcamento}ms atingido antes da marca ${marca.sessao}`);
         return 'orcamento';
@@ -700,7 +709,9 @@ async function processarMarca(conexao, marca, relogio) {
   }
 
   const pluralFatias = fatiasProcessadas > 1 ? 'fatias' : 'fatia';
-  console.log(`ok: observacao gravada em ${fatiasProcessadas} ${pluralFatias} para sessao ${marca.sessao}`);
+  if (fatiasProcessadas > 0) {
+    console.log(`ok: observacao gravada em ${fatiasProcessadas} ${pluralFatias} para sessao ${marca.sessao}`);
+  }
   return parouPorOrcamento ? 'orcamento' : true;
 }
 

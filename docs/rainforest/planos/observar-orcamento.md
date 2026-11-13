@@ -56,3 +56,13 @@ mutacao: n/a
 pronto quando: com a versão 2.13.2 nos dois `plugin.json` e no selo do README (a `origin/main` está em 2.13.1; se outro PR subir a versão antes, vale a PATCH seguinte), o CHANGELOG ganha a entrada `## 2.13.2 — 2026-11-12` acima da atual. A entrada diz, pelo comportamento, que a captura de memória no fim da sessão passa a caber em 25 s no total, por execução e por chamada, e não cancela mais os hooks de outros plugins no fim da sessão, coerente com a D1 e a D2. Conferido por `node scripts/conferir-versao.cjs --sem-fetch` saindo 0.
 
 Onde editar: `"version"` na linha 3 dos dois `plugin.json`; no `README.md` linha 7, a versão da URL do selo e do `alt`; no `CHANGELOG.md`, a entrada nova logo acima da primeira `## `, no estilo dela. Não edite entradas antigas.
+
+## Emenda da revisão 1 (achados que cabem neste PR)
+
+Vale por cima da forma prescrita da tarefa 1 onde as duas divergem:
+- `chamarComTeto` chama `chamarLLM(texto, tetoMs)`, sem `+ 1000`, e o timer do race fica em `tetoMs + 50`. No caminho real, quem corta é o timer de `chamarLLM`: ele mata o filho e devolve `ESTOUROU` quando `timeout < 60000`. Só o estouro dos 60 s continua como `null` com aviso. O race corta só o dublê de teste.
+- `PISO_CHAMADA_MS = 1000`: com menos que isso de orçamento sobrando, a fatia não chama o modelo e segue o caminho de `tetoMs` esgotado.
+- Com 0 fatia gravada, a linha `ok: observacao gravada em ...` não sai.
+- O comentário de `processarMarca` volta para junto dela e diz o retorno `'orcamento'`.
+- Bateria: 8.c, 8.d e 8.e com `TESTADOR_ORCAMENTO_MS=2500`, dublê lento de 1500 ms e corte do 8.e abaixo de 3500 ms. Caso novo 8.f: o próprio node como `RFM_CLAUDE_EXECUTAVEL`, com um `--require` que trava só o filho por 40 s; o observar tem de sair em menos de 6000 ms. Conferido à mão: sem o `kill` e com `timeout + 5000` no `spawn`, o 8.f sai vermelho (7626 ms).
+- Com `--sessao`, a chamada passa a ter no máximo o que sobra dos 25 s (antes eram 60 s). É o D2, e vale também para esse modo.
