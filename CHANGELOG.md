@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.14.1 — 2026-11-13
+
+- **O gate de publicação passa a conferir o texto de `gh issue` e `gh pr`.** Até aqui ele só via o que virava arquivo versionado (`Write`/`Edit` e `git commit`). O título, o corpo e o comentário de `gh issue create|comment|edit` e `gh pr create|comment|edit|review|merge` saíam sem conferência, e uma Issue pública chegou a sair com um termo da lista privada no corpo (Issue #702). O GitHub guarda o histórico de edição, então corrigir depois não apaga. Agora, quando o comando tem um `gh issue` ou `gh pr` que publica texto (`create`, `comment`, `edit`, `review`, `merge`, `close`, `reopen`), o gate confere, no Bash, no PowerShell e dentro de `bash -c`/`sh -c`/`eval`, o título, o corpo e o comentário escritos no comando e o conteúdo dos arquivos de `--body-file`/`-F` que dá para ler. Contra a lista de termos privados vale o comando inteiro, o que cobre heredoc, here-string, texto mandado por stdin (`printf ... | gh ... -F -`) e variável escrita no mesmo comando (`B="..."; gh ... --body "$B"`). `gh issue new` e `gh pr new` contam como `create`. A URL da Issue ou do PR (`gh issue comment https://github.com/<dono>/<repo>/issues/3`) conta como destino a mais. O destino é, nesta ordem:
+  - o `--repo`;
+  - o `GH_REPO` do próprio comando;
+  - o repositório do diretório em que o `gh` roda, que conta o `cd` antes dele;
+  - o `GH_REPO` da sessão.
+
+  Havendo mais de um destino possível, o pior decide. Com destino público, ou de visibilidade desconhecida, o achado barra; com destino privado, passa. O que o comando não carrega (arquivo lido por caminho com variável, saída de programa) não é conferido. Falsos positivos aceitos: com o diretório num repositório público e destino privado, um texto com termo privado que também cita um comando `gh issue` ou `gh pr` (`gh issue create --repo <privado> --body "<termo>: rode gh issue comment 3"`) barra; mande o corpo por `--body-file` ou rode do diretório do repositório privado. E um termo que só aparece num caminho do mesmo comando (`cd <pasta> && gh issue create ...` com destino público) barra; rode o `gh` num comando separado.
+
 ## 2.14.0 — 2026-11-13
 
 - **O catálogo de funções passa a enxergar métodos de classe TLPP.** O `scripts/catalogo-funcoes.cjs` lê agora as declarações `Method x() Class Y`, que saem como `Y:x`. Antes ficavam de fora, e num template Protheus real eram 142 métodos sem entrada no catálogo. A leitura cobre parêntese aninhado no default, `as <tipo> Of <tipo>` e classe com ponto; a assinatura quebrada com `;` é juntada só na linha que abre a definição, até 50 linhas de continuação.

@@ -472,7 +472,13 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemoto
     `  que a edição não gravou. Separe: 'git add', verifique com 'git show :<arquivo>',\n` +
     `  depois 'git commit'.\n\n`;
 
-  const saidas = ehSubagente
+  msg += textoDeSaidas(ehSubagente);
+  return msg;
+}
+
+/** O bloco de saídas que as duas mensagens de bloqueio (arquivo e `gh`) compartilham. */
+function textoDeSaidas(ehSubagente) {
+  return ehSubagente
     ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
       `NÃO crie arquivo nem variável para desativar esta trava: a decisão não é sua,\n` +
       `e desativá-la para si mesmo é o contorno que esta trava existe para impedir.\n`
@@ -484,9 +490,6 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemoto
       `  - node scripts/setup.cjs --desligar gate-publicacao --escopo projeto (preferida,\n` +
       `    desliga só neste repositório, de forma declarada e legível);\n` +
       `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira).\n`;
-
-  msg += saidas;
-  return msg;
 }
 
 // `preambulo` sai ANTES da mensagem, e so quando ha bloqueio de verdade.
@@ -731,6 +734,467 @@ function conferirCommit(ev, cwdDoEvento, agente) {
   process.exit(0);
 }
 
+/**
+ * O texto de `gh issue`/`gh pr` — Issue #702.
+ *
+ * As duas travas acima veem o que vira ARQUIVO versionado. O título, o corpo e
+ * o comentário que saem por `gh` não viram arquivo nenhum, e são tão públicos
+ * quanto um, com o agravante de o GitHub guardar o histórico de edição: em
+ * 2026-11-12 a #701 saiu com um termo da lista privada no corpo, e o mesmo texto
+ * escrito num design no mesmo dia foi barrado aqui.
+ *
+ * Confere o valor de `--title`/`--body`/`--subject`/`--comment` e o arquivo
+ * legível do `--body-file` com todos os detectores, e o comando inteiro só
+ * contra a lista de termos privados (Q2 A do Luís e revisão 3, 2026-11-13):
+ * stdin, variável escrita no comando, heredoc e here-string ficam cobertos para
+ * o termo, e um caminho de home, um e-mail de `--author-email` ou um nome de
+ * arquivo com data não barram o `gh` de rotina. Fora fica o que o comando não
+ * carrega (arquivo lido por variável, saída de programa), design D3.
+ */
+const VERBOS_GH_TEXTO = {
+  issue: new Set(["create", "comment", "edit", "close", "reopen"]),
+  pr: new Set(["create", "comment", "edit", "review", "merge", "close", "reopen"]),
+};
+// `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`).
+const APELIDOS_GH = { new: "create" };
+
+/**
+ * `owner/repo` de uma URL de Issue ou PR do GitHub; `"?"` quando o token tem
+ * cara de URL do GitHub e não se lê (falha fechada); null quando não é URL.
+ * Lida por `new URL`, que tira usuário e porta antes de olhar o host.
+ */
+function repoDaUrlGh(valor) {
+  const s = String(valor || "");
+  if (!/github\.|\/(?:issues|pull)\//i.test(s)) return null;
+  // Caminho que muda ao normalizar (`..`, `%2e`, contrabarra) pode apontar
+  // para um repo no texto e outro no `new URL`: falha fechada (revisão de
+  // segurança do commit, 2026-11-13).
+  if (/\.\.|%|\\/.test(s)) return "?";
+  try {
+    const u = new URL(s);
+    if (!/^(?:www\.)?github\.com$/i.test(u.hostname)) return "?";
+    const m = u.pathname.match(/^\/([\w.-]+)\/([\w.-]+)\/(?:issues|pull)\/\d+/i);
+    return m ? `${m[1]}/${m[2]}` : "?";
+  } catch {
+    return "?";
+  }
+}
+
+const FLAGS_GH_VALOR = {
+  longas: new Set([
+    "--repo", "--title", "--body", "--body-file", "--subject", "--base", "--head", "--label",
+    "--assignee", "--milestone", "--project", "--reviewer", "--template", "--add-label",
+    "--remove-label", "--add-assignee", "--remove-assignee", "--add-project", "--remove-project",
+    "--add-reviewer", "--remove-reviewer", "--author-email", "--match-head-commit",
+  ]),
+  curtasSempre: new Set(["-R", "-b", "-F"]),
+  // No `merge`, `-s`/`-m`/`-r`/`-d` são booleanas (squash, merge, rebase,
+  // delete-branch); no `review`, `-a`/`-c`/`-r` também. Tratá-las como flag de
+  // valor engoliria o `--body` seguinte (leitor cego do plano, 2026-11-13).
+  curtasPorVerbo: {
+    create: new Set(["-t", "-a", "-l", "-m", "-p", "-T", "-B", "-H", "-r"]),
+    edit: new Set(["-t", "-m", "-B"]),
+    merge: new Set(["-t", "-A"]),
+    comment: new Set(),
+    review: new Set(),
+    close: new Set(["-c", "--comment"]),
+    reopen: new Set(["-c", "--comment"]),
+  },
+};
+
+/**
+ * Corpos que o próprio comando carrega: heredoc (bash) e here-string
+ * (PowerShell, `@'...'@` e `@"...@"`). Contam com TODOS os detectores, porque
+ * são texto que vira Issue ou PR; o resto do comando conta só contra a lista
+ * de termos privados (revisão 4, 2026-11-13: JID em heredoc saía 0).
+ */
+function corposEmbutidos(cmd) {
+  const { posicoesDeOperadorHeredoc, corpoDeHeredoc } = require("./lib/heredoc.cjs");
+  const saida = [];
+  try {
+    for (const pos of posicoesDeOperadorHeredoc(cmd)) {
+      const h = corpoDeHeredoc(cmd, pos);
+      if (h && h.corpo) saida.push({ origem: "heredoc", texto: h.corpo });
+    }
+  } catch {}
+  for (const m of String(cmd).matchAll(/@(["'])\r?\n([\s\S]*?)\r?\n\1@/g)) saida.push({ origem: "here-string", texto: m[2] });
+  return saida;
+}
+
+/** `owner/repo` do valor de `--repo`, `"?"` quando ilegível, `null` sem valor. */
+function normalizarRepoAlvo(valor) {
+  if (valor == null || valor === "") return null;
+  if (/[$\x60]/.test(valor)) return "?";
+  const m = valor.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i);
+  if (m) return `${m[1]}/${m[2]}`;
+  const curto = valor.match(/^(?:[\w.-]+\/)?([\w.-]+)\/([\w.-]+)$/);
+  if (curto) return `${curto[1]}/${curto[2]}`; // aceita HOST/OWNER/REPO, como o gh
+  return "?";
+}
+
+function visibilidadeDoAlvo(ownerRepo) {
+  if (ownerRepo === "?" || process.env.RAINFOREST_GATE_SEM_REDE === "1") return "desconhecida";
+  return visibilidadeDeUmRepo(ownerRepo);
+}
+
+/**
+ * Família, verbo, textos e `--repo` de um segmento, ou null se o segmento não é
+ * `gh issue|pr <verbo de texto>`.
+ */
+function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
+  const { tokensComAspas } = require("./lib/tokens-comando.cjs");
+  const { normalizarExecutavel } = require("./lib/heredoc.cjs");
+  let toks;
+  try { toks = tokensComAspas(segmento).map((t) => t.v); } catch { return null; }
+  const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
+  if (iGh === -1) return null;
+
+  // `GH_REPO=x gh ...` (ou `env GH_REPO=x gh ...`): prefixo do próprio comando.
+  const repoPrefixo = toks.slice(0, iGh).filter((t) => /^GH_REPO=/.test(t))
+    .map((t) => normalizarRepoAlvo(t.slice("GH_REPO=".length)) || "?");
+  let repoValor = null;
+  const posicionais = [];
+  let i = iGh + 1;
+  for (; i < toks.length && posicionais.length < 2; i += 1) {
+    const t = toks[i];
+    if (t.startsWith("-")) {
+      if (t === "-R" || t.toLowerCase() === "--repo") { repoValor = toks[i + 1] ?? null; i += 1; }
+      else if (t.toLowerCase().startsWith("--repo=")) repoValor = t.slice("--repo=".length);
+      else if (/^-R./.test(t)) repoValor = t.slice(2).replace(/^=/, "");
+      continue;
+    }
+    posicionais.push(t.toLowerCase());
+  }
+  if (posicionais.length < 2) return null;
+  const familia = posicionais[0];
+  const verbo = APELIDOS_GH[posicionais[1]] || posicionais[1];
+  if (!VERBOS_GH_TEXTO[familia] || !VERBOS_GH_TEXTO[familia].has(verbo)) return null;
+  const repoUrls = [];
+
+  const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
+  // O comando inteiro conta como texto (Q2 A do Luís, 2026-11-13): valor de
+  // flag, heredoc, here-string, `printf ... |`, `<<<` e `B="..."; ... "$B"`
+  // estão todos escritos nele. Preço aceito: termo só num caminho do mesmo
+  // comando barra. Fora fica só o que o comando não carrega (arquivo lido por
+  // variável, saída de programa).
+  // Só o termo privado conta na origem "comando" (revisão 3): ver conferirGh.
+  const textos = [{ origem: "comando", texto: cmdOriginal }];
+  textos.push(...corposEmbutidos(cmdOriginal));
+  for (; i < toks.length; i += 1) {
+    const tok = toks[i];
+    // `gh issue comment <URL>` publica no repositório da URL, não no do cwd (revisão 3).
+    if (!tok.startsWith("-")) { const u = repoDaUrlGh(tok); if (u) repoUrls.push(u); continue; }
+    if (tok === "-") continue;
+    const longa = tok.startsWith("--");
+    const igual = tok.indexOf("=");
+    const chave = longa ? (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase() : tok.slice(0, 2);
+    const colado = longa
+      ? (igual === -1 ? null : tok.slice(igual + 1))
+      : (tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
+    const temValor = longa ? (FLAGS_GH_VALOR.longas.has(chave) || curtasDoVerbo.has(chave))
+      : (FLAGS_GH_VALOR.curtasSempre.has(chave) || curtasDoVerbo.has(chave));
+    if (!temValor) continue; // booleana
+    let valor = colado;
+    if (valor === null) { valor = toks[i + 1] ?? null; i += 1; }
+    if (valor === null) continue;
+
+    if (chave === "--repo" || chave === "-R") { repoValor = valor; continue; }
+    const ehTitulo = chave === "--title" || (chave === "-t" && verbo !== "merge");
+    const ehSubject = verbo === "merge" && (chave === "--subject" || chave === "-t");
+    const ehComentario = (verbo === "close" || verbo === "reopen") && (chave === "--comment" || chave === "-c");
+    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject || ehComentario) {
+      textos.push({ origem: chave, texto: valor });
+      continue;
+    }
+    if (chave === "--body-file" || chave === "-F") {
+      if (/[$\x60]/.test(valor) || valor === "-") continue;
+      let caminho = valor;
+      try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(valor); } catch {}
+      const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwd, caminho);
+      try {
+        textos.push({ origem: `${chave} ${valor}`, texto: fs.readFileSync(resolvido, "utf8") });
+      } catch {
+        // Ilegível ou inexistente: o comando inteiro já entrou.
+      }
+    }
+  }
+  // O prefixo só manda sozinho quando tudo antes do `gh` é atribuição pura
+  // (`A=b gh`, `env A=b gh`): `env -u`, `sudo` e afins podem mudar o ambiente
+  // que chega ao `gh`, e aí o prefixo vira só mais um destino possível.
+  const antesDoGh = toks.slice(0, iGh);
+  const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
+  const prefixoLimpo = antesDoGh.every(ehAtribuicao)
+    || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
+  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoUrls, repoPrefixo, prefixoLimpo };
+}
+
+function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
+  let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
+    `Comando: gh ${familia} ${verbo}\n` +
+    `Razão: o texto deste comando vai para um repositório ` +
+    (visibilidade === "publica" ? `público (apurado por 'gh repo view')` : `de visibilidade desconhecida (bloqueado por precaução)`) +
+    ` e contém dados sensíveis.\n\nTrechos encontrados:\n`;
+  for (const a of achados) {
+    msg += `\n  ${a.origem}, linha ${a.linha}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}\n`;
+    msg += `    ${a.o_que}\n`;
+    msg += `    → ${a.faca}\n`;
+  }
+  msg += `\nO GitHub guarda o histórico de edição de Issue e PR: corrigir depois não apaga o texto publicado.\n` +
+    `Corrija o texto e rode de novo.\n\n`;
+  return msg + textoDeSaidas(ehSubagente);
+}
+
+/**
+ * Todo `GH_REPO` mencionado ANTES do segmento (`export GH_REPO=...`,
+ * `$env:GH_REPO = ...`, ou só citado num `echo`). Quem lê texto de shell não
+ * sabe se a atribuição chega ao `gh` (subshell, `unset`, prefixo de outro
+ * comando), então a menção só pode deixar o gate MAIS rígido: os valores
+ * mencionados entram como destinos possíveis AO LADO do repositório do cwd,
+ * nunca no lugar dele (revisão de segurança, 2026-11-13). Procura até a ÚLTIMA
+ * ocorrência do segmento: com texto repetido, inclui mais menções, que só
+ * apertam.
+ */
+function mencoesDeGhRepo(mascarado, segmento) {
+  const pos = mascarado.lastIndexOf(segmento.trim());
+  const antes = pos === -1 ? mascarado : mascarado.slice(0, pos);
+  return [
+    ...antes.matchAll(/GH_REPO\s*=\s*("[^"]*"|'[^']*'|[^\s;&|)]*)/gi),
+  ].map((m) => normalizarRepoAlvo(m[1].replace(/^["']|["']$/g, "")) || "?");
+}
+
+/**
+ * Os cwds em que ESTE segmento pode rodar: `cd outro-repo && gh issue create`
+ * publica no repositório do `cd`, não no do evento. Segmento com texto repetido
+ * no comando casa com TODAS as ocorrências, e todas são conferidas. Segmento de
+ * dentro de `"$(...)"` (que `cwdPorSegmento` não separa) herda o cwd de quem o
+ * contém. Sem correspondência, incerto.
+ */
+
+function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento) {
+  const s = segmento.trim();
+  let itens = mapa.filter((m) => m.seg.trim() === s);
+  if (itens.length === 0) itens = mapa.filter((m) => m.seg.includes(s));
+  // Sem correspondência, incerto. O `incerto` vem do `cwdPorSegmento`, que
+  // resolve `"cd"`, `cd` e `builtin cd`; uma regex por cima dele deixava
+  // passar o que ele marcou (revisão de segurança, 2026-11-13). Preço aceito:
+  // `{ gh ...; }` com termo num repositório privado barra.
+  if (itens.length === 0) return [{ cwd: cwdDoEvento, incerto: true }];
+  return itens.map((m) => ({ cwd: m.cwd, incerto: Boolean(m.incerto) }));
+}
+
+/**
+ * Para onde o `gh` deste segmento pode publicar, em ordem de precedência do
+ * próprio `gh`: `--repo`; senão `GH_REPO` no prefixo do comando (todos, se
+ * repetido); senão o cwd, somado a toda menção de `GH_REPO` antes do segmento;
+ * senão o `GH_REPO` do ambiente da sessão; senão o cwd.
+ */
+function destinosDoSegmentoGh(r, locais, mencoes) {
+  const base = destinosSemUrl(r, locais, mencoes);
+  // A URL posicional SOMA aos destinos, nunca os substitui: um token que o
+  // gate lê como URL sem que o `gh` o leia assim não pode liberar um destino
+  // público (revisão de segurança do commit, 2026-11-13). O pior decide.
+  return r.repoUrls.length ? [...base, ...r.repoUrls.map((repo) => ({ repo }))] : base;
+}
+
+function destinosSemUrl(r, locais, mencoes) {
+  if (r.repoFlag) return [{ repo: r.repoFlag }];
+  const prefixo = r.repoPrefixo.map((v) => ({ repo: v }));
+  if (prefixo.length && r.prefixoLimpo) return prefixo;
+  const ambiente = process.env.GH_REPO ? [{ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" }] : [];
+  // Prefixo com wrapper, ou menção antes do segmento: tudo entra junto, e o pior decide.
+  if (prefixo.length || mencoes.length) return [...prefixo, ...mencoes.map((v) => ({ repo: v })), ...locais, ...ambiente];
+  if (ambiente.length) return ambiente;
+  return locais;
+}
+
+const PESO_VISIBILIDADE = { privada: 0, "desconhecida-declarada": 1, desconhecida: 2, publica: 3 };
+
+/** Visibilidade de um destino; `null` quando o cwd não é repositório (o `gh` não publicaria). */
+function visibilidadeDoDestino(d) {
+  if (d.repo) return visibilidadeDoAlvo(d.repo);
+  if (d.incerto) return "desconhecida";
+  const gitTop = git(d.cwd, ["rev-parse", "--show-toplevel"]);
+  if (!gitTop) return null;
+  const v = visibilidadeDoRepo(gitTop);
+  return v === "desconhecida" && declaradaPrivada(gitTop) ? "desconhecida-declarada" : v;
+}
+
+/**
+ * Junta a continuação de linha: crase + quebra no PowerShell, contrabarra +
+ * quebra no bash. A leitura juntada é conferida ao lado da crua.
+ */
+function juntarContinuacao(ferramenta, cmd) {
+  return ferramenta === "PowerShell" ? cmd.replace(/\x60\r?\n/g, " ") : juntarContrabarra(cmd);
+}
+
+function conferirGh(ev, cwdDoEvento, agente) {
+  const cmdBruto = ev.tool_input && ev.tool_input.command;
+  if (typeof cmdBruto !== "string") return;
+  // Continuação de linha do PowerShell (crase + quebra de linha): o
+  // `segmentosParaGate` quebrava ali, e o `--repo`/`--body-file` da linha de
+  // baixo ficava num segmento que ninguém lia (revisão 4, 2026-11-13). Juntar
+  // pode errar (crase dentro de aspas simples), então as DUAS leituras são
+  // conferidas e qualquer uma barra (revisão de segurança do commit).
+  const juntado = juntarContinuacao(ev.tool_name, cmdBruto);
+  // A triagem olha as duas leituras: `g\<quebra>h` só vira `gh` juntado.
+  if (!/\bgh\b/i.test(cmdBruto) && !/\bgh\b/i.test(juntado)) return;
+  conferirGhLeitura(ev, cmdBruto, cwdDoEvento, agente);
+  if (juntado !== cmdBruto) conferirGhLeitura(ev, juntado, cwdDoEvento, agente);
+}
+
+function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
+  let segmentos, mascarado;
+  try {
+    const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
+    const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
+    const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
+    const { desempacotarWrapperDeString } = require("./lib/tokens-comando.cjs");
+    // Segmenta o comando CRU. A máscara de heredoc apaga também a linha do
+    // delimitador, e o `segmentosParaGate` perdia todo `gh` das linhas seguintes
+    // (revisão, 2026-11-13). O resíduo do cru (#706: `novo.md` vira `novo.mdF`)
+    // não abre nada: com `--body-file`, os corpos embutidos contam sempre.
+    mascarado = mascararCorposDeHeredoc(cmd);
+    // Cada segmento leva os cwds possíveis. O texto de dentro de um wrapper
+    // (`bash -c "cd x && gh ..."`) tem o próprio `cwdPorSegmento`, que parte
+    // de cada cwd possível do segmento do wrapper (revisão 2, 2026-11-13).
+    const ehPs = (s) => /^(?:&\s*)?["']?(?:pwsh|powershell)(?:\.exe)?["']?(?:\s|$)|^(?:iex|invoke-expression)\b/i.test(s.trim());
+    segmentos = [];
+    const empilhar = (texto, profundidade, origens = [{ cwd: cwdDoEvento, incerto: false }], ps = ev.tool_name === "PowerShell") => {
+      const mapas = origens.map((o) => ({ o, mapa: cwdPorSegmento(texto, o.cwd, ps) }));
+      for (const s of segmentosParaGate(texto)) {
+        const locais = [];
+        for (const { o, mapa: m } of mapas) {
+          for (const l of cwdsDoSegmentoGh(m, s, o.cwd)) locais.push({ cwd: l.cwd, incerto: l.incerto || o.incerto });
+        }
+        segmentos.push({ segmento: s, locais });
+        if (profundidade >= 4) continue;
+        let w = null;
+        try { w = desempacotarWrapperDeString(s.trim(), { ferramenta: ev.tool_name }); } catch {}
+        // `bash -c "gh ..."`, `sh -c`, `eval`, `powershell -Command`
+        if (w && w.interno) empilhar(w.interno, profundidade + 1, locais, ehPs(s));
+      }
+    };
+    empilhar(cmd, 0);
+  } catch { return; }
+
+  const memo = new Map();
+  const conferirMemo = (texto) => {
+    if (!memo.has(texto)) memo.set(texto, conferirConteudo(texto));
+    return memo.get(texto);
+  };
+  let ghTextoSegmentos = 0;
+  for (const { segmento, locais } of segmentos) {
+    // O `--body-file` relativo se lê contra CADA cwd possível do segmento, e os
+    // achados se somam: com o segmento repetido, cada ocorrência lê o seu.
+    let r = null;
+    let achados = [];
+    for (const local of locais) {
+      const ri = textosDoSegmentoGh(segmento, cmd, local.cwd);
+      if (!ri) break; // não é `gh` de texto, em cwd nenhum
+      if (!r) r = ri;
+      for (const { origem, texto } of ri.textos) {
+        const res = conferirMemo(texto);
+        if (res && res.achados) for (const a of res.achados) if (origem !== "comando" || a.id === "termo-privado") achados.push({ ...a, origem });
+      }
+    }
+    if (!r) continue;
+    ghTextoSegmentos += 1;
+    if (achados.length === 0) continue;
+
+    // Falha fechada: o pior destino possível decide.
+    let pior = null;
+    for (const d of destinosDoSegmentoGh(r, locais, mencoesDeGhRepo(mascarado, segmento))) {
+      const v = visibilidadeDoDestino(d);
+      if (v !== null && (pior === null || PESO_VISIBILIDADE[v] > PESO_VISIBILIDADE[pior])) pior = v;
+    }
+    if (pior === null || pior === "privada") continue; // sem destino, ou só privado
+    if (pior === "desconhecida-declarada") achados = achados.filter((a) => a.id !== "termo-privado");
+    if (achados.length === 0) continue;
+    const vis = pior === "publica" ? "publica" : "desconhecida";
+    process.stderr.write(mensagemBloqueioGh(achados, r.familia, r.verbo, Boolean(agente), vis));
+    process.exit(2);
+  }
+  // A rede roda quando a segmentação achou menos `gh` de texto do que o texto
+  // cru tem: um `gh` perdido depois de outro achado escapava (revisão 4).
+  // Contado sobre o texto com `\` + quebra de linha juntos, como o bash e o
+  // segmentador leem; qualquer diferença, para mais ou para menos, roda a rede.
+  const nCru = (juntarContrabarra(cmd).match(GH_TEXTO_CRU_G) || []).length;
+  if (ghTextoSegmentos !== nCru) conferirGhPerdido(cmd, cwdDoEvento, agente, conferirMemo);
+}
+
+/**
+ * Rede da segmentação (revisão 2, 2026-11-13): uma aspa ímpar (`echo it\'s`,
+ * here-string com `it's`) fazia o `gh issue|pr` de escrita sumir dos
+ * segmentos, e o gate não conferia nada. Se o texto cru tem um `gh` de escrita
+ * que nenhum segmento achou, o comando inteiro é conferido e os destinos saem
+ * do texto: todo `--repo`/`-R`, todo `GH_REPO=`, o `GH_REPO` da sessão e o
+ * cwd do evento, incerto se o comando muda de diretório. O pior decide.
+ */
+// Família e verbo podem vir entre aspas e com flag no meio (`gh "issue" --repo X comment`),
+// como o gh aceita: a rede não pode ser mais estreita que a gramática (revisão 5).
+// O nome da flag começa por letra: `-{1,2}` e `[\w-]` disputando os mesmos hífens
+// davam retrocesso exponencial com ` ---a` repetido (revisão de segurança).
+const GH_TEXTO_CRU = /(?:^|[^\w.-])gh(?:\.exe)?\b[^\n]*?["']?\b(issue|pr)\b["']?(?:\s+-{1,2}\w[\w-]*(?:=[^\s;|&]*|\s+(?!-)[^\s;|&]+)?)*\s+["']?(create|new|comment|edit|close|reopen|review|merge)\b/i;
+const GH_TEXTO_CRU_G = new RegExp(GH_TEXTO_CRU.source, "gi");
+
+/**
+ * Junta contrabarra + quebra de linha como o bash: as duas somem, sem espaço
+ * (`termo\<quebra>702` é `termo702` para o bash; revisão de segurança).
+ */
+function juntarContrabarra(cmd) {
+  return cmd.replace(/\\\r?\n/g, "");
+}
+
+function conferirGhPerdido(cmdOriginal, cwdDoEvento, agente, conferirMemo) {
+  // O texto lido pela rede tem contrabarra + quebra juntas, o mesmo da
+  // contagem: `gh \<quebra> issue ...` não escapa dela (revisão de segurança).
+  const cmd = juntarContrabarra(cmdOriginal);
+  const m = cmd.match(GH_TEXTO_CRU);
+  if (!m) return;
+  const res = conferirMemo(cmd);
+  let achados = res && res.achados ? res.achados.filter((a) => a.id === "termo-privado").map((a) => ({ ...a, origem: "comando" })) : [];
+  for (const c of corposEmbutidos(cmd)) {
+    const rc = conferirMemo(c.texto);
+    if (rc && rc.achados) for (const a of rc.achados) achados.push({ ...a, origem: c.origem });
+  }
+  // O arquivo de `--body-file`/`-F` legível também conta (revisão 3).
+  for (const x of cmd.matchAll(/(?:--body-file[=\s]+|(?:^|\s)-F\s*=?\s*)(?:"([^"]+)"|'([^']+)'|([^\s"';|&()\x60]+))/gi)) {
+    const arq = x[1] || x[2] || x[3];
+    if (/[$\x60]/.test(arq) || arq === "-") continue;
+    let caminho = arq;
+    try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(caminho); } catch {}
+    const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwdDoEvento, caminho);
+    let texto = null;
+    try { texto = fs.readFileSync(resolvido, "utf8"); } catch {}
+    const r = texto === null ? null : conferirMemo(texto);
+    if (r && r.achados) for (const a of r.achados) achados.push({ ...a, origem: `--body-file ${arq}` });
+  }
+  if (achados.length === 0) return;
+  const destinos = [];
+  // Por token, sem regex com `\S*` à frente (retrocesso quadrático num comando longo).
+  for (const tok of cmd.split(/\s+/)) {
+    const u = repoDaUrlGh(tok.replace(/^["']+|["']+$/g, ""));
+    if (u) destinos.push({ repo: u });
+  }
+  for (const x of cmd.matchAll(/(?:--repo[=\s]+|(?:^|\s)-R\s*=?\s*)["']?([^\s"';|&]+)/gi)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
+  for (const x of cmd.matchAll(/\bGH_REPO\s*=\s*["']?([^\s"';|&]*)/g)) destinos.push({ repo: normalizarRepoAlvo(x[1]) || "?" });
+  if (process.env.GH_REPO) destinos.push({ repo: normalizarRepoAlvo(process.env.GH_REPO) || "?" });
+  const mudaDir = /(?:^|[\s;&|({])(?:cd|pushd|popd|chdir|set-location|sl|push-location|pop-location)\b|(?:^|\s)-C\s/i.test(cmd);
+  destinos.push({ cwd: cwdDoEvento, incerto: mudaDir });
+  let pior = null;
+  for (const d of destinos) {
+    const v = visibilidadeDoDestino(d);
+    if (v !== null && (pior === null || PESO_VISIBILIDADE[v] > PESO_VISIBILIDADE[pior])) pior = v;
+  }
+  if (pior === null || pior === "privada") return;
+  if (pior === "desconhecida-declarada") achados = achados.filter((a) => a.id !== "termo-privado");
+  if (achados.length === 0) return;
+  const vis = pior === "publica" ? "publica" : "desconhecida";
+  const v2 = m[2].toLowerCase();
+  process.stderr.write(mensagemBloqueioGh(achados, m[1].toLowerCase(), APELIDOS_GH[v2] || v2, Boolean(agente), vis));
+  process.exit(2);
+}
+
 function main() {
   let ev;
   try {
@@ -750,7 +1214,9 @@ function main() {
   const nome = ev.tool_name;
 
   // O commit é o ponto por onde tudo passa (Issue #165). Vem ANTES do filtro de
-  // ferramentas de escrita porque `Bash` nunca esteve nele.
+  // ferramentas de escrita porque `Bash` nunca esteve nele. O texto de `gh`
+  // (Issue #702) vem antes do commit, que sai 0 em comando que não é commit.
+  if (nome === "Bash" || nome === "PowerShell") conferirGh(ev, cwdDoEvento, agente);
   if (nome === "Bash" || nome === "PowerShell") conferirCommit(ev, cwdDoEvento, agente);
 
   if (!FERRAMENTAS_DE_ESCRITA.has(nome)) process.exit(0);

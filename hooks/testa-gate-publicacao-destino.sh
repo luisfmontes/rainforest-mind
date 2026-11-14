@@ -789,5 +789,185 @@ done
 if printf '%s' "$S419" | grep -q "visibilidade-repo"; then falhou=$((falhou+1)); echo "    FALHA remoto GitHub: a mensagem sugere 'visibilidade-repo'"; else ok=$((ok+1)); echo "    ok   remoto GitHub: mensagem nao sugere 'visibilidade-repo'"; fi
 
 echo
+echo "== (#702) texto de gh issue/gh pr em repositorio publico =="
+# Lista privada de teste com termo SINTETICO, em HOME de caixa de areia.
+H702="$RAIZ/home702"; mkdir -p "$H702/.rainforest"
+printf '%s\n' "termo702" > "$H702/.rainforest/termos-proibidos.txt"
+D702="$RAIZ/dados702"; mkdir -p "$D702"
+mk702() { # dir, url do remoto
+  git init -q "$1"; git -C "$1" config user.email t@t; git -C "$1" config user.name t; git -C "$1" config commit.gpgsign false
+  echo x > "$1/ok.md"; git -C "$1" add ok.md; git -C "$1" commit -qm base
+  git -C "$1" remote add origin "$2"
+}
+R702="$RAIZ/r702"; mk702 "$R702" "https://github.com/dono/publico.git"
+R702P="$RAIZ/r702p"; mk702 "$R702P" "https://github.com/dono/priv.git"
+printf 'corpo com termo702 no meio\n' > "$R702/corpo.md"
+printf 'rainforest-gate: dados-de-exemplo\nlinha com termo702\n' > "$R702/corpo2.md"
+CORPO_ABS="$(esc "$R702")/corpo.md"
+pay702() { # tool_name, cwd, command
+  node -e 'const [t,c,cmd]=process.argv.slice(1);console.log(JSON.stringify({cwd:c,hook_event_name:"PreToolUse",tool_name:t,tool_input:{command:cmd}}))' "$1" "$2" "$3"
+}
+GH702="node $SANDBOX_BIN/gh"
+confere702() { # nome, exit esperado, GH_RESPONSE, tool_name, cwd, command
+  rm -f "$D702/cache-visibilidade-repo.json"
+  local p s rc
+  p=$(pay702 "$4" "$(esc "$5")" "$6")
+  s=$(printf '%s' "$p" | env -u GH_REPO ${SESSAO_GH_REPO:+GH_REPO="$SESSAO_GH_REPO"} HOME="$H702" RFM_ROOT="$D702" GH_RESPONSE="$3" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); rc=$?
+  S702="$s"
+  if [ "$rc" = "$2" ]; then ok=$((ok+1)); echo "  ok   702 $1 (exit $rc)"
+  else falhou=$((falhou+1)); echo "  FALHA 702 $1: esperava $2, veio $rc"; echo "$s" | sed 's/^/         /' | head -10; fi
+}
+PUB='{"isPrivate":false}'; PRIV='{"isPrivate":true}'
+
+# Tarefa 1
+confere702 "issue create --body-file com termo em repo publico barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file corpo.md'
+if printf '%s' "$S702" | grep -q "\[termo-privado\]" && printf '%s' "$S702" | grep -q "Comando: gh issue create"; then ok=$((ok+1)); echo "  ok   702 mensagem cita [termo-privado] e Comando: gh issue create"
+else falhou=$((falhou+1)); echo "  FALHA 702 mensagem sem [termo-privado] ou sem Comando:"; echo "$S702" | head -10; fi
+confere702 "issue create --body-file em repo privado passa" 0 "$PRIV" Bash "$R702" 'gh issue create --title t --body-file corpo.md'
+confere702 "--body com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body "x termo702"'
+confere702 "--title com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title "termo702" --body x'
+confere702 "-F com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t -F corpo.md'
+confere702 "--body-file= com termo barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file=corpo.md'
+confere702 "--body-file com caminho absoluto barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body-file $CORPO_ABS"
+confere702 "heredoc que cria o --body-file barra" 2 "$PUB" Bash "$R702" $'cat > novo.md <<\'EOF\' && gh pr create --title t --body-file novo.md\nx termo702\nEOF'
+confere702 "issue comment --body-file barra" 2 "$PUB" Bash "$R702" 'gh issue comment 5 --body-file corpo.md'
+confere702 "pr comment -b barra" 2 "$PUB" Bash "$R702" 'gh pr comment 5 -b termo702'
+confere702 "pr merge --squash --body barra" 2 "$PUB" Bash "$R702" 'gh pr merge 5 --squash --body termo702'
+confere702 "pr merge -s --body barra (-s e booleana)" 2 "$PUB" Bash "$R702" 'gh pr merge 5 -s --body termo702'
+confere702 "pr merge -t (subject) barra" 2 "$PUB" Bash "$R702" 'gh pr merge 5 -t termo702'
+confere702 "pr review --comment -b barra" 2 "$PUB" Bash "$R702" 'gh pr review 5 --comment -b termo702'
+confere702 "issue edit --title barra" 2 "$PUB" Bash "$R702" 'gh issue edit 5 --title termo702'
+confere702 "marcador dados-de-exemplo nao isenta corpo de gh" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file corpo2.md'
+confere702 "PowerShell com --body-file barra" 2 "$PUB" PowerShell "$R702" 'gh issue create --title t --body-file corpo.md'
+confere702 "issue view passa" 0 "$PUB" Bash "$R702" 'gh issue view 12'
+confere702 "pr list passa" 0 "$PUB" Bash "$R702" 'gh pr list'
+confere702 "--body-file com variavel passa (ilegivel)" 0 "$PUB" Bash "$R702" 'gh issue create --title t --body-file $f'
+confere702 "--body com subst de comando passa (ilegivel)" 0 "$PUB" Bash "$R702" 'gh issue create --title t --body "$(cat x)"'
+confere702 "texto limpo passa" 0 "$PUB" Bash "$R702" 'gh issue create --title ok --body limpo'
+: > "$GH_INVOCATIONS"
+confere702 "issue view nao consulta visibilidade" 0 "$PUB" Bash "$R702" 'gh issue view 12'
+if grep -q "repo" "$GH_INVOCATIONS"; then falhou=$((falhou+1)); echo "  FALHA 702 issue view consultou gh repo view: $(tr '\n' ' ' < "$GH_INVOCATIONS")"
+else ok=$((ok+1)); echo "  ok   702 issue view sem invocacao de repo view"; fi
+
+# Tarefa 2: destino pelo --repo, com o duble que responde pelo nome
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "--repo dono/publico a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo dono/publico --title termo702 --body x'
+confere702 "-R dono/priv a partir de cwd publico passa" 0 "" Bash "$R702" 'gh issue create -R dono/priv --title termo702 --body x'
+confere702 "--repo= fora de repo git barra" 2 "" Bash "$FORA" 'gh issue create --repo=dono/publico --title termo702 --body x'
+confere702 "sem --repo fora de repo git passa" 0 "" Bash "$FORA" 'gh issue create --title termo702 --body x'
+confere702 "--repo com URL a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo https://github.com/dono/publico --title termo702 --body x'
+confere702 "--repo com variavel a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue create --repo $R --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh"
+
+# Tarefa 4: cwd do segmento e GH_REPO (revisao de seguranca de 2026-11-13)
+GH702="node $SANDBOX_BIN/gh-por-nome"
+R702E="$(esc "$R702")"; R702PE="$(esc "$R702P")"
+confere702 "cd para repo publico antes do gh barra" 2 "" Bash "$R702P" "cd $R702E && gh issue create --title termo702 --body x"
+confere702 "cd para repo privado antes do gh passa" 0 "" Bash "$R702" "cd $R702PE && gh issue create --title termo702 --body x"
+confere702 "cd com variavel antes do gh barra (incerto)" 2 "" Bash "$R702P" 'cd $X && gh issue create --title termo702 --body x'
+confere702 "GH_REPO publico no prefixo barra" 2 "" Bash "$R702P" 'GH_REPO=dono/publico gh issue create --title termo702 --body x'
+confere702 "export GH_REPO privado a partir de cwd privado passa" 0 "" Bash "$R702P" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "export GH_REPO privado a partir de cwd publico barra (mencao so aperta)" 2 "" Bash "$R702" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "GH_REPO privado so citado num echo nao libera cwd publico" 2 "" Bash "$R702" 'echo GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+confere702 "GH_REPO privado no prefixo libera cwd publico" 0 "" Bash "$R702" 'GH_REPO=dono/priv gh issue create --title termo702 --body x'
+confere702 "GH_REPO privado no prefixo com env -u nao libera cwd publico" 2 "" Bash "$R702" 'env -u X GH_REPO=dono/priv gh issue create --title termo702 --body x'
+SESSAO_GH_REPO=dono/publico confere702 "GH_REPO publico da sessao com mencao privada antes barra" 2 "" Bash "$R702P" 'export GH_REPO=dono/priv; gh issue create --title termo702 --body x'
+mkdir -p "$R702P/sub"; printf 'nada
+' > "$R702P/corpo.md"
+confere702 "segmento repetido le o --body-file de cada cwd" 2 "" Bash "$R702P" "cd $R702PE && gh issue create --title t --body-file corpo.md; cd $R702E && gh issue create --title t --body-file corpo.md"
+confere702 "GH_REPO repetido no prefixo, um publico, barra" 2 "" Bash "$R702P" 'GH_REPO=dono/priv GH_REPO=dono/publico gh issue create --title termo702 --body x'
+confere702 "segmento gh repetido em cwd privado e publico barra" 2 "" Bash "$R702P" "cd $R702PE && gh issue create --title termo702 --body x; cd $R702E && gh issue create --title termo702 --body x"
+confere702 "GH_REPO publico depois do gh nao conta" 0 "" Bash "$R702P" 'gh issue create --title termo702 --body x; export GH_REPO=dono/publico'
+confere702 "PowerShell \$env:GH_REPO publico barra" 2 "" PowerShell "$R702P" '$env:GH_REPO = "dono/publico"; gh issue create --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh"
+
+# Revisao 1 do fluxo gate-publicacao-gh (2026-11-13): achados com payload real
+confere702 "gh na linha depois de heredoc com aspas barra" 2 "$PUB" Bash "$R702" $'cat > n.md <<\'EOF\'\nlimpo\nEOF\ngh issue create --title termo702 --body x'
+confere702 "heredoc com termo e gh --body-file na linha seguinte barra" 2 "$PUB" Bash "$R702" $'cat > n.md <<\'EOF\'\ntermo702\nEOF\ngh pr create --title t --body-file n.md'
+printf 'texto limpo\n' > "$R702/limpo.md"
+confere702 "heredoc reescreve --body-file existente e limpo barra" 2 "$PUB" Bash "$R702" $'cat > limpo.md <<\'EOF\' && gh issue create --title t --body-file limpo.md\ntermo702 novo\nEOF'
+confere702 "bash -c com gh barra" 2 "$PUB" Bash "$R702" 'bash -c "gh issue create --title t --body termo702"'
+confere702 "sh -c com gh barra" 2 "$PUB" Bash "$R702" "sh -c 'gh pr comment 5 -b termo702'"
+confere702 "eval com gh barra" 2 "$PUB" Bash "$R702" 'eval "gh issue create --title termo702 --body x"'
+confere702 "--body com heredoc em subst de comando barra" 2 "$PUB" Bash "$R702" $'gh pr create --title t --body "$(cat <<\'EOF\'\ntermo702 aqui\nEOF\n)"'
+confere702 "--body com crase de markdown barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body 'veja \`termo702\` aqui'"
+confere702 "--body-file - com heredoc barra" 2 "$PUB" Bash "$R702" $'gh issue create --title t --body-file - <<\'EOF\'\ntermo702\nEOF'
+confere702 "PowerShell here-string com --body-file barra" 2 "$PUB" PowerShell "$R702" $'@\'\ntermo702\n\'@ | Set-Content x.md; gh issue create --title t --body-file x.md'
+confere702 "pr close --comment barra" 2 "$PUB" Bash "$R702" 'gh pr close 5 --comment termo702'
+confere702 "issue reopen -c barra" 2 "$PUB" Bash "$R702" 'gh issue reopen 5 -c termo702'
+confere702 "pr close -c limpo passa" 0 "$PUB" Bash "$R702" 'gh pr close 5 -c limpo'
+confere702 "pr review -c booleana com corpo limpo passa" 0 "$PUB" Bash "$R702" 'gh pr review 5 -c -b limpo'
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "gh entre chaves em cwd privado barra (cwd incerto, falso positivo aceito)" 2 "" Bash "$R702P" '{ gh issue create --title termo702 --body x; }'
+GH702="node $SANDBOX_BIN/gh"
+
+# Revisao 2 e Q2 A do Luis (2026-11-13): o comando inteiro conta como texto
+confere702 "here-string PowerShell com apostrofo e --body-file barra" 2 "$PUB" PowerShell "$R702" $'@\'\nit\'s termo702\n\'@ | Set-Content n.md\ngh issue create --title t --body-file n.md'
+confere702 "apostrofo escapado no bash antes do gh barra" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title termo702 --body x"
+confere702 "printf em pipe para -F - barra" 2 "$PUB" Bash "$R702" "printf 'termo702' | gh issue comment 3 -F -"
+confere702 "here-string do bash para -F - barra" 2 "$PUB" Bash "$R702" 'gh issue comment 3 -F - <<< "termo702"'
+confere702 "variavel literal no mesmo comando barra" 2 "$PUB" Bash "$R702" 'B="termo702 aqui"; gh issue create --title t --body "$B"'
+confere702 "variavel PowerShell com here-string barra" 2 "$PUB" PowerShell "$R702" $'$b = @\'\ntermo702\n\'@; gh issue create --title t --body $b'
+confere702 "variavel literal limpa passa" 0 "$PUB" Bash "$R702" 'B="limpo"; gh issue create --title t --body "$B"'
+GH702="node $SANDBOX_BIN/gh-por-nome"
+RT702="$RAIZ/termo702-pub"; mk702 "$RT702" "https://github.com/dono/outro.git"
+RT702P="$RAIZ/termo702-dir/priv"; mkdir -p "$RAIZ/termo702-dir"; mk702 "$RT702P" "https://github.com/dono/priv.git"
+confere702 "termo so no caminho do cd para repo publico barra (falso positivo aceito)" 2 "" Bash "$R702P" "cd $(esc "$RT702") && gh issue create --title ok --body limpo"
+confere702 "termo so no caminho do cd para repo privado passa" 0 "" Bash "$R702" "cd $(esc "$RT702P") && gh issue create --title ok --body limpo"
+confere702 "cd dentro de bash -c para repo publico barra" 2 "" Bash "$R702P" "bash -c \"cd $R702E && gh issue create --title termo702 --body x\""
+confere702 "cd antes de bash -c para repo publico barra" 2 "" Bash "$R702P" "cd $R702E && bash -c \"gh issue create --title termo702 --body x\""
+confere702 "cd dentro de bash -c para repo privado passa" 0 "" Bash "$R702" "bash -c \"cd $R702PE && gh issue create --title termo702 --body x\""
+confere702 "GH_REPO privado no prefixo depois de heredoc passa em cwd publico" 0 "" Bash "$R702" $'cat > n.md <<\'EOF\'\nlimpo\nEOF\nGH_REPO=dono/priv gh issue create --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh"
+# Revisao 3 (2026-11-13, rodada extra liberada pelo Luis)
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "URL de Issue publica a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue comment https://github.com/dono/publico/issues/3 --body termo702'
+confere702 "URL de PR publico a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh pr merge https://github.com/dono/publico/pull/5 --squash --body termo702'
+confere702 "URL de Issue privada a partir de cwd publico barra (a URL soma, o pior decide)" 2 "" Bash "$R702" 'gh issue comment https://github.com/dono/priv/issues/3 --body termo702'
+confere702 "URL privada em valor de flag nao libera cwd publico" 2 "" Bash "$R702" 'gh issue create --label https://github.com/dono/priv/issues/1 --title termo702 --body x'
+confere702 "URL privada de Issue a partir de cwd privado passa" 0 "" Bash "$R702P" 'gh issue comment https://github.com/dono/priv/issues/3 --body termo702'
+confere702 "URL publica no segundo posicional a partir de cwd privado barra" 2 "" Bash "$R702P" 'gh issue close 3 https://github.com/dono/publico/issues/3 --comment termo702'
+confere702 "URL do GitHub ilegivel falha fechada" 2 "" Bash "$R702P" 'gh issue comment https://user@github.com:99999999/x --body termo702'
+confere702 "URL com usuario e porta le o host" 2 "" Bash "$R702P" 'gh issue comment https://u@github.com:443/dono/publico/issues/3 --body termo702'
+confere702 "URL com .. no caminho falha fechada" 2 "" Bash "$R702P" 'gh issue comment https://github.com/dono/priv/../publico/issues/3 --body termo702'
+confere702 "URL com %2e no caminho falha fechada" 2 "" Bash "$R702P" 'gh issue comment https://github.com/dono/priv/%2e%2e/publico/issues/3 --body termo702'
+GH702="node $SANDBOX_BIN/gh"
+confere702 "issue new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh issue new --title termo702 --body x'
+confere702 "pr new e apelido de create e barra" 2 "$PUB" Bash "$R702" 'gh pr new --title t --body termo702'
+confere702 "issue new com e-mail no corpo barra" 2 "$PUB" Bash "$R702" "gh issue new --title t --body 'fale com fulano@empresa.com.br'"
+confere702 "--body-file com caminho de home passa" 0 "$PUB" Bash "$R702" 'gh pr create --title Fix --body-file C:/Users/Fulano/AppData/Local/Temp/x/body.md'
+confere702 "--author-email no merge passa" 0 "$PUB" Bash "$R702" 'gh pr merge 5 --squash --author-email fulano@empresa.com.br'
+confere702 "e-mail no valor de --body ainda barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body 'fale com fulano@empresa.com.br'"
+confere702 "gh perdido na segmentacao le o --body-file" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title t -F corpo.md"
+# Revisao 4 (2026-11-13): continuacao do PowerShell, gh perdido depois de outro, corpo embutido com todos os detectores
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "continuacao do PowerShell com --repo publico na linha de baixo barra" 2 "" PowerShell "$R702P" $'gh issue create --title "Fix" `\n  --repo dono/publico --body "termo702"'
+confere702 "continuacao do PowerShell com --repo privado na linha de baixo passa" 0 "" PowerShell "$R702P" $'gh issue create --title "termo702" `\n  --repo dono/priv --body x'
+GH702="node $SANDBOX_BIN/gh"
+confere702 "continuacao do PowerShell com --body-file na linha de baixo barra" 2 "$PUB" PowerShell "$R702" $'gh issue create --title "Fix" `\r\n  --body-file corpo.md'
+confere702 "gh perdido depois de outro gh achado barra" 2 "$PUB" Bash "$R702" "gh issue close 1 --comment ok; echo it\'s; gh issue comment 3 -F corpo.md"
+confere702 "JID em heredoc do --body-file barra" 2 "$PUB" Bash "$R702" $'cat > n.md <<\'EOF\'\nveja 5511999998888@s.whatsapp.net\nEOF\ngh issue create --title t --body-file n.md'
+mkdir -p "$R702/sp"; printf 'termo702\n' > "$R702/sp/a b.md"
+confere702 "rede le --body-file entre aspas com espaco" 2 "$PUB" Bash "$R702" "echo it\'s; gh issue create --title t --body-file \"sp/a b.md\""
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "crase e quebra dentro de aspas simples no PowerShell nao libera cwd publico" 2 "" PowerShell "$R702" $'gh issue create --title \'a`\n--repo dono/priv\' --body termo702'
+confere702 "contrabarra e quebra no bash com --repo privado passa" 0 "" Bash "$R702" $'gh \\\nissue create --repo dono/priv --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh"
+GH702="node $SANDBOX_BIN/gh"
+confere702 "gh partido por contrabarra e perdido pela segmentacao barra" 2 "$PUB" Bash "$R702" $'echo it\\\'s; gh \\\nissue comment 3 -F corpo.md'
+confere702 "termo partido por contrabarra e quebra barra" 2 "$PUB" Bash "$R702" $'gh issue create --title termo\\\n702 --body x'
+confere702 "gh partido por contrabarra e quebra barra" 2 "$PUB" Bash "$R702" $'g\\\nh issue create --title termo702 --body x'
+GH702="node $SANDBOX_BIN/gh-por-nome"
+confere702 "702 rede pega gh perdido com flag entre familia e verbo" 2 "" Bash "$R702P" $'echo it\\\'s; gh issue --repo dono/publico comment 3 --body termo702'
+confere702 "702 rede pega gh perdido com familia entre aspas" 2 "" Bash "$R702P" $'echo it\\\'s; gh "issue" create --repo dono/publico --title t --body termo702'
+confere702 "702 flag entre familia e verbo com destino privado passa" 0 "" Bash "$R702P" 'gh issue --repo dono/priv comment 3 --body termo702'
+GH702="node $SANDBOX_BIN/gh"
+# Revisão de segurança da rodada 6: hífens repetidos entre família e verbo davam
+# retrocesso exponencial na regex da rede (40 repetições bastavam para travar).
+P702R=$(pay702 Bash "$(esc "$R702")" "gh issue$(printf ' ---a%.0s' $(seq 1 40)) x")
+printf '%s' "$P702R" | env -u GH_REPO HOME="$H702" RFM_ROOT="$D702" RAINFOREST_GH="$GH702" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" timeout 20 node "$GATE" > /dev/null 2>&1; RC702R=$?
+if [ "$RC702R" = 0 ]; then ok=$((ok+1)); echo "  ok   702 rede termina com hifens repetidos entre familia e verbo"
+else falhou=$((falhou+1)); echo "  FALHA 702 rede travou ou barrou com hifens repetidos (exit $RC702R; 124 = timeout)"; fi
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

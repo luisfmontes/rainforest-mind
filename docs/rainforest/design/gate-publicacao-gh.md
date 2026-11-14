@@ -1,0 +1,129 @@
+# gate-publicacao confere o texto de `gh issue`/`gh pr` (#702)
+
+## Objetivo
+
+O `hooks/gate-publicacao-destino.cjs` barra dado sensível (termo da lista privada, telefone, JID, CPF, credencial) que entra em arquivo versionado de repositório público. A escrita é vista em dois pontos, `Write`/`Edit`/`MultiEdit` e `git commit` (Issue #165). O texto que sai por `gh issue create|comment|edit` e `gh pr create|comment|edit|review|merge` não passa por nenhum dos dois. Esse texto é tão público quanto um arquivo, e o GitHub guarda o histórico de edição.
+
+Em 2026-11-12 a #701 saiu com um termo da lista no corpo. No mesmo dia, o mesmo texto escrito num arquivo de design foi barrado pelo gate. Medido em `origin/main` (`57963349`): no `main()`, um evento `Bash`/`PowerShell` só chega a `conferirCommit`, e esse `conferirCommit` sai 0 quando o comando não casa com `RE_GIT_COMMIT`.
+
+## Decisões fechadas
+
+Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposição)* são escolhas minhas que o Luís revisa no PR.
+
+- **D1 — Comandos conferidos.** São conferidos os segmentos de um evento `Bash` ou `PowerShell` cujo comando é `gh` com família/verbo:
+  - `issue` com `create`, `comment` ou `edit`;
+  - `pr` com `create`, `comment`, `edit`, `review` ou `merge`.
+
+  Os segmentos saem de `segmentosParaGate` (exportado por `hooks/gate-subagente-sem-gh.cjs`, que já serve dois outros gates). Os tokens saem de `tokensComAspas` (`hooks/lib/tokens-comando.cjs`). A conferência roda **antes** de `conferirCommit`, porque `conferirCommit` sai 0 em comando que não é commit. — porquê: são as escritas de texto livre que o fluxo usa (corpo de Issue e de PR, comentário de evidência, mensagem de squash).
+
+- **D2 — Texto conferido.**
+  - **Valores:** o valor de `--title`/`-t`, `--body`/`-b` e `--subject` (só do `merge`, onde o `-t` curto é o subject e o `-s` é `--squash`). O valor pode vir no token seguinte, depois de `=` ou colado à flag curta.
+  - **Arquivo de corpo:** o conteúdo do arquivo de `--body-file`/`-F`. Caminho relativo resolve contra o `cwd` do evento; caminho MSYS (`/c/...`) passa por `normalizarMsys` (`hooks/lib/cwd-efetivo.cjs`).
+  - **Heredoc:** quando o arquivo do `--body-file` não existe, conta o corpo de todo heredoc do mesmo comando, que é o caso em que o comando cria o arquivo antes do `gh`. Esses corpos saem de `posicoesDeOperadorHeredoc` + `corpoDeHeredoc` (`hooks/lib/heredoc.cjs`).
+
+  Nunca conta o texto do comando inteiro: caminho de pasta de cliente num `cd` antes do `gh` seria falso positivo em toda Issue aberta de sessão de cliente para este repositório. — porquê: é o texto que vira Issue ou PR, e só ele.
+
+- **D3 — Valor ilegível passa.** *(suposição)* Ficam de fora:
+  - `--body-file` com variável (`$f`, `$env:TEMP\x.md`) ou com `-` (stdin);
+  - `--body` com `$(...)` ou crase;
+  - arquivo que não existe, sem heredoc no comando.
+
+  Nada disso barra. — porquê: a falha fechada aqui barraria a forma de rotina do PowerShell (`--body-file $f`) em todo repositório, público ou não. O vazamento medido foi `--body-file` com caminho literal, que este design cobre. O resíduo fica nomeado em "Fora de escopo".
+
+- **Emenda de D1 a D3 (revisão 1, 2026-11-13).** O revisor rodou o gate com payload real e achou estas formas saindo 0:
+  - `gh` na linha seguinte a um heredoc de delimitador entre aspas;
+  - heredoc que reescreve um `--body-file` que já existe;
+  - `bash -c`, `sh -c` e `eval`;
+  - `--body "$(cat <<'EOF' ... EOF)"` (a forma canônica de corpo de PR) e crase de markdown no corpo;
+  - here-string do PowerShell;
+  - `close`/`reopen` com `--comment`.
+
+  Daí:
+  - o comando é segmentado **cru**, e os wrappers de string são desempacotados;
+  - o texto **literal** do valor de `--title`/`--body`/`--subject`/`--comment` conta sempre, com `$(...)` ou crase dentro;
+  - quando o segmento tem `--body-file`, todo heredoc e here-string do comando conta, exista o arquivo ou não;
+  - `issue|pr close|reopen --comment` entra no D1.
+
+  O D3 fica só para o que **não está escrito no comando**: valor de variável, saída de programa, arquivo de `--body-file` com variável no caminho sem corpo embutido. O cwd incerto segue o que o `cwdPorSegmento` diz. Grupo `{ gh ...; }` ou `( gh ... )` com termo num repositório privado barra: é falso positivo aceito, porque a regex que o evitava deixava passar `cd` que o `cwdPorSegmento` resolve e ela não.
+
+- **Emenda de D2 e D3 (revisão 2, Q2 A do Luís, 2026-11-13).** A revisão 2 mediu três formas de entregar o texto que o parse de flags não via, todas saindo 0 com termo num repositório público: here-string do PowerShell com apóstrofo ímpar (`it's`) seguido de `gh ... --body-file` (a segmentação perdia o `gh`), stdin (`printf 'termo' | gh issue comment 3 -F -`, `<<<`) e variável escrita no mesmo comando (`B="termo"; gh ... --body "$B"`). Cada rodada achava outra forma, porque o gate tentava reconstruir qual texto chega ao `gh`. Daí:
+  - o texto conferido é o **comando inteiro**, mais o conteúdo legível dos `--body-file`. A regra do D2 "nunca o comando inteiro" cai, e o falso positivo que ela evitava é aceito: termo só num caminho do mesmo comando (`cd <pasta> && gh issue create --repo <público> ...`) barra. Contorno: o `gh` em comando separado;
+  - quando nenhum segmento acha `gh issue|pr` de escrita e o texto cru tem um, o comando inteiro é conferido mesmo assim, com destinos tirados do texto (todo `--repo`/`-R`, todo `GH_REPO=`, o `GH_REPO` da sessão, o cwd do evento, incerto se o comando muda de diretório);
+  - o D3 fica só para o que o comando **não carrega**: arquivo lido por caminho com variável e saída de programa.
+
+- **Emenda da revisão 3 (rodada extra, decisão do Luís, 2026-11-13).** O comando inteiro passou a acender todos os detectores, e o `gh` de rotina barrava sem termo nenhum: `--body-file C:/Users/<nome>/...` (caminho de home), `--author-email` (e-mail), nome de arquivo com data (telefone). Daí:
+  - o comando inteiro conta **só contra a lista de termos privados**, que é o que o Q2 A decidiu;
+  - o valor literal de `--title`/`--body`/`--subject`/`--comment` e o conteúdo legível dos `--body-file` seguem com todos os detectores;
+  - a rede do `gh` que a segmentação perde também lê os `--body-file`;
+  - `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`);
+  - a URL posicional (`gh issue comment https://github.com/<dono>/<repo>/issues/N`) é destino a mais, somado aos outros, e o pior decide (D4): a revisão de segurança do commit mostrou que, substituindo os outros, um token lido como URL sem que o `gh` o leia assim liberava um cwd público. Todo posicional é lido por `new URL`, e o que tem cara de URL do GitHub sem se ler entra como destino desconhecido, assim como a URL com `..`, `%` ou contrabarra no caminho, que o `new URL` normalizaria para outro repositório. A busca de URL na rede da tarefa 9 é por token, sem regex gulosa à frente.
+
+  Ficam na Issue #707: corpo de `--body-file` em UTF-16 e `GH_REPO` por `Set-Item Env:`/`New-Item Env:`/`export "GH_REPO"=`.
+
+- **Emenda da revisão 4 (decidido sem o Luís no modo automático, 2026-11-13).** A revisão 4 achou três furos de segmentação e um de detector:
+  - a continuação de linha do PowerShell (crase + quebra) separava o `--repo`/`--body-file` da linha de baixo do `gh`; agora o comando é conferido nas duas leituras, com e sem a junção (no bash, contrabarra + quebra somem sem espaço, como o bash faz), e qualquer uma barra (juntar erra com crase dentro de aspas simples, revisão de segurança do commit);
+  - um `gh` perdido depois de outro já achado escapava, porque a rede só rodava sem nenhum achado; agora ela roda em qualquer diferença entre os `gh issue|pr` de escrita que a segmentação acha e os do texto cru, contado com contrabarra + quebra juntas.. A rede lê esse mesmo texto juntado;
+  - corpo de heredoc e de here-string volta a contar com **todos** os detectores, como no D2 original: é texto que vira Issue ou PR. O resto do comando segue só contra a lista de termos (emenda da revisão 3);
+  - a rede lê `--body-file` entre aspas e sem `)` ou crase grudados.
+
+  Ficam na Issue #707: `xargs -I{}`, `--body-file` relativo depois de `cd` lido pela rede, e dado sensível que não é termo (JID, telefone) mandado por `printf ... |`, `<<<` ou variável.
+
+- **Emenda da revisão 5 (decidido sem o Luís no modo automático, 2026-11-13).** A branch foi mesclada com a `origin/main` (2.13.3 e 2.14.0, inclusive o segmentador da #711) antes de decidir, e os achados foram medidos de novo no código mesclado:
+  - a rede do `gh` perdido era mais estreita que a gramática do `gh`: com aspa ímpar antes, `gh issue --repo X comment` (flag entre família e verbo) e `gh "issue" create` saíam 0. A regex da rede passa a aceitar aspas em volta da família e do verbo e flags no meio (tarefa 20);
+  - **falso positivo aceito, contra o "destino privado sai 0" do objetivo:** com cwd num repositório público, destino privado (`--repo`, `GH_REPO` no prefixo ou URL), termo privado no texto **e** a menção a um `gh issue|pr <verbo>` dentro do texto (corpo, heredoc, `echo`, comentário), a contagem de `gh` do texto cru passa a da segmentação, a rede roda e soma o cwd público aos destinos: sai 2. As três condições juntas são necessárias (sem termo, ou sem a menção, sai 0). Não se conserta nesta rodada porque descontar a menção dentro de `--body`/heredoc reabre o "`gh` perdido depois de outro": é a rede que pega o `gh` que a segmentação pôs dentro de um corpo por engano. Contornos, rodados com payload real: corpo por `--body-file` (sai 0) ou rodar do diretório do repositório privado (sai 0);
+  - a mutação da tarefa 19 deixa de lançar exceção (`x[3] || x[2] || "-"`), e o caso falha pelo exit, não pelo `catch`;
+  - a versão passa a 2.14.1 (D7), o próximo PATCH acima da `origin/main`.
+  - revisão de segurança do commit: a regex da rede alargada tinha retrocesso exponencial (`-{1,2}` e `[\w-]` disputando os mesmos hífens, ` ---a` repetido). O nome da flag passa a começar por letra. Duas tentativas seguintes foram desfeitas: um teto de 200 caracteres entre `gh` e a família abria contorno (`gh $(: <longo>) issue comment`), e a contagem larga que o fechava fazia dois `gh` inofensivos com `-R` privado barrarem de um cwd público, alargando o falso positivo aceito. Fica o custo quadrático que a base já tinha: `gh issue -a ` repetido em 192 KB leva cerca de 7,6 s no hook inteiro (1,7 s na regex antiga), anotado na #707;
+
+  Ficam na Issue #707: o caso da bateria de crase dentro de aspas simples, que não discrimina as duas leituras (não há forma conhecida de a junção criar um `--repo` falso fora das aspas), e o here-string do PowerShell com o fechamento indentado.
+
+- **D4 — Repositório de destino.**
+  - **Com `--repo`/`-R`:** com `owner/repo` (ou URL `https://github.com/owner/repo`), a visibilidade é a desse repositório, por `visibilidadeDeUmRepo`.
+  - **Sem `--repo`:** é a do repositório git do `cwd`, por `visibilidadeDoRepo(gitTop)`, que já falha fechada quando há qualquer remoto público.
+  - **Sem `--repo` e fora de repo git:** passa, porque o `gh` não teria destino.
+  - **Valor de `--repo` ilegível** (variável): conta como `desconhecida`.
+
+  - **Emenda de 2026-11-13** (revisões de segurança do commit):
+    - o cwd é o do segmento (`cd` antes do `gh` conta);
+    - o `GH_REPO` vale como o `gh` o usa: prefixo do comando, depois o ambiente da sessão;
+    - menção a `GH_REPO` antes do segmento entra ao lado do cwd, nunca no lugar dele;
+    - com mais de um destino possível, o pior decide.
+
+  `privada` passa. `desconhecida` barra, e o filtro de `declaradaPrivada` só vale quando o destino é o repositório do `cwd`. — porquê: é a mesma regra de visibilidade do resto do gate. `--repo` é o caso comum de sessão de cliente abrindo Issue aqui (regra 6), e o `cwd` dela é o repositório privado do cliente.
+
+- **D5 — Achados conferidos: todos os de `conferirConteudo`, sem isenção de marcador.** *(suposição)* O `rainforest-gate: dados-de-exemplo` não dispensa texto de `gh`. — porquê: Issue pública com telefone é tão pública quanto arquivo. O marcador existe para fixture de teste versionada, que não sai por `gh`. Para falso positivo, a saída é a de sempre: `setup.cjs --desligar gate-publicacao` ou `RAINFOREST_GATE_OFF`.
+
+- **D6 — Mensagem de bloqueio.** O cabeçalho troca `Arquivo: <caminho>` por `Comando: gh <família> <verbo>`, mais a origem do achado (`--body`, `--title`, `--subject`, `--body-file <caminho>` ou `heredoc`). O parágrafo sobre `git add` não aparece. Diz também que o GitHub guarda o histórico de edição de Issue e PR, então corrigir depois não apaga. — porquê: a mensagem atual fala de arquivo versionado e de índice, que não é o caso.
+
+- **D7 — Versão 2.13.3 (PATCH).** CHANGELOG e as duas `plugin.json`. A linha do gate na tabela do README passa a citar o texto de `gh issue`/`gh pr`. — porquê: é conserto de cobertura de um gate existente, sem contrato novo.
+
+## Avaliado e descartado
+
+- **Conferir o comando inteiro como texto:** descartado no primeiro desenho pelo falso positivo com caminho de cliente (ver D2); adotado na revisão 2 (emenda de D2 e D3), porque o parse de flags deixava passar stdin, variável e aspa ímpar.
+- **Falha fechada no ilegível:** ver D3.
+- **Novo hook separado:** a visibilidade, o cache, os achados e a mensagem já moram em `gate-publicacao-destino.cjs`. Um hook novo duplicaria tudo isso.
+
+## Varredura
+
+`node scripts/varrer.cjs --slug gate-publicacao-gh "body-file" "termo-privado"`, com a saída em `docs/rainforest/varredura/gate-publicacao-gh.txt`.
+- Só a #702 está aberta sobre o tema.
+- As Issues de `body-file` fechadas são do `gate-fechar-issue`: grafias de flag (#664, #344) e heredoc que cria o arquivo (#407). O parse do D2 segue as mesmas grafias, mas o código fica neste gate. O `gate-fechar-issue.cjs` está em mudança no fluxo `gate-segmentador` (#689), e extrair uma lib comum agora conflitaria com aquele PR.
+
+## Em aberto
+
+- Nada que trave o plano. As suposições D3 e D5 vão listadas no PR para o Luís revisar.
+
+## Fora de escopo
+
+- `gh api` com `-f body=...` e `gh release`/`gh gist`.
+- Corpo ilegível (D3).
+- Apagar a revisão da #701 no GitHub, que é ato manual do Luís.
+
+## Pronto quando
+
+Payload real de `PreToolUse` com o `gh` falso de visibilidade da bateria e termo da lista no `HOME` de areia:
+- `gh issue create --body-file <arquivo com o termo>` num repositório público sai 2 com `[termo-privado]` e `Comando: gh issue create`.
+- A mesma coisa sai 2 por `--body`, `--title`, `-F`, heredoc que cria o arquivo e `gh pr create`/`comment`/`merge --body`, e pelo evento `PowerShell`.
+- Com o repositório privado, sai 0.
+- Com `--repo dono/publico` a partir de um `cwd` privado, sai 2. Com `--repo dono/priv` a partir de um `cwd` público, sai 0.
+- `gh issue view 12`, `gh issue create --body-file $f` e `gh pr list` sem achado saem 0.
