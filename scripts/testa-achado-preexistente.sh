@@ -282,6 +282,56 @@ GOT=0; SAIDA=""; ERR_HOOK=""; CRIT_EXIT=""; CRIT_OUT=""; CRIT_ERR=""
 r=1; if [ "$RES_P" = '{"P1":"Ponto de Entrada/69 - Gestão/x y.prw:2 está no diff","P2":"","P3":"sem arquivo:linha para conferir","P4":""}' ]; then r=0; fi
 registra "(P1) prw com espaço e acento na linha do diff é recusado; (P2) a linha antiga dele passa; (P3) sem arquivo:linha é recusado; (P4) xa.cjs:3 não é a.cjs:3 (obtido: $RES_P)" $r
 
+# ---------------------------------------------------------------- (AB) caminho absoluto
+# A abertura cita o caminho do repositório (raiz com `/`, com `\`, ou a forma MSYS
+# `/c/...`) ou o prefixo `a/` do git. A citação tem de casar com o arquivo do diff:
+# na linha alterada a marca é recusada, como na citação relativa.
+echo "-- (AB) citação por caminho absoluto ou prefixo a/ do git: casa com o diff, e a linha alterada é recusada --"
+TOP="$(cd "$R_POSIX" && git rev-parse --show-toplevel)"
+RES_AB="$(node -e '
+const { preexistentesNoDiff } = require(process.argv[1]);
+const cwd = process.argv[2];
+const top = process.argv[3];
+const barra = top.replace(/\//g, "\\");
+const m = (t) => (preexistentesNoDiff(t, cwd) || ["sem base"]).map((x) => x.motivo).join("|");
+process.stdout.write(JSON.stringify({
+  abs1: m("**[alta]** [preexistente] " + top + "/a.cjs:3 — defeito criado pela própria entrega"),
+  abs2: m("**[alta]** [preexistente] " + barra + "\\a.cjs:3 — defeito criado pela própria entrega"),
+  abs3: m("**[alta]** [preexistente] a/a.cjs:3 — defeito criado pela própria entrega"),
+  abs4: m("**[alta]** [preexistente] " + top + "/a.cjs:5 — defeito antigo"),
+}));
+' "$LIB" "$R" "$TOP" 2>&1)"
+GOT=0; SAIDA=""; ERR_HOOK=""; CRIT_EXIT=""; CRIT_OUT=""; CRIT_ERR=""
+ab_val() { node -e 'const o = JSON.parse(process.argv[1]); process.stdout.write(o[process.argv[2]]);' "$RES_AB" "$1"; }
+r=1; [ "$(ab_val abs1)" = "a.cjs:3 está no diff" ] && r=0
+registra "(abs1) marca [preexistente] com <toplevel>/a.cjs:3 (linha alterada), caminho com /, é recusada: a.cjs:3 está no diff (obtido: $(ab_val abs1))" $r
+r=1; [ "$(ab_val abs2)" = "a.cjs:3 está no diff" ] && r=0
+registra "(abs2) o mesmo caminho absoluto com \\ é recusado: a.cjs:3 está no diff (obtido: $(ab_val abs2))" $r
+r=1; [ "$(ab_val abs3)" = "a.cjs:3 está no diff" ] && r=0
+registra "(abs3) prefixo a/ do git em a/a.cjs:3 (linha alterada) é recusado: a.cjs:3 está no diff (obtido: $(ab_val abs3))" $r
+r=1; [ -z "$(ab_val abs4)" ] && r=0
+registra "(abs4, lib) caminho absoluto de linha NÃO alterada passa sem recusa (obtido: '$(ab_val abs4)')" $r
+
+# (abs4, crítica) o mesmo caminho absoluto de linha NÃO alterada de arquivo que o diff
+# toca vai à seção da entrega, não à de Issue.
+TXT_C9="**[alta]** [preexistente] $TOP/a.cjs:5 — defeito antigo em arquivo que a entrega altera
+**[media]** b.cjs:1 — defeito novo
+VEREDITO: reprovado"
+ordem_c9() {
+  node -e '
+const e = process.argv[1];
+const nova = e.indexOf("## Preexistentes no arquivo da entrega");
+const antiga = e.indexOf("## Preexistentes (não são da entrega");
+const p = e.indexOf("a.cjs:5 — defeito antigo");
+process.stdout.write(nova >= 0 && p > nova && antiga < 0 ? "sim" : "nao");
+' "$1"
+}
+critica_com "$TXT_C9" C9
+r=1
+if [ "$CRIT_EXIT" -eq 0 ] && [ "$(ordem_c9 "$CRIT_ERR")" = "sim" ] \
+  && ! tem "$CRIT_OUT" 'a.cjs:5' && ! tem "$CRIT_OUT" '[preexistente]'; then r=0; fi
+registra "(abs4, crítica) <toplevel>/a.cjs:5 (linha que o diff não mudou) sai na seção da entrega, não na de Issue" $r
+
 # ---------------------------------------------------------------- (C) crítica
 echo "-- (C) critica-do-revisor: a marca aceita sai do redespacho; a recusada fica sem a marca --"
 

@@ -224,7 +224,7 @@ function main() {
   // D4 (#697): preexistente cujo arquivo citado o diff da entrega toca vai à seção
   // da entrega (corrigir nesta branch), não à de Issue. Sem base, null: tudo na antiga.
   const tocados = arquivosTocadosPeloDiff(RAIZ);
-  const noDiff = (x) => Boolean(tocados && tocados.has(arquivoDoAchado(critica, x, tocados)));
+  const noDiff = (x) => Boolean(tocados && tocados.has(arquivoDoAchado(critica, x, tocados, RAIZ)));
   for (const x of aceitas) {
     const fim = fimDoItem(linhas, x.indice);
     for (let i = x.indice; i < fim; i += 1) fora.add(i);

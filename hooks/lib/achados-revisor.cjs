@@ -204,15 +204,59 @@ function citacaoNaAbertura(abertura, caminhos) {
 }
 
 /**
+ * Raiz do repositório de `cwd` (`git rev-parse --show-toplevel`), com `/`; null se
+ * não resolver. Mesmo jeito de chamar o git que `linhasAdicionadas`.
+ */
+function raizDoRepo(cwd) {
+  if (typeof cwd !== 'string' || !cwd) return null;
+  const r = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel'], {
+    cwd, encoding: 'utf8', stdio: 'pipe',
+  });
+  if (r.status !== 0 || typeof r.stdout !== 'string') return null;
+  return r.stdout.trim().replace(/\\/g, '/') || null;
+}
+
+/** Tira de `s` cada `prefixo/` (sem diferenciar maiúsculas), sem regex: a raiz não se escapa. */
+function tirarPrefixo(s, prefixo) {
+  const p = `${prefixo}/`;
+  let out = s;
+  let i = out.toLowerCase().indexOf(p.toLowerCase());
+  while (i >= 0) {
+    out = out.slice(0, i) + out.slice(i + p.length);
+    i = out.toLowerCase().indexOf(p.toLowerCase(), i);
+  }
+  return out;
+}
+
+/**
+ * Abertura pronta para casar com os caminhos do diff. Três passos, nesta ordem:
+ * (1) `\` vira `/`; (2) sai o prefixo do repositório seguido de `/`, com a raiz
+ * e a forma MSYS `/c/...`, sem diferenciar maiúsculas, para a citação por caminho
+ * absoluto casar com o arquivo do diff; (3) sai o prefixo `a/` ou `b/` do git
+ * quando a letra começa palavra. O limite à esquerda de `citacaoNaAbertura` segue
+ * recusando `/` e `\` nos demais casos (`docs/sub/README.md:10` não é `README.md`).
+ */
+function normalizarAbertura(abertura, raiz) {
+  let s = abertura.replace(/\\/g, '/');
+  if (raiz) {
+    const formas = [raiz];
+    const msys = /^([A-Za-z]):\/(.*)$/.exec(raiz);
+    if (msys) formas.push(`/${msys[1].toLowerCase()}/${msys[2]}`);
+    for (const f of formas) s = tirarPrefixo(s, f.replace(/\/+$/, ''));
+  }
+  return s.replace(/(^|[\s`])[ab]\//g, '$1');
+}
+
+/**
  * Arquivo citado no item (D4, #697): o caminho de `caminhos` (os do diff) que a
  * abertura cita como `caminho:linha`, pela mesma regra de `preexistentesNoDiff`
  * (`citacaoNaAbertura`); sem casar nenhum, `item.arquivo`. Barra `/`, sem `./`.
  * null se o item não cita arquivo. Caminho com espaço ou acento casa por aqui, e não
  * pelo `CAMINHO_LINHA` (ver a tarefa 3 do plano 2026-11-15-zerar-issues-13).
  */
-function arquivoDoAchado(texto, item, caminhos) {
+function arquivoDoAchado(texto, item, caminhos, cwd) {
   const linhas = typeof texto === 'string' ? texto.split(/\r?\n/) : [];
-  const abertura = (linhas[item.indice] || '').replace(/\\/g, '/');
+  const abertura = normalizarAbertura(linhas[item.indice] || '', raizDoRepo(cwd));
   const cit = citacaoNaAbertura(abertura, caminhos || []);
   const bruto = cit ? cit.arquivo : item.arquivo;
   return bruto ? bruto.replace(/\\/g, '/').replace(/^\.\//, '') : null;
@@ -240,9 +284,10 @@ function preexistentesNoDiff(texto, cwd) {
   const adicionadas = linhasAdicionadas(cwd, base);
   if (!adicionadas) return null;
   const linhas = texto.split(/\r?\n/);
+  const raiz = raizDoRepo(cwd);
   const recusadas = [];
   for (const x of marcados) {
-    const abertura = linhas[x.indice].replace(/\\/g, '/');
+    const abertura = normalizarAbertura(linhas[x.indice], raiz);
     const cit = citacaoNaAbertura(abertura, adicionadas.keys());
     let arquivo = cit ? cit.arquivo : null;
     let linha = cit ? cit.linha : null;
