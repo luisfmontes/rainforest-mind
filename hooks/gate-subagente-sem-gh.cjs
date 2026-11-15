@@ -38,7 +38,7 @@ const {
   WRAPPERS_QUE_REPASSAM, WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
   OPERADORES_DE_DOIS, colapsaContinuacaoDeLinhaNoTopo, semContrabarra,
 } = require("./lib/tokens-comando.cjs");
-const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
+const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica, restoDepoisDoHeredoc } = require("./lib/heredoc.cjs");
 const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
 
 /**
@@ -332,7 +332,7 @@ function segmentosParaGate(cmd) {
         const inicioCorpo = fimDaLinhaLogica(cmd, i);
         if (inicioCorpo !== -1 && inicioCorpo < heredoc.fim) {
           const fechado = inicioCorpo + 1 + heredoc.corpo.length < heredoc.fim;
-          const depois = fechado ? cmd.slice(heredoc.fim - 1) : '';
+          const depois = fechado ? restoDepoisDoHeredoc(cmd, heredoc.fim) : '';
           cmd = cmd.slice(0, inicioCorpo) + depois;
         }
         i = j - 1;

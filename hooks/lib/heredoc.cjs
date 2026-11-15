@@ -419,8 +419,23 @@ function mascararCorposDeHeredoc(cmd) {
   return fora;
 }
 
+/**
+ * Texto do comando que vem DEPOIS da linha do delimitador de um heredoc (#706).
+ * `fim` é o índice logo após essa linha, como devolve `corpoDeHeredoc`.
+ *  - Delimitador seguido de `\n` e de mais um comando: `cmd[fim - 1]` é a quebra
+ *    que separa o próximo comando. Ela volta, para o segmentador partir ali.
+ *  - Delimitador no fim do comando: `fim === cmd.length` e `cmd[fim - 1]` é o
+ *    ÚLTIMO CARACTERE DO DELIMITADOR. Devolvê-lo colava `F` em `novo.md` (#706).
+ *    Nesse caso o resto é vazio.
+ */
+function restoDepoisDoHeredoc(cmd, fim) {
+  if (fim <= 0 || fim >= cmd.length) return '';
+  return cmd[fim - 1] === '\n' ? cmd.slice(fim - 1) : cmd.slice(fim);
+}
+
 module.exports = {
   INTERPRETADORES_DE_HEREDOC,
+  restoDepoisDoHeredoc,
   corpoDeHeredoc,
   linhaDoHeredocTemInterpretador,
   normalizarExecutavel,

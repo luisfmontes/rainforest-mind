@@ -412,6 +412,21 @@ caso("(revisão 3) node msg.cjs (gh só em mensagem) → 0", rodarComCwd("node .
 caso("(revisão 3) bash crase.sh (crase executa) → 2", rodarComCwd("bash ./crase.sh", sandboxRev).status, 2);
 caso("(revisão) gh co 12 sem agent_id (janela principal) → 0", rodarComCwd("gh co 12", sandboxRev, { subagente: false }).status, 0);
 
+// --- #706: o último segmento não pode colar o último caractere do delimitador ---
+console.log("== gate-subagente-sem-gh (#706: delimitador do heredoc) ==");
+const { segmentosParaGate } = require(HOOK);
+const prNovo = " gh pr create --title t --body-file novo.md";
+for (const delimitador of ["EOF", "FIM", "EOF2"]) {
+  const cmd706 = `cat > novo.md <<'${delimitador}' && gh pr create --title t --body-file novo.md\nx termo\n${delimitador}`;
+  const seg706 = segmentosParaGate(cmd706);
+  caso(`(#706) segmentosParaGate não cola o último caractere do delimitador (${delimitador}) — último segmento`, seg706[seg706.length - 1], prNovo);
+}
+caso(
+  "(#706) segmentosParaGate não cola o último caractere do delimitador — gh pr create depois de heredoc com EOF fica em segmento próprio",
+  JSON.stringify(segmentosParaGate("cat <<EOF\nx\nEOF\ngh pr create --title t --body-file a.md")),
+  JSON.stringify(["cat <<EOF", "gh pr create --title t --body-file a.md"]),
+);
+
 console.log("-----------------------------------------");
 console.log(`ok: ${ok}   falhou: ${falhou}`);
 process.exit(falhou === 0 ? 0 : 1);
