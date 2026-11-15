@@ -390,6 +390,128 @@ saida=$($E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"m
 igual "marcar fechar ok sem head sai 0" "0" "$rc"
 igual "marcar fechar ok sem head avisa" "1" "$(echo "$saida" | grep -c "verificar' sem HEAD gravado")"
 
+echo "-- (u) #714: marcar fechar ok numa branch nova da main depois do squash compara com a ponta do PR --"
+# Cenario: fluxo/x tem o verificar em A; a main muda o CHANGELOG; fluxo/x traz essa
+# mudanca com o CHANGELOG resolvido; fluxo/x e squashada na main; estado-x sai da main.
+# O `gh` e um stub posto a frente no PATH (forma POSIX, e `gh.cmd` para o resolver do
+# Windows). O gate abaixo prova que `command -v gh` acha o stub antes de qualquer caso.
+PATH_ORIG="$PATH"
+GHD="$(mktemp -d)"; SANDBOXES+=("$GHD")
+cat > "$GHD/gh" <<'STUB'
+#!/bin/bash
+[ -n "${GH_STUB_EXIT:-}" ] && exit "$GH_STUB_EXIT"
+printf '%s\n' "$GH_STUB_JSON"
+STUB
+chmod +x "$GHD/gh"
+cat > "$GHD/gh.cmd" <<'STUB'
+@echo off
+if not "%GH_STUB_EXIT%"=="" exit /b %GH_STUB_EXIT%
+echo %GH_STUB_JSON%
+STUB
+export PATH="$GHD:$PATH"
+if [ "$(command -v gh)" = "$GHD/gh" ]; then
+  # $1 = 1: a ponta do PR ganha um src/a.js diferente de A, commitado depois do verificar.
+  cenario_t() {
+    caixa_nova
+    # Base comum com o CHANGELOG ja existente (como na #714): a main o tem com uma entrada
+    # antes de a branch nascer, e a branch o traz por merge (fast-forward).
+    git -C "$CX" checkout -q main
+    printf '# Changelog\n\n- entrada antiga\n' > "$CX/CHANGELOG.md"
+    git -C "$CX" add -- CHANGELOG.md
+    git -C "$CX" commit -q -m "main: changelog antigo"
+    git -C "$CX" push -q origin main
+    git -C "$CX" checkout -q fluxo/x
+    git -C "$CX" merge -q --no-edit main
+    mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+    printf '# Changelog\n\n- entrada do fluxo\n- entrada antiga\n' > "$CX/CHANGELOG.md"
+    git -C "$CX" add -- src/a.js CHANGELOG.md
+    git -C "$CX" commit -q -m "codigo e changelog da branch"
+    fechar_ate_verificar
+    git -C "$CX" checkout -q main
+    printf '# Changelog\n\n- entrada da main\n- entrada antiga\n' > "$CX/CHANGELOG.md"
+    git -C "$CX" add -- CHANGELOG.md
+    git -C "$CX" commit -q -m "main: muda o changelog"
+    git -C "$CX" push -q origin main
+    git -C "$CX" checkout -q fluxo/x
+    git -C "$CX" merge -q --no-edit main >/dev/null 2>&1
+    printf '# Changelog\n\n- entrada do fluxo\n- entrada da main\n- entrada antiga\n' > "$CX/CHANGELOG.md"
+    git -C "$CX" add -- CHANGELOG.md
+    git -C "$CX" commit -q --no-edit
+    if [ "$1" = 1 ]; then
+      printf 'y\n' > "$CX/src/a.js"
+      git -C "$CX" add -- src/a.js
+      git -C "$CX" commit -q -m "conserto depois do verificar"
+    fi
+    PONTA="$(git -C "$CX" rev-parse fluxo/x)"
+    git -C "$CX" checkout -q main
+    git -C "$CX" merge -q --squash fluxo/x
+    git -C "$CX" commit -q -m "squash do PR"
+    git -C "$CX" push -q origin main
+    git -C "$CX" switch -q -c estado-x main
+  }
+
+  cenario_t 0
+  export GH_STUB_JSON="{\"state\":\"MERGED\",\"headRefOid\":\"$PONTA\"}"
+  esperado "(u1) marcar fechar ok na branch nova, com o PR mergeado de mesmo codigo, sai 0" 0 $E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"merge","pr":7}'
+
+  cenario_t 1
+  export GH_STUB_JSON="{\"state\":\"MERGED\",\"headRefOid\":\"$PONTA\"}"
+  saida=$($E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"merge","pr":7}' 2>&1); rc=$?
+  igual "(u2) src/a.js diferente entre A e a ponta do PR sai 2" "2" "$rc"
+  igual "(u2) saida nomeia src/a.js" "1" "$(echo "$saida" | grep -c '^  src/a.js$')"
+
+  cenario_t 0
+  saida=$($E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"merge"}' 2>&1); rc=$?
+  igual "(u3) sem pr no json e sem fechar.pr sai 2" "2" "$rc"
+  igual "(u3) saida traz a dica do pr mergeado" "1" "$(echo "$saida" | grep -c '"pr"')"
+
+  cenario_t 0
+  export GH_STUB_JSON="{\"state\":\"OPEN\",\"headRefOid\":\"$PONTA\"}"
+  esperado "(u4) PR com state OPEN sai 2" 2 $E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"merge","pr":7}'
+
+  cenario_t 0
+  export GH_STUB_EXIT=4
+  saida=$($E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"merge","pr":7}' 2>&1); rc=$?
+  igual "(u5) gh saindo 4 sai 69" "69" "$rc"
+  igual "(u5) saida traz nao-verificavel" "1" "$(echo "$saida" | grep -c '^nao-verificavel: ')"
+  unset GH_STUB_EXIT
+
+  # (u6) emenda da revisao 1: a branch do fluxo rebaseada sobre a main que andou depois do
+  # `verificar` (sem squash). O HEAD nao contem A e o PR nao esta mergeado: a medida e a de
+  # sempre ('HEAD'), e o codigo que a main mudou por cima nao pode acusar a branch.
+  cenario_u6() {
+    caixa_nova
+    git -C "$CX" checkout -q main
+    printf '# Changelog\n\n- entrada antiga\n' > "$CX/CHANGELOG.md"
+    git -C "$CX" add -- CHANGELOG.md
+    git -C "$CX" commit -q -m "main: changelog antigo"
+    git -C "$CX" push -q origin main
+    git -C "$CX" checkout -q fluxo/x
+    git -C "$CX" merge -q --no-edit main
+    mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+    git -C "$CX" add -- src/a.js
+    git -C "$CX" commit -q -m "codigo da branch"
+    fechar_ate_verificar
+    VA_U6="$(git -C "$CX" rev-parse HEAD)"
+    git -C "$CX" checkout -q main
+    printf '# Changelog\n\n- entrada da main\n- entrada antiga\n' > "$CX/CHANGELOG.md"
+    git -C "$CX" add -- CHANGELOG.md
+    git -C "$CX" commit -q -m "main: muda o changelog"
+    git -C "$CX" push -q origin main
+    git -C "$CX" checkout -q fluxo/x
+    git -C "$CX" rebase -q main
+  }
+  cenario_u6
+  git -C "$CX" merge-base --is-ancestor "$VA_U6" HEAD; ancestral_rc=$?
+  igual "(u6) depois do rebase o verificar (A) nao e ancestral do HEAD" "1" "$ancestral_rc"
+  export GH_STUB_JSON='{"state":"OPEN","headRefOid":"0000000000000000000000000000000000000000"}'
+  esperado "(u6) branch do fluxo rebaseada, PR OPEN, sai 0" 0 $E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"pr","pr":7}'
+else
+  falhou=$((falhou+1)); echo "  FALHA (t): 'command -v gh' nao acha o stub ($(command -v gh)); secao (t) abortada"
+fi
+unset GH_STUB_JSON GH_STUB_EXIT
+PATH="$PATH_ORIG"
+
 echo "-- (t) emenda 4: com a main parada, a mesma linha mudada de lugar sai 2 --"
 caixa_nova
 mkdir -p "$CX/src" && printf '[a]\nretries = 3\n[b]\nretries = 3\n' > "$CX/src/cfg.txt"

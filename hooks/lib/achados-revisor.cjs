@@ -168,6 +168,101 @@ function baseDoDiff(cwd) {
 }
 
 /**
+ * Arquivos que a entrega toca (D4, #697): `git diff --name-only --no-renames <base> HEAD`
+ * em `cwd`. Set de caminhos com `/`; null sem base ou se o git falhar.
+ */
+function arquivosTocadosPeloDiff(cwd) {
+  const base = baseDoDiff(cwd);
+  if (!base) return null;
+  const r = spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=off', 'diff', '--name-only', '--no-renames', base, 'HEAD'], {
+    cwd, encoding: 'utf8', stdio: 'pipe', maxBuffer: 64 * 1024 * 1024,
+  });
+  if (r.status !== 0 || typeof r.stdout !== 'string') return null;
+  return new Set(r.stdout.split(/\r?\n/).filter(Boolean));
+}
+
+/**
+ * Citação `caminho:linha` na abertura do item: o caminho mais longo de `caminhos`
+ * que aparece seguido de `:<n>` num limite de palavra (`xa.cjs:3` não cita `a.cjs`).
+ * Base de `preexistentesNoDiff` e de `arquivoDoAchado`.
+ * @returns {{arquivo:string, linha:number}|null}
+ */
+function citacaoNaAbertura(abertura, caminhos) {
+  let arquivo = null;
+  let linha = null;
+  for (const caminho of caminhos) {
+    if (arquivo && caminho.length <= arquivo.length) continue;
+    // o caminho começa num limite: `xa.cjs:3` não é citação de `a.cjs`, e
+    // `docs/sub/README.md:10` não é citação de `README.md` (sufixo depois de
+    // `/` ou `\`). Espaço continua valendo como limite (`[preexistente] a.cjs:5`).
+    for (let i = abertura.indexOf(`${caminho}:`); i >= 0; i = abertura.indexOf(`${caminho}:`, i + 1)) {
+      const n = /^\d+/.exec(abertura.slice(i + caminho.length + 1));
+      if (n && (i === 0 || !/[\w./\\-]/.test(abertura[i - 1]))) { arquivo = caminho; linha = Number(n[0]); break; }
+    }
+  }
+  return arquivo ? { arquivo, linha } : null;
+}
+
+/**
+ * Raiz do repositório de `cwd` (`git rev-parse --show-toplevel`), com `/`; null se
+ * não resolver. Mesmo jeito de chamar o git que `linhasAdicionadas`.
+ */
+function raizDoRepo(cwd) {
+  if (typeof cwd !== 'string' || !cwd) return null;
+  const r = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel'], {
+    cwd, encoding: 'utf8', stdio: 'pipe',
+  });
+  if (r.status !== 0 || typeof r.stdout !== 'string') return null;
+  return r.stdout.trim().replace(/\\/g, '/') || null;
+}
+
+/** Tira de `s` cada `prefixo/` (sem diferenciar maiúsculas), sem regex: a raiz não se escapa. */
+function tirarPrefixo(s, prefixo) {
+  const p = `${prefixo}/`;
+  let out = s;
+  let i = out.toLowerCase().indexOf(p.toLowerCase());
+  while (i >= 0) {
+    out = out.slice(0, i) + out.slice(i + p.length);
+    i = out.toLowerCase().indexOf(p.toLowerCase(), i);
+  }
+  return out;
+}
+
+/**
+ * Abertura pronta para casar com os caminhos do diff. Três passos, nesta ordem:
+ * (1) `\` vira `/`; (2) sai o prefixo do repositório seguido de `/`, com a raiz
+ * e a forma MSYS `/c/...`, sem diferenciar maiúsculas, para a citação por caminho
+ * absoluto casar com o arquivo do diff; (3) sai o prefixo `a/` ou `b/` do git
+ * quando a letra começa palavra. O limite à esquerda de `citacaoNaAbertura` segue
+ * recusando `/` e `\` nos demais casos (`docs/sub/README.md:10` não é `README.md`).
+ */
+function normalizarAbertura(abertura, raiz) {
+  let s = abertura.replace(/\\/g, '/');
+  if (raiz) {
+    const formas = [raiz];
+    const msys = /^([A-Za-z]):\/(.*)$/.exec(raiz);
+    if (msys) formas.push(`/${msys[1].toLowerCase()}/${msys[2]}`);
+    for (const f of formas) s = tirarPrefixo(s, f.replace(/\/+$/, ''));
+  }
+  return s.replace(/(^|[\s`])[ab]\//g, '$1');
+}
+
+/**
+ * Arquivo citado no item (D4, #697): o caminho de `caminhos` (os do diff) que a
+ * abertura cita como `caminho:linha`, pela mesma regra de `preexistentesNoDiff`
+ * (`citacaoNaAbertura`); sem casar nenhum, `item.arquivo`. Barra `/`, sem `./`.
+ * null se o item não cita arquivo. Caminho com espaço ou acento casa por aqui, e não
+ * pelo `CAMINHO_LINHA` (ver a tarefa 3 do plano 2026-11-15-zerar-issues-13).
+ */
+function arquivoDoAchado(texto, item, caminhos, cwd) {
+  const linhas = typeof texto === 'string' ? texto.split(/\r?\n/) : [];
+  const abertura = normalizarAbertura(linhas[item.indice] || '', raizDoRepo(cwd));
+  const cit = citacaoNaAbertura(abertura, caminhos || []);
+  const bruto = cit ? cit.arquivo : item.arquivo;
+  return bruto ? bruto.replace(/\\/g, '/').replace(/^\.\//, '') : null;
+}
+
+/**
  * D3/D9 (lote 6): os achados `[preexistente]` cujo `arquivo:linha` cai numa linha
  * adicionada ou alterada por `git diff -U0 <base>..HEAD` — marca recusada.
  * Sem marca no texto, devolve [] sem tocar no git. Com marca e sem base
@@ -189,19 +284,13 @@ function preexistentesNoDiff(texto, cwd) {
   const adicionadas = linhasAdicionadas(cwd, base);
   if (!adicionadas) return null;
   const linhas = texto.split(/\r?\n/);
+  const raiz = raizDoRepo(cwd);
   const recusadas = [];
   for (const x of marcados) {
-    const abertura = linhas[x.indice].replace(/\\/g, '/');
-    let arquivo = null;
-    let linha = null;
-    for (const caminho of adicionadas.keys()) {
-      if (arquivo && caminho.length <= arquivo.length) continue;
-      // o caminho começa num limite: `xa.cjs:3` não é citação de `a.cjs`
-      for (let i = abertura.indexOf(`${caminho}:`); i >= 0; i = abertura.indexOf(`${caminho}:`, i + 1)) {
-        const n = /^\d+/.exec(abertura.slice(i + caminho.length + 1));
-        if (n && (i === 0 || !/[\w.-]/.test(abertura[i - 1]))) { arquivo = caminho; linha = Number(n[0]); break; }
-      }
-    }
+    const abertura = normalizarAbertura(linhas[x.indice], raiz);
+    const cit = citacaoNaAbertura(abertura, adicionadas.keys());
+    let arquivo = cit ? cit.arquivo : null;
+    let linha = cit ? cit.linha : null;
     if (!arquivo && x.arquivo && x.linha !== null) {
       arquivo = x.arquivo.replace(/\\/g, '/').replace(/^\.\//, '');
       linha = x.linha;
@@ -237,4 +326,5 @@ function fimDoItem(linhas, indice) {
 module.exports = {
   contarAchados, incoerencia, listarAchados, itensAchados,
   preexistentesNoDiff, tirarMarcaPreexistente, fimDoItem, baseDoDiff,
+  arquivosTocadosPeloDiff, arquivoDoAchado,
 };

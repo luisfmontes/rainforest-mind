@@ -1,0 +1,141 @@
+{
+  "slug": "2026-11-15-zerar-issues-13",
+  "titulo": "Rodada 13: fechar pós-squash (#714), busca: com continuação (#709), revisor que roda código do projeto (#697)",
+  "criado_em": "2026-11-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-15-zerar-issues-13.md",
+    "em": "2026-11-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-15-zerar-issues-13.md",
+    "tarefas": 4,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-11-15"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-15",
+    "em": "2026-11-15",
+    "integradas": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "node scripts/integrar-tarefa.cjs (volta 3: tarefa 3; passo 3 conferir-fluxo mutacoes)",
+    "saida": "t3 bf409905 aceita; tarefas 1, 2 e 4 inalteradas desde a volta 2",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-reabrir.sh, (u) #714 u1"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh, secao 9, catalogo (v), (v2), (v4)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-achado-preexistente.sh, (#697/D4) preexistente em arquivo que o diff toca"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de metodo e numero de versao, sem comportamento a inverter"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "c517296cc026311cb32211fd59a349ca84578447",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a05b6e06c0e73a423",
+        "veredito": "ok",
+        "em": "2026-11-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a05b6e06c0e73a423.jsonl"
+      }
+    ],
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a3d4fe876c5895aab",
+            "veredito": "reprovado",
+            "em": "2026-11-15",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a3d4fe876c5895aab.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac5b742da6324f807",
+            "veredito": "reprovado",
+            "em": "2026-11-15",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-ac5b742da6324f807.jsonl"
+          }
+        ]
+      }
+    ],
+    "achados": 1,
+    "base": "536fc2497358ff88bd0dbbb6c800a5a72cd4323b",
+    "head": "c517296cc026311cb32211fd59a349ca84578447",
+    "em": "2026-11-15"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-estado-reabrir.sh; bash scripts/testa-conferir-busca.sh; bash scripts/testa-achado-preexistente.sh; bash scripts/testa-teto-skills.sh; bash hooks/testa-abertura-mod-config.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; bash scripts/testa-conferir-fluxo.sh; bash scripts/testa-critica-voltas.sh; bash hooks/testa-veredito-coerente.sh; prova da tarefa 2",
+    "saida": "ok: 107 falhou: 0 | total=75 vermelhas:[] | 21 ok, 0 falha(s) | 21 OK, 0 FALHA | ok: 20 falhou: 0 | exit 0 | ok: 5 falhou: 0 | ok: 142 falhou: 0 | ok: 13 falhou: 0 | ok: 19 falhou: 0 | prova exit 0; LOCALAPPDATA 1/1/1; para virar Issue ausente",
+    "sensor_externo": "bash scripts/testa-estado-reabrir.sh",
+    "em": "2026-11-15",
+    "head": "0cbb1a42372381388a861cd074cf6ce59827fa3c"
+  },
+  "fechar": {
+    "status": "pendente"
+  },
+  "decididos": [
+    {
+      "pergunta": "Revisao 1, achado [design] 1: rebase da branch do fluxo depois do verificar faz o fechar recusar",
+      "escolha": "Sem PR MERGED, alvoDoFechar volta a comparar contra o HEAD (comportamento da base), e a recusa acrescenta a dica de passar o pr mergeado",
+      "porque": "preserva o caminho do rebase que a skill fechar documenta e mantem a correcao do #714 quando o pr e informado",
+      "estagio": "revisar",
+      "em": "2026-11-15T14:41:18.789Z"
+    },
+    {
+      "pergunta": "Revisao 1, achado [design] 3: prova da tarefa 2 nao roda (arquivos sem crase, plano fora de repo)",
+      "escolha": "Emendar a prova: plano gravado no cwd do repo, arquivos entre crases, variante 'nada equivalente, ver' + continuacao",
+      "porque": "a prova tem de falhar na base e passar depois, sem depender de numero de linha",
+      "estagio": "revisar",
+      "em": "2026-11-15T14:41:18.888Z"
+    },
+    {
+      "pergunta": "Revisao 1, achados 2 e 4 (preexistentes da mesma familia): sufixo de caminho e formas de busca que escapam",
+      "escolha": "Corrigir na branch: limite a esquerda recusa / e \\; bloco busca: vai ate o desfecho: e toda linha nao vazia que nao e item vira recusa",
+      "porque": "regra D4 desta rodada: defeito no arquivo da entrega se conserta aqui, nunca Issue",
+      "estagio": "revisar",
+      "em": "2026-11-15T14:41:18.980Z"
+    }
+  ]
+}

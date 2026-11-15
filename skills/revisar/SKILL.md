@@ -102,6 +102,8 @@ trava — continua funcionando como hoje.
 
 Fluxo em outro repositório que o da sessão leva também a linha `Repo: <caminho absoluto>`, logo abaixo de `Slug:` (o hook procura o estado primeiro ali; #641). Sem ela, o veredito não grava e o `marcar` recusa.
 
+Revisor que roda código do projeto fora da bateria recebe no briefing: `HOME`, `USERPROFILE`, `APPDATA` e `LOCALAPPDATA` num `mktemp -d`, no mesmo comando. Fora do repo não isola (#697).
+
 Briefing que pede mutação de fonte é recusado na PRIMEIRA linha do relato,
 antes de qualquer leitura. Quando o achado só fecha com mutação — reverter
 o código e ver o teste falhar — descreva-a sem mutar:
@@ -125,7 +127,7 @@ Isto é **distinto** de "eu faria diferente":
 
 - **Estilo** ("não é assim que eu escreveria", "deixaria mais limpo"): só entra se violar padrão documentado do repo. Senão, é gosto, não achado.
 - **Creep** ("esse arquivo não era pra ser tocado", "essa mudança não estava no plano"): arquivo no diff que não casa com nenhum `arquivos:` da tarefa. Sempre reprova.
-- **Preexistente** (defeito que já estava na base do diff; a entrega não o criou): leva a marca `[preexistente]` depois da severidade, como `**[alta]** [preexistente] arquivo:linha — ...`. Antes de marcar, confira com `git show <base>:<arquivo>` que o trecho já estava lá, com `<base>` = `git merge-base HEAD origin/main`, e cite a linha pela numeração do HEAD. Sem `arquivo:linha`, a marca é recusada. A marca não reprova a entrega sozinha: o hook e a crítica conferem por máquina se a linha citada cai num trecho que o diff adicionou ou alterou. Se cai, a marca é recusada e o achado bloqueia como qualquer outro. Preexistente aceito vai à seção `## Preexistentes` da crítica, para virar Issue (regra 6), não correção do executor.
+- **Preexistente** (defeito que já estava na base do diff; a entrega não o criou): leva a marca `[preexistente]` depois da severidade, com `arquivo:linha` conferido por `git show <base>:<arquivo>` (`<base>` = `git merge-base HEAD origin/main`) e citado pela numeração do HEAD. A marca não reprova sozinha; se a linha cai num trecho que o diff alterou, ela é recusada e o achado bloqueia. Preexistente aceito em arquivo que o diff toca sai em `## Preexistentes no arquivo da entrega`: a janela principal corrige na branch ou registra no design como resíduo aceito, nunca Issue. Só o de arquivo fora do diff vira Issue (regra 6).
 
 ### Saída única: emendar o plano
 

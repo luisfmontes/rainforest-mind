@@ -48,6 +48,14 @@ printf 'l1\nl2\nl3\nl4\nl5\n' > "$R_POSIX/a.cjs"
 PE_DIR="Ponto de Entrada/69 - Gestão"
 mkdir -p "$R_POSIX/$PE_DIR"
 printf 'p1\np2\np3\n' > "$R_POSIX/$PE_DIR/x y.prw"
+# b.cjs não entra no diff da fixture: é o arquivo que o C1 cita como fora da entrega.
+printf 'b1\nb2\nb3\n' > "$R_POSIX/b.cjs"
+# Arquivos da base fora do diff, citados com sufixo de caminho (#697/D4, emenda):
+# `docs/sub/README.md` e `hooks/scripts/estado.cjs`. O diff toca README.md e
+# scripts/estado.cjs, que são sufixos deles (criados só no commit da entrega).
+mkdir -p "$R_POSIX/docs/sub" "$R_POSIX/hooks/scripts"
+printf 'd1\nd2\nd3\nd4\nd5\nd6\nd7\nd8\nd9\nd10\n' > "$R_POSIX/docs/sub/README.md"
+printf 'e1\ne2\ne3\ne4\ne5\ne6\ne7\ne8\ne9\ne10\n' > "$R_POSIX/hooks/scripts/estado.cjs"
 git -C "$R_POSIX" add -A
 git -C "$R_POSIX" commit -qm base
 git -C "$R_POSIX" remote add origin "$REMOTO"
@@ -55,7 +63,12 @@ git -C "$R_POSIX" push -q origin main
 git -C "$R_POSIX" fetch -q origin
 printf 'l1\nl2\nNOVA\nl4\nl5\n' > "$R_POSIX/a.cjs"
 printf 'p1\nP2 NOVA\np3\n' > "$R_POSIX/$PE_DIR/x y.prw"
-git -C "$R_POSIX" commit -qam "altera a linha 3 de a.cjs e a 2 do prw"
+# README.md e scripts/estado.cjs entram no diff (arquivos novos, linha 10 incluída).
+printf 'r1\nr2\nr3\nr4\nr5\nr6\nr7\nr8\nr9\nr10\nr11\nr12\n' > "$R_POSIX/README.md"
+mkdir -p "$R_POSIX/scripts"
+printf 's1\ns2\ns3\ns4\ns5\ns6\ns7\ns8\ns9\ns10\ns11\ns12\n' > "$R_POSIX/scripts/estado.cjs"
+git -C "$R_POSIX" add -A
+git -C "$R_POSIX" commit -qm "altera a linha 3 de a.cjs e a 2 do prw; README.md e scripts/estado.cjs entram no diff"
 
 # Repo sem remoto: não há origin/main, então a marca não é conferível.
 R2_POSIX="$RAIZ_POSIX/sem-remoto"
@@ -171,7 +184,7 @@ VEREDITO: reprovado'
 TXT_H4='**[media]** b.cjs:1 — defeito novo
 **[alta]** [preexistente] a.cjs:5 — defeito antigo
 VEREDITO: reprovado'
-TXT_C1='**[alta]** [preexistente] a.cjs:5 — defeito antigo
+TXT_C1='**[alta]** [preexistente] b.cjs:2 — defeito antigo
 **[media]** b.cjs:1 — defeito novo
 VEREDITO: reprovado'
 TXT_C2='**[alta]** [preexistente] a.cjs:3 — defeito criado pela própria entrega
@@ -269,13 +282,63 @@ GOT=0; SAIDA=""; ERR_HOOK=""; CRIT_EXIT=""; CRIT_OUT=""; CRIT_ERR=""
 r=1; if [ "$RES_P" = '{"P1":"Ponto de Entrada/69 - Gestão/x y.prw:2 está no diff","P2":"","P3":"sem arquivo:linha para conferir","P4":""}' ]; then r=0; fi
 registra "(P1) prw com espaço e acento na linha do diff é recusado; (P2) a linha antiga dele passa; (P3) sem arquivo:linha é recusado; (P4) xa.cjs:3 não é a.cjs:3 (obtido: $RES_P)" $r
 
+# ---------------------------------------------------------------- (AB) caminho absoluto
+# A abertura cita o caminho do repositório (raiz com `/`, com `\`, ou a forma MSYS
+# `/c/...`) ou o prefixo `a/` do git. A citação tem de casar com o arquivo do diff:
+# na linha alterada a marca é recusada, como na citação relativa.
+echo "-- (AB) citação por caminho absoluto ou prefixo a/ do git: casa com o diff, e a linha alterada é recusada --"
+TOP="$(cd "$R_POSIX" && git rev-parse --show-toplevel)"
+RES_AB="$(node -e '
+const { preexistentesNoDiff } = require(process.argv[1]);
+const cwd = process.argv[2];
+const top = process.argv[3];
+const barra = top.replace(/\//g, "\\");
+const m = (t) => (preexistentesNoDiff(t, cwd) || ["sem base"]).map((x) => x.motivo).join("|");
+process.stdout.write(JSON.stringify({
+  abs1: m("**[alta]** [preexistente] " + top + "/a.cjs:3 — defeito criado pela própria entrega"),
+  abs2: m("**[alta]** [preexistente] " + barra + "\\a.cjs:3 — defeito criado pela própria entrega"),
+  abs3: m("**[alta]** [preexistente] a/a.cjs:3 — defeito criado pela própria entrega"),
+  abs4: m("**[alta]** [preexistente] " + top + "/a.cjs:5 — defeito antigo"),
+}));
+' "$LIB" "$R" "$TOP" 2>&1)"
+GOT=0; SAIDA=""; ERR_HOOK=""; CRIT_EXIT=""; CRIT_OUT=""; CRIT_ERR=""
+ab_val() { node -e 'const o = JSON.parse(process.argv[1]); process.stdout.write(o[process.argv[2]]);' "$RES_AB" "$1"; }
+r=1; [ "$(ab_val abs1)" = "a.cjs:3 está no diff" ] && r=0
+registra "(abs1) marca [preexistente] com <toplevel>/a.cjs:3 (linha alterada), caminho com /, é recusada: a.cjs:3 está no diff (obtido: $(ab_val abs1))" $r
+r=1; [ "$(ab_val abs2)" = "a.cjs:3 está no diff" ] && r=0
+registra "(abs2) o mesmo caminho absoluto com \\ é recusado: a.cjs:3 está no diff (obtido: $(ab_val abs2))" $r
+r=1; [ "$(ab_val abs3)" = "a.cjs:3 está no diff" ] && r=0
+registra "(abs3) prefixo a/ do git em a/a.cjs:3 (linha alterada) é recusado: a.cjs:3 está no diff (obtido: $(ab_val abs3))" $r
+r=1; [ -z "$(ab_val abs4)" ] && r=0
+registra "(abs4, lib) caminho absoluto de linha NÃO alterada passa sem recusa (obtido: '$(ab_val abs4)')" $r
+
+# (abs4, crítica) o mesmo caminho absoluto de linha NÃO alterada de arquivo que o diff
+# toca vai à seção da entrega, não à de Issue.
+TXT_C9="**[alta]** [preexistente] $TOP/a.cjs:5 — defeito antigo em arquivo que a entrega altera
+**[media]** b.cjs:1 — defeito novo
+VEREDITO: reprovado"
+ordem_c9() {
+  node -e '
+const e = process.argv[1];
+const nova = e.indexOf("## Preexistentes no arquivo da entrega");
+const antiga = e.indexOf("## Preexistentes (não são da entrega");
+const p = e.indexOf("a.cjs:5 — defeito antigo");
+process.stdout.write(nova >= 0 && p > nova && antiga < 0 ? "sim" : "nao");
+' "$1"
+}
+critica_com "$TXT_C9" C9
+r=1
+if [ "$CRIT_EXIT" -eq 0 ] && [ "$(ordem_c9 "$CRIT_ERR")" = "sim" ] \
+  && ! tem "$CRIT_OUT" 'a.cjs:5' && ! tem "$CRIT_OUT" '[preexistente]'; then r=0; fi
+registra "(abs4, crítica) <toplevel>/a.cjs:5 (linha que o diff não mudou) sai na seção da entrega, não na de Issue" $r
+
 # ---------------------------------------------------------------- (C) crítica
 echo "-- (C) critica-do-revisor: a marca aceita sai do redespacho; a recusada fica sem a marca --"
 
 critica_com "$TXT_C1" C1
 r=1
-if [ "$CRIT_EXIT" -eq 0 ] && tem "$CRIT_OUT" 'b.cjs:1 — defeito novo' && ! tem "$CRIT_OUT" 'a.cjs:5' \
-  && tem "$CRIT_ERR" '## Preexistentes (não são da entrega — Issue, não correção)' && tem "$CRIT_ERR" 'a.cjs:5 — defeito antigo'; then r=0; fi
+if [ "$CRIT_EXIT" -eq 0 ] && tem "$CRIT_OUT" 'b.cjs:1 — defeito novo' && ! tem "$CRIT_OUT" 'b.cjs:2' \
+  && tem "$CRIT_ERR" '## Preexistentes (não são da entrega — Issue, não correção)' && tem "$CRIT_ERR" 'b.cjs:2 — defeito antigo'; then r=0; fi
 registra "(C1) preexistente aceito sai do redespacho e vai à seção Preexistentes; o novo fica" $r
 
 critica_com "$TXT_C2" C2
@@ -295,8 +358,83 @@ printf '{"revisar":{"status":"reprovado","vereditos":[{"agente":"revisor","agent
 CRIT_OUT="$(RFM_ESTADO_ROOT="$R2" node "$CRITICA" --slug "$SLUG" 2>"$RAIZ_POSIX/err-crit")"; CRIT_EXIT=$?
 CRIT_ERR="$(cat "$RAIZ_POSIX/err-crit")"
 r=1
-if [ "$CRIT_EXIT" -eq 0 ] && tem "$CRIT_ERR" 'marca [preexistente] não conferida: sem base' && tem "$CRIT_ERR" 'a.cjs:5 — defeito antigo'; then r=0; fi
+if [ "$CRIT_EXIT" -eq 0 ] && tem "$CRIT_ERR" 'marca [preexistente] não conferida: sem base' && tem "$CRIT_ERR" 'b.cjs:2 — defeito antigo'; then r=0; fi
 registra "(C4) sem base conferível: stderr diz não conferida e a marca vale como escrita" $r
+
+# D4 (#697): preexistente cujo arquivo o diff da fixture toca (a.cjs, linha 3 alterada)
+# e cita a linha 5, que não mudou, vai à seção da entrega. O preexistente de b.cjs,
+# que o diff não toca, vai à antiga. c.cjs é o achado sem marca que dá exit 0 (só com
+# preexistentes, reprovado sai 4, como no C3).
+TXT_C6='**[alta]** [preexistente] a.cjs:5 — defeito antigo em arquivo que a entrega altera
+**[media]** [preexistente] b.cjs:2 — defeito antigo em arquivo que a entrega não toca
+**[media]** c.cjs:1 — defeito novo
+VEREDITO: reprovado'
+# ord <stderr>: sim se, nessa ordem, vêm o título novo, a.cjs:5, o título antigo e b.cjs:2.
+ord() {
+  node -e '
+const e = process.argv[1];
+const pos = (t) => e.indexOf(t);
+const nova = pos("## Preexistentes no arquivo da entrega");
+const antiga = pos("## Preexistentes (não são da entrega");
+const a = pos("a.cjs:5 — defeito antigo");
+const b = pos("b.cjs:2 — defeito antigo");
+process.stdout.write(nova >= 0 && a > nova && antiga > a && b > antiga ? "sim" : "nao");
+' "$1"
+}
+critica_com "$TXT_C6" C6
+r=1
+if [ "$CRIT_EXIT" -eq 0 ] && [ "$(ord "$CRIT_ERR")" = "sim" ] \
+  && ! tem "$CRIT_OUT" 'a.cjs:5' && ! tem "$CRIT_OUT" 'b.cjs:2' && ! tem "$CRIT_OUT" '[preexistente]'; then r=0; fi
+registra "(#697/D4) preexistente em arquivo que o diff toca sai na seção da entrega, não na de Issue" $r
+
+# D4 (#697), caminho com espaço e acento: o achado cita a linha 3 de
+# `Ponto de Entrada/69 - Gestão/x y.prw`, que o diff altera só na linha 2. O arquivo
+# é tocado pelo diff, então sai na seção da entrega. O CAMINHO_LINHA sozinho pegaria
+# `y.prw`, que o diff não toca: a citação tem de casar pelo caminho do diff.
+TXT_C7='**[alta]** [preexistente] `Ponto de Entrada/69 - Gestão/x y.prw:3` — defeito antigo em linha que a entrega não tocou
+**[media]** b.cjs:1 — defeito novo
+VEREDITO: reprovado'
+# ordem_c7 <stderr>: sim se o título da entrega vem antes de x y.prw:3 e não há seção de Issue.
+ordem_c7() {
+  node -e '
+const e = process.argv[1];
+const nova = e.indexOf("## Preexistentes no arquivo da entrega");
+const antiga = e.indexOf("## Preexistentes (não são da entrega");
+const p = e.indexOf("x y.prw:3");
+process.stdout.write(nova >= 0 && p > nova && antiga < 0 ? "sim" : "nao");
+' "$1"
+}
+critica_com "$TXT_C7" C7
+r=1
+if [ "$CRIT_EXIT" -eq 0 ] && [ "$(ordem_c7 "$CRIT_ERR")" = "sim" ] \
+  && ! tem "$CRIT_OUT" 'x y.prw:3' && ! tem "$CRIT_OUT" '[preexistente]'; then r=0; fi
+registra "(#697/D4, caminho com espaço e acento) achado que cita linha não alterada de arquivo que o diff altera sai na seção da entrega" $r
+
+# D4 (#697), sufixo de caminho: o diff toca `README.md` e `scripts/estado.cjs`, e a
+# linha 10 dos dois está no diff. Os preexistentes citam `docs/sub/README.md:10` e
+# `hooks/scripts/estado.cjs:10` (fora do diff). O sufixo depois de `/` não casa com
+# o arquivo do diff: os dois saem na seção antiga, sem recusa e sem ir à da entrega.
+TXT_C8='**[alta]** [preexistente] docs/sub/README.md:10 — defeito antigo em arquivo fora do diff
+**[alta]** [preexistente] hooks/scripts/estado.cjs:10 — defeito antigo em arquivo fora do diff
+**[media]** b.cjs:1 — defeito novo
+VEREDITO: reprovado'
+# ordem_c8 <stderr>: sim se não há seção da entrega, a antiga vem e os dois citados vêm depois dela.
+ordem_c8() {
+  node -e '
+const e = process.argv[1];
+const nova = e.indexOf("## Preexistentes no arquivo da entrega");
+const antiga = e.indexOf("## Preexistentes (não são da entrega");
+const p1 = e.indexOf("docs/sub/README.md:10 — defeito antigo");
+const p2 = e.indexOf("hooks/scripts/estado.cjs:10 — defeito antigo");
+process.stdout.write(nova < 0 && antiga >= 0 && p1 > antiga && p2 > antiga ? "sim" : "nao");
+' "$1"
+}
+critica_com "$TXT_C8" C8
+r=1
+if [ "$CRIT_EXIT" -eq 0 ] && [ "$(ordem_c8 "$CRIT_ERR")" = "sim" ] \
+  && ! tem "$CRIT_OUT" 'docs/sub/README.md:10' && ! tem "$CRIT_OUT" 'hooks/scripts/estado.cjs:10' \
+  && ! tem "$CRIT_ERR" 'marca [preexistente] recusada'; then r=0; fi
+registra "(#697/D4, sufixo) preexistente que cita docs/sub/README.md:10 ou hooks/scripts/estado.cjs:10 sai na seção antiga, não na da entrega" $r
 
 # --comparacao: só o bloco; sai 0 também com veredito ok na janela atual.
 ta="$(transcrito_com_texto "$TXT_C1" ANT5)"
@@ -305,7 +443,7 @@ estado_com "{\"status\":\"ok\",\"voltas\":[{\"volta\":1,\"vereditos\":[{\"agente
 CRIT_OUT="$(RFM_ESTADO_ROOT="$R" node "$CRITICA" --slug "$SLUG" --comparacao 2>"$RAIZ_POSIX/err-crit")"; CRIT_EXIT=$?
 CRIT_ERR="$(cat "$RAIZ_POSIX/err-crit")"
 r=1
-if [ "$CRIT_EXIT" -eq 0 ] && tem "$CRIT_OUT" '## Comparação com a volta anterior' && tem "$CRIT_OUT" '- [alta] a.cjs — sumiu — confirmar se foi corrigido' \
+if [ "$CRIT_EXIT" -eq 0 ] && tem "$CRIT_OUT" '## Comparação com a volta anterior' && tem "$CRIT_OUT" '- [alta] b.cjs — sumiu — confirmar se foi corrigido' \
   && ! tem "$CRIT_OUT" 'defeito novo'; then r=0; fi
 registra "(C5) --comparacao com veredito ok: sai 0, só o bloco, e o que sumiu aparece" $r
 

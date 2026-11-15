@@ -9,11 +9,16 @@
  * executor (D3): a janela principal não parafraseia a crítica.
  *
  * D3 (lote 6, docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-6.md): achado
- * com a marca `[preexistente]` que o diff não toca sai do redespacho (stdout) e
- * vai para a seção `## Preexistentes (não são da entrega — Issue, não correção)`
- * no stderr, para a janela abrir Issue. A marca recusada pelo diff fica na
- * crítica, sem a marca, e o stderr diz `marca [preexistente] recusada`. Sem base
- * conferível, o stderr diz `marca [preexistente] não conferida: sem base`.
+ * com a marca `[preexistente]` sai do redespacho (stdout) e vai ao stderr em uma
+ * de duas seções. A marca recusada pelo diff fica na crítica, sem a marca, e o
+ * stderr diz `marca [preexistente] recusada`. Sem base conferível, o stderr diz
+ * `marca [preexistente] não conferida: sem base`.
+ *   - `## Preexistentes no arquivo da entrega (corrigir nesta branch ou registrar
+ *     no design como resíduo aceito, nunca Issue)`: o arquivo citado no achado é
+ *     tocado pelo diff da entrega (D4, #697). A nova seção sai antes da antiga.
+ *   - `## Preexistentes (não são da entrega — Issue, não correção)`: o arquivo não
+ *     é tocado pelo diff, ou não há base para conferir (sem base, tudo cai aqui).
+ *     É a seção que a janela principal leva a Issue.
  *
  * D4 (lote 5, docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-5.md): com
  * `--comparacao`, imprime só o bloco `## Comparação com a volta anterior` (sai 0,
@@ -42,6 +47,7 @@ const path = require('path');
 const { ultimaMensagemAssistente } = require('./lib/primeiro-prompt-jsonl.cjs');
 const {
   contarAchados, listarAchados, itensAchados, preexistentesNoDiff, tirarMarcaPreexistente, fimDoItem,
+  arquivosTocadosPeloDiff, arquivoDoAchado,
 } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achados-revisor.cjs'));
 
 // Mesma raiz de scripts/estado.cjs: o estado mora no projeto em que se trabalha.
@@ -214,10 +220,15 @@ function main() {
   const aceitas = marcados.filter((x) => !recusadasIdx.has(x.indice));
   const fora = new Set();
   const secao = [];
+  const secaoEntrega = [];
+  // D4 (#697): preexistente cujo arquivo citado o diff da entrega toca vai à seção
+  // da entrega (corrigir nesta branch), não à de Issue. Sem base, null: tudo na antiga.
+  const tocados = arquivosTocadosPeloDiff(RAIZ);
+  const noDiff = (x) => Boolean(tocados && tocados.has(arquivoDoAchado(critica, x, tocados, RAIZ)));
   for (const x of aceitas) {
     const fim = fimDoItem(linhas, x.indice);
     for (let i = x.indice; i < fim; i += 1) fora.add(i);
-    secao.push(...linhas.slice(x.indice, fim));
+    (noDiff(x) ? secaoEntrega : secao).push(...linhas.slice(x.indice, fim));
   }
   const redespacho = linhas.filter((_, i) => !fora.has(i)).join('\n');
 
@@ -228,6 +239,7 @@ function main() {
   // da contagem: achado só de [design] continua parando o laço com exit 3.
   if (achados.design > 0) {
     process.stdout.write(`${redespacho}\n`);
+    if (secaoEntrega.length) process.stderr.write(`## Preexistentes no arquivo da entrega (corrigir nesta branch ou registrar no design como resíduo aceito, nunca Issue)\n${secaoEntrega.join('\n')}\n`);
     if (secao.length) process.stderr.write(`## Preexistentes (não são da entrega — Issue, não correção)\n${secao.join('\n')}\n`);
     process.stderr.write('[design]: achado contesta D<n> do design ou o plano; o laço para e sobe ao usuário (D5)\n');
     return 3;
@@ -240,6 +252,7 @@ function main() {
   }
 
   process.stdout.write(`${redespacho}\n`);
+  if (secaoEntrega.length) process.stderr.write(`## Preexistentes no arquivo da entrega (corrigir nesta branch ou registrar no design como resíduo aceito, nunca Issue)\n${secaoEntrega.join('\n')}\n`);
   if (secao.length) process.stderr.write(`## Preexistentes (não são da entrega — Issue, não correção)\n${secao.join('\n')}\n`);
   return 0;
 }

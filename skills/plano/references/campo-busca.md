@@ -51,6 +51,10 @@ desfecho: estender
   recusada como "sem resultado".
 - `pulado:` é o segundo campo e o último da linha. `- repo | pulado: sem rede | offline`
   é recusa: o `pulado:` não leva campo depois dele.
+- O item cabe numa linha só. Entre `busca:` e `desfecho:`, toda linha não vazia tem de ser item `- `:
+  a indentada sem hífen, a encostada na margem e o `-catalogo` sem espaço são recusadas como linha de
+  continuação (#709), e o `arquivo:linha` que trazem seria conferido. Linha em branco não encerra o
+  bloco: o item depois dela continua valendo.
 
 ## Canal `repo`
 

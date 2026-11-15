@@ -61,7 +61,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawnSync, execSync, execFileSync } = require('child_process');
-const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { caminhoExecutavel, executar } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 // Trava por lock de PID (defeitos A/B fechados em 2026-08-23), ja usada por
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
 // de inventar uma terceira copia.
@@ -746,8 +746,10 @@ function caminhosSujos() {
  * "Código" é o que o `creep` não isenta (`globsIsentos`), e o estado de qualquer slug
  * também fica fora: é rastro de fluxo, nunca entrega. Erro do git (o `head` não existe
  * mais) devolve lista vazia com aviso — a trava não tranca por falta de dado (D5).
+ * #714: `alvo` é o commit contra o qual se compara `head` (o HEAD, ou a ponta do PR
+ * mergeado quando o HEAD é uma branch nova da padrão). Só o HEAD tem árvore suja.
  */
-function arquivosDeCodigoDesde(head, slug, estado) {
+function arquivosDeCodigoDesde(head, slug, estado, alvo = 'HEAD') {
   let globsIsentos, globMatches;
   try {
     ({ globsIsentos, globMatches } = require('./conferir-fluxo.cjs'));
@@ -767,7 +769,7 @@ function arquivosDeCodigoDesde(head, slug, estado) {
   const literal = (f) => `:(top,literal)${f}`;
   // `--no-renames`: renomeação vira apagado + criado, e o nome antigo (que pode não ser
   // isento) não some atrás do novo.
-  const r = git(['diff', '--no-renames', '--name-only', '-z', head, 'HEAD']);
+  const r = git(['diff', '--no-renames', '--name-only', '-z', head, alvo]);
   if (r.status !== 0) {
     console.error(`aviso: não consegui ler o diff desde o verificar (${head}); a trava de código não rodou.`);
     return [];
@@ -775,10 +777,10 @@ function arquivosDeCodigoDesde(head, slug, estado) {
   let mudados = nomes(r.stdout);
   const padrao = `origin/${branchPadrao(RAIZ)}`;
   const mbAntes = git(['merge-base', head, padrao]);
-  const mbAgora = git(['merge-base', 'HEAD', padrao]);
+  const mbAgora = git(['merge-base', alvo, padrao]);
   if (mbAntes.status === 0 && mbAgora.status === 0) {
     const antes = [mbAntes.stdout.trim(), head];
-    const agora = [mbAgora.stdout.trim(), 'HEAD'];
+    const agora = [mbAgora.stdout.trim(), alvo];
     // Impressão da mudança da branch num arquivo; '' quando a branch não o muda. `-U0`:
     // sem contexto, a linha da padrão vizinha à da branch não entra no hash. `--verbatim`:
     // indentação conta (o `--stable` a descartava). Erro do git vale como mudança: um
@@ -806,13 +808,14 @@ function arquivosDeCodigoDesde(head, slug, estado) {
       // parada, não há ruído dela a filtrar e o conteúdo diferente basta: a impressão sem
       // contexto não vê a mesma linha mudada de lugar.
       const padraoParada = antes[0] === agora[0];
-      mudados = [...candidatos].filter((f) => entrada(head, f) !== entrada('HEAD', f)
+      mudados = [...candidatos].filter((f) => entrada(head, f) !== entrada(alvo, f)
         && (padraoParada || impressao(antes, f) !== impressao(agora, f)));
     }
   }
   // `-z`: nome com espaço sai cru, sem as aspas do porcelain v1 que furavam o glob de
   // isenção; na renomeação o nome novo vem primeiro e o antigo no campo seguinte.
-  const st = git(['status', '--porcelain', '-z', '--no-renames']);
+  // #714: árvore suja é do HEAD; a ponta de um PR mergeado não tem árvore de trabalho.
+  const st = alvo === 'HEAD' ? git(['status', '--porcelain', '-z', '--no-renames']) : { status: 1, stdout: '' };
   const sujos = [];
   if (st.status === 0) {
     const campos = st.stdout.split('\0');
@@ -837,13 +840,54 @@ function arquivosDeCodigoDesde(head, slug, estado) {
 }
 
 /**
+ * #714 (D1 da rodada 13): contra o que o `marcar fechar ok` mede o código verificado.
+ * Na branch do fluxo o HEAD contém o `verificar.head`, e a medida é a de sempre ('HEAD').
+ * Numa branch nova da padrão (depois do squash do PR), o HEAD não contém o verificado:
+ * a medida passa a ser a ponta do PR mergeado, lida do `gh pr view` e só com `state`
+ * MERGED. Sem `pr` numérico, ou com o PR não mergeado, a medida volta a ser a de sempre
+ * ('HEAD', como na base; é o caso da branch do fluxo rebaseada depois do `verificar`), e
+ * sem o `gh` não se chama nada. Devolve 'HEAD', o SHA da ponta, ou `{ ambiente }`
+ * quando o `gh` não respondeu (o chamador sai 69, não 2).
+ */
+function alvoDoFechar(estado, extra, head) {
+  const ancestral = spawnSync(caminhoExecutavel('git'), ['merge-base', '--is-ancestor', head, 'HEAD'], { cwd: RAIZ, encoding: 'utf8' });
+  // Só `1` diz "não é ancestral". Erro do git segue como antes: `arquivosDeCodigoDesde`
+  // já avisa e não tranca.
+  if (ancestral.status !== 1) return 'HEAD';
+  const pr = extra && extra.pr !== undefined ? extra.pr : (estado.fechar && estado.fechar.pr);
+  const prNum = pr === undefined || pr === null || pr === '' ? null : String(pr);
+  // Sem PR numérico não há o que medir na ponta: o `gh` não é chamado.
+  if (prNum === null || !/^\d+$/.test(prNum)) return 'HEAD';
+  // `executar` (não `caminhoExecutavel`): no Windows só o `resolverExecutavel` respeita a
+  // ordem do PATH e acha `gh.cmd`; e o `pr` já é só dígitos, então o `shell` do `.cmd`
+  // não carrega dado.
+  const g = executar('gh', ['pr', 'view', prNum, '--json', 'state,headRefOid'], { cwd: RAIZ });
+  if (g.error || g.status !== 0) {
+    return { ambiente: `gh pr view ${prNum} não respondeu (${g.error ? g.error.message : `saída ${g.status}`}). Sem o gh e a rede, não dá para medir o código mergeado.` };
+  }
+  let j = null;
+  try { j = JSON.parse(g.stdout || ''); } catch (e) { j = null; }
+  if (!j || typeof j !== 'object') return { ambiente: `gh pr view ${prNum} devolveu JSON ilegível.` };
+  if (j.state !== 'MERGED') return 'HEAD';
+  const oid = String(j.headRefOid || '');
+  if (!/^[0-9a-f]{40,64}$/i.test(oid)) return { ambiente: `gh pr view ${prNum} não trouxe um headRefOid válido.` };
+  const temCommit = () => spawnSync(caminhoExecutavel('git'), ['cat-file', '-e', `${oid}^{commit}`], { cwd: RAIZ, encoding: 'utf8' }).status === 0;
+  if (!temCommit()) {
+    spawnSync(caminhoExecutavel('git'), ['fetch', '-q', 'origin', `pull/${prNum}/head`], { cwd: RAIZ, encoding: 'utf8' });
+    if (!temCommit()) return { ambiente: `a ponta do PR #${prNum} (${oid.slice(0, 12)}) não está no repositório, e o fetch não a trouxe.` };
+  }
+  return oid;
+}
+
+/**
  * A recusa da D1, uma só para os três pontos que a aplicam: `exigir fechar` e
  * `marcar fechar ok` contra o `verificar.head`, e `marcar verificar ok` contra o HEAD
  * do instantâneo do `revisar` (refazer só o `verificar` não pula a revisão). Devolve a
- * mensagem, ou `null` sem código mudado.
+ * mensagem, ou `null` sem código mudado. `alvo` (#714) é o commit que mede o código
+ * depois do `head`; o padrão é o HEAD.
  */
-function recusaCodigoDepois(slug, estado, head, quem, etapa) {
-  const codigoDepois = arquivosDeCodigoDesde(head, slug, estado);
+function recusaCodigoDepois(slug, estado, head, quem, etapa, alvo = 'HEAD') {
+  const codigoDepois = arquivosDeCodigoDesde(head, slug, estado, alvo);
   if (codigoDepois.length) {
     return [
       `RECUSADO: '${etapa}' com código alterado depois do '${quem}'. Ele foi feito sobre um código anterior:`,
@@ -3333,9 +3377,24 @@ function main() {
         console.error("aviso: 'verificar' sem HEAD gravado (estado antigo, ou verificar com --raiz): não dá para conferir se o código mudou depois dele.");
       }
       if (refCodigo && refCodigo.head) {
-        const recusa = recusaCodigoDepois(slug, estado, refCodigo.head, refCodigo.quem, estagio);
+        // #714: no `fechar`, o alvo pode ser a ponta do PR mergeado (branch nova da padrão).
+        let alvo = 'HEAD';
+        if (estagio === 'fechar') {
+          const alvoFechar = alvoDoFechar(estado, extra, refCodigo.head);
+          if (typeof alvoFechar === 'object') {
+            console.error(`nao-verificavel: ${alvoFechar.ambiente}`);
+            process.exit(69);
+          }
+          alvo = alvoFechar;
+        }
+        const recusa = recusaCodigoDepois(slug, estado, refCodigo.head, refCodigo.quem, estagio, alvo);
         if (recusa) {
-          console.error(recusa);
+          // #714 (D1, emenda da revisão 1): a recusa contra o HEAD também sai numa branch nova
+          // sem PR mergeado; a linha diz como medir pela ponta do PR.
+          const dica = estagio === 'fechar' && alvo === 'HEAD'
+            ? '\nSe o PR deste fluxo já foi mergeado, passe o número dele: --json \'{"acao":"merge","pr":<n>}\' (a comparação passa a ser contra a ponta do PR).'
+            : '';
+          console.error(recusa + dica);
           process.exit(2);
         }
       }

@@ -430,6 +430,43 @@ caso "catalogo (u): reaproveito soma de src/x.js:3,src/x.js:3 passa" 0 'ok:' CHK
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma (src/x.js:3)' 'desfecho: adotar'; } > "$P"
 caso "catalogo (u): reaproveito soma (src/x.js:3) passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
+# catalogo (v) #709: linha de continuação dentro de busca: é recusada, não descartada. O item tem
+# referência válida (src/x.js:3 no lugar de scripts/estado.cjs:750, que a fixture não tem) e
+# `nada.js:99` vem na linha indentada seguinte, que o laço antigo largava em silêncio.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3 e
+  nada.js:99' 'desfecho: estender'; } > "$P"
+caso "catalogo (v): linha de continuação dentro de busca: é recusada (#709)" 2 'continuação' CHK plano --slug t --plano "$P"
+
+# catalogo (v2) #709: a variante `nada equivalente, ver` seguida de `nada.js:99` também sai 2.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | nada equivalente, ver
+  nada.js:99' 'desfecho: construir'; } > "$P"
+caso "catalogo (v2): nada equivalente, ver seguido de nada.js:99 é recusado (continuação)" 2 'continuação' CHK plano --slug t --plano "$P"
+
+# catalogo (v3) #709: o mesmo item numa linha só passa; a recusa é só da continuação.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3' 'desfecho: estender'; } > "$P"
+caso "catalogo (v3): mesmo item numa linha só passa (exit=0)" 0 'ok:' CHK plano --slug t --plano "$P"
+
+# catalogo (a) D2 emendada: item depois de linha em branco, dentro do bloco que vai até desfecho:,
+# é conferido. nada.js:9999 não existe; antes o laço parava na linha em branco e o item sumia.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3
+
+- catalogo | listar --raiz src | reaproveito soma de nada.js:9999' 'desfecho: estender'; } > "$P"
+caso "catalogo (a): item depois de linha em branco com nada.js:9999 inexistente é recusado" 2 'nada\.js:9999' CHK plano --slug t --plano "$P"
+
+# catalogo (b) D2 emendada: `-catalogo` sem espaço depois do hífen não é item; é continuação e sai recusada.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3
+-catalogo | listar --raiz src | reaproveito soma de nada.js:9999' 'desfecho: estender'; } > "$P"
+caso "catalogo (b): -catalogo sem espaço depois do hífen é continuação recusada" 2 'continuação' CHK plano --slug t --plano "$P"
+
+# catalogo (c) D2 emendada: continuação encostada na margem, sem indentação, é recusada.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3
+nada.js:9999' 'desfecho: construir'; } > "$P"
+caso "catalogo (c): continuação encostada na margem é recusada" 2 'continuação' CHK plano --slug t --plano "$P"
+
+# catalogo (v4): sem desfecho: depois do busca:, vale a regra antiga; a continuação indentada sai recusada.
+{ printf '%s' "$PLANO_CAB"; printf '### 1. Tarefa 1 [tipo: implementar]\natende: D1\narquivos: `src/x.js`\ndepende de: nenhuma\nmutacao: n/a\n  motivo: fixture de bateria\nprova-na-base: verde — fixture de bateria\ndesfecho: estender\nbusca:\n- catalogo | listar --raiz src | reaproveito soma de src/x.js:3\n  nada.js:99\npronto quando: com entrada X, efeito Y — provado por `bash scripts/testa-conferir-busca.sh`\n\n'; } > "$P"
+caso "catalogo (v4): sem desfecho: depois do busca:, continuação indentada continua recusada" 2 'continuação' CHK plano --slug t --plano "$P"
+
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
 [ "${#vermelhas[@]}" -eq 0 ]

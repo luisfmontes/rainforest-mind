@@ -39,9 +39,12 @@ despachos) avisa por `PushNotification`, e fora delas o fluxo segue até o merge
    | `69` | transcrito sumiu: bloqueio de ambiente (regra 14), anuncie e pare |
 
    A saída `0` é o redespacho: só ela vai ao briefing do executor. Achado
-   `[preexistente]` aceito pelo diff sai do redespacho e aparece no stderr sob
-   `## Preexistentes (não são da entrega — Issue, não correção)`: a janela
-   principal abre a Issue, o executor não corrige. A comparação com a volta
+   `[preexistente]` aceito sai do redespacho e vai ao stderr numa de duas
+   seções. `## Preexistentes no arquivo da entrega (...)`: o arquivo é tocado
+   pelo diff, e a janela principal manda a correção ao executor na volta
+   seguinte, num bloco próprio, ou registra no design como resíduo aceito, com
+   o porquê. Nunca abre Issue. `## Preexistentes (não são da entrega — Issue, não
+   correção)`: o arquivo está fora do diff, e a janela abre a Issue. A comparação com a volta
    anterior não sai mais na crítica: `node scripts/critica-do-revisor.cjs --slug <slug> --comparacao`
    imprime só o bloco `## Comparação com a volta anterior`, e ele vai no briefing
    do **revisor** da volta seguinte, nunca no do executor (D10a do lote 6).

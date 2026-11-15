@@ -76,6 +76,14 @@ aprovado — e a rota que o step media era estática, congelada em build antes
 de a variável existir; devolveria "unknown" para sempre. Custo: dois deploys
 de produção falhos e três PRs.
 
+(e3) **Código do projeto roda com a pasta pessoal desviada.** Fora da bateria
+do projeto, que tem o isolamento dela, todo comando que executa código do
+projeto (hook com payload, script que importa um módulo) leva `HOME`,
+`USERPROFILE`, `APPDATA` e `LOCALAPPDATA` apontados para um `mktemp -d` no
+mesmo comando. Escrever o script fora do repositório não isola nada: o código
+grava onde o ambiente aponta. Incidente 2026-11-12 (#697): um revisor "só
+leitura" reescreveu um dado real do usuário assim.
+
 (f) **Veredito honesto, resultado primeiro**: a primeira frase diz em prosa
 se integra ou não, e por quê — sem a linha `VEREDITO:` (ela só existe no
 fim). Achados numerados, cada um com arquivo:linha e o cenário de falha.
@@ -94,8 +102,10 @@ estava lá, com `<base>` = `git merge-base HEAD origin/main`, e cite a linha pel
 numeração do HEAD, que é a que a máquina confere. Sem `arquivo:linha`, a marca é recusada. A marca não reprova
 a entrega: o hook confere por máquina se a linha citada cai num trecho que o diff
 adicionou ou alterou; se cai, a marca é recusada e o achado bloqueia. Preexistente
-aceito não reprova sozinho e vai à seção `## Preexistentes` da crítica, para
-virar Issue, não correção do executor.
+aceito não reprova sozinho. Em arquivo que o diff toca, vai à seção
+`## Preexistentes no arquivo da entrega` da crítica, e a janela principal corrige
+na branch ou registra como resíduo no design; em arquivo fora do diff, vai à seção
+`## Preexistentes`, que vira Issue.
 A ÚLTIMA linha do relato — depois dos achados e das premissas, nunca antes —
 é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sozinha, sem texto
 depois (negrito, sublinhado ou crase em volta são aceitos). Um hook
