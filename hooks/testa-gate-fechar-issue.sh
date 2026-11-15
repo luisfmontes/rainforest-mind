@@ -4738,9 +4738,9 @@ EXIT_ORC_400K=$?
 ORC_MS=$(( $(date +%s%3N) - ORC_T0 ))
 [ $EXIT_ORC_400K -eq 2 ] && [ $ORC_MS -lt 5000 ] && test_ok "exit 2 em ${ORC_MS} ms" || test_fail "exit $EXIT_ORC_400K em ${ORC_MS} ms (esperado 2 em menos de 5000 ms)"
 
-# Caso (#692, D4d): orcamento estourado e falha fechada. Procurar so o gh de escrita
-# deixava passar flag entre substantivo e verbo e expansao de chaves (revisao de
-# seguranca do commit 3f3f2e11); estourado, qualquer gh como palavra barra.
+# Caso (#692, D4d): orcamento estourado barra SEMPRE (falha fechada). Procurar o gh
+# no estouro deixava passar flag entre substantivo e verbo, expansao de chaves e
+# caminho antes do gh (revisoes de seguranca dos commits 3f3f2e11 e f4418818).
 orc_estoura() {
   local nome="$1" esperado="$2" cauda="$3"
   echo
@@ -4752,7 +4752,8 @@ orc_estoura() {
 }
 orc_estoura "gh issue -R o/r close 12" 2 'gh issue -R o/r close 12'
 orc_estoura "gh issue {close,} 12" 2 'gh issue {close,} 12'
-orc_estoura "sem gh" 0 'ghost high a-gh'
+orc_estoura "/usr/bin/gh issue close 12" 2 '/usr/bin/gh issue close 12'
+orc_estoura "sem gh tambem barra" 2 'ghost high a-gh'
 
 # Resultado final
 echo

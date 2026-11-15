@@ -209,24 +209,20 @@ function abreAnsiC(s, i) {
 // docs/rainforest/design/gate-crase.md). A recursao em crase e em $(...) percorre
 // o texto de dentro mais de uma vez; aninhamento fundo cresceria sem limite e
 // estouraria o tempo do hook. Conta caracteres, nao relogio: a mesma entrada
-// estoura sempre no mesmo ponto. Estourado, barra se sobra um gh como palavra no
-// comando achatado (sem aspas, contrabarra, $, crase, parenteses e chaves) e libera
-// se nao sobra: procurar so o gh de escrita deixava passar `gh issue -R o/r close`
-// e `gh issue {close,}` (revisao de seguranca do commit 3f3f2e11). Falha fechada.
+// estoura sempre no mesmo ponto. Estourado, barra SEMPRE (falha fechada): duas
+// revisoes de seguranca seguidas acharam um gh que a procura do estouro nao via
+// (`gh issue -R o/r close`, `gh issue {close,}`, `/usr/bin/gh`), e o custo de barrar
+// e so o comando que pede mais de 2 milhoes de caracteres varridos.
 const ORCAMENTO_VARREDURA = 2000000;
 let caracteresVarridos = 0;
 function gastarVarredura(n) {
   caracteresVarridos += n;
   if (caracteresVarridos <= ORCAMENTO_VARREDURA) return;
-  const achatado = trocarIfsPorEspaco(COMANDO_INTEIRO).replace(/["'`\\$(){}]/g, "");
-  if (/(^|[^\w./-])gh(\.exe)?([^\w.-]|$)/i.test(achatado)) {
-    bloqueia(
-      "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
-      "Razão: o comando tem substituição (crase ou $(...)) aninhada demais para o gate ler com segurança.\n\n" +
-      "Rode o 'gh' direto, sem aninhar, ou divida o comando.\n"
-    );
-  }
-  process.exit(0);
+  bloqueia(
+    "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+    "Razão: o comando é grande ou aninhado demais (crase ou $(...)) para o gate ler com segurança.\n\n" +
+    "Divida o comando, ou rode o 'gh' direto, sem aninhar.\n"
+  );
 }
 
 // D3 (rodada 14, #694): o bash divide a palavra no $IFS, e o gate lia `gh$IFS`

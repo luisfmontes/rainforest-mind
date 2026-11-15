@@ -28,6 +28,7 @@
     "integradas": [
       1,
       2,
+      3,
       5
     ]
   },
@@ -61,6 +62,13 @@
       "porque": "gh issue -R o/r close e gh issue {close,} saiam 0; falha fechada so pesa em comando de mais de 2 MB varridos",
       "estagio": "executar",
       "em": "2026-11-15T18:55:47.341Z"
+    },
+    {
+      "pergunta": "Segunda revisao de seguranca: a procura do gh no orcamento estourado nao via /usr/bin/gh",
+      "escolha": "Orcamento estourado barra sempre, sem procurar gh",
+      "porque": "Cada heuristica de procura abriu um disfarce novo; o custo e so o comando de mais de 2 MB varridos",
+      "estagio": "executar",
+      "em": "2026-11-15T19:09:24.485Z"
     }
   ]
 }

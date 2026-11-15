@@ -49,15 +49,15 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   - (c) Na ferramenta PowerShell, a crase é escape: `` `" `` é uma aspa literal e não abre
     substituição.
   - (d) O teto do `segmentosParaGate` passa a ser a soma de caracteres varridos (orçamento fixo,
-    determinístico), e não o número de chamadas. Estourado o orçamento, o gate barra como
-    ilegível quando sobra um `gh` como palavra no comando achatado (sem aspas, contrabarra, `$`,
-    parênteses e chaves), e libera quando não sobra. Emenda da revisão de segurança do commit da
-    tarefa 3: procurar só o `gh` de escrita deixava passar `gh issue -R o/r close 12`.
+    determinístico), e não o número de chamadas. Estourado o orçamento, o gate barra sempre
+    (falha fechada). Emenda de duas revisões de segurança da tarefa 3: cada procura do `gh` no
+    estouro deixava passar um disfarce (`gh issue -R o/r close 12`, `gh issue {close,}`,
+    `/usr/bin/gh`), e só o comando de mais de 2 milhões de caracteres varridos paga o custo.
 
   Porquê: cada um é uma forma medida de esconder o `gh` (itens 1 a 3) ou de o gate levar ~83 s
   (item 4). Critério: os seis comandos dos itens 1 a 3 da #692 saem 2. `echo "${x:-a}"`,
   `cat <<< $'texto'` e, no PowerShell, `` Write-Host "a`tb" `` saem 0. 3000 `$(true)` planos saem
-  0, e o aninhamento de 16 níveis com 400 KB sai 2 em menos de 5 s.
+  0, e o aninhamento de 16 níveis com 400 KB sai 2 em menos de 5 s. Estourado, sai 2 com ou sem `gh`.
 - **D5 — O resto do comando depois de um heredoc começa depois do delimitador.** O
   `cmd.slice(heredoc.fim - 1)` vira uma função de `hooks/lib/heredoc.cjs`
   (`restoDepoisDoHeredoc`), usada nas duas cópias do segmentador: `gate-subagente-sem-gh.cjs`
