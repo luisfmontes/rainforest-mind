@@ -64,7 +64,8 @@
       "estagio": "revisar",
       "data": "2026-11-15"
     },
-    "reaberturas": 1
+    "reaberturas": 1,
+    "em_voo": []
   },
   "revisar": {
     "status": "reprovado",

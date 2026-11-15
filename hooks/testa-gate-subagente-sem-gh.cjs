@@ -157,6 +157,14 @@ caso("(achado 2) cat <<< $'texto' (não é shell) em subagente", r.status, 0);
 r = rodar(`bash <<<"echo hi"`);
 caso('(achado 2) bash <<<"echo hi" em subagente', r.status, 0);
 
+// Revisao de seguranca do commit 6b306b39: o bash usa o ULTIMO here-string, e o
+// `$'` no meio do texto do eval tambem e ilegivel.
+r = rodar(`bash <<< 'echo' <<< $'gh issue close 12'`);
+caso("(rev 6b306b39) dois here-strings, o segundo com gh, em subagente", r.status, 2);
+
+r = rodar(`eval "echo hi;" $'gh issue close 12'`);
+caso("(rev 6b306b39) eval com $' no meio do texto em subagente", r.status, 2);
+
 r = rodar("cat > /tmp/x.sh <<'EOF'\ngh issue close 12\nEOF");
 caso("cat > /tmp/x.sh <<'EOF' com gh issue close 12 no corpo em subagente", r.status, 2);
 

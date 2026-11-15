@@ -59,6 +59,13 @@ espera_bloqueio "pwsh -NoProfile -Command \"gh issue close 12\""
 espera_bloqueio "powershell -NoProfile -ExecutionPolicy Bypass -Command \"gh issue close 12\""
 # achado 9: fish roda o script de -c.
 espera_bloqueio "fish -c 'gh issue close 12'"
+# Revisao de seguranca do commit 6b306b39: fish com contrabarra/parenteses, pwsh
+# sem -Command com gh colado a separador, -Version com valor, $' no meio do eval.
+espera_bloqueio "fish -c 'g\\h issue close 12'"
+espera_bloqueio "fish -c '(echo gh) issue close 12'"
+espera_bloqueio "pwsh -NoProfile \"gh;issue close 12\""
+espera_bloqueio "powershell -Version 5 -Command \"gh issue close 12\""
+espera_bloqueio "eval echo hi\\; \$'gh' issue close 12"
 
 echo
 echo "== passa: o script lido nao fecha Issue =="
@@ -73,6 +80,8 @@ espera_passa "bash -c 'ls' x /srv/gh/y"
 espera_passa "pwsh -NoProfile -Command \"Get-ChildItem\""
 espera_passa "cmd //c dir"
 espera_passa "fish -c 'echo hi'"
+espera_passa "pwsh -NoProfile -File x.ps1"
+espera_passa "powershell -NoProfile -Command \"Write-Host gh\""
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

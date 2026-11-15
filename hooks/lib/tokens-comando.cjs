@@ -1024,6 +1024,7 @@ function temGhComoPalavra(texto) {
 const PWSH_PARAMS_COM_VALOR = [
   "-configurationname", "-configurationfile", "-custompipename", "-executionpolicy",
   "-inputformat", "-outputformat", "-settingsfile", "-windowstyle", "-workingdirectory",
+  "-version", "-psconsolefile",
 ];
 
 function desempacotarWrapperDeString(segmento, opcoes = {}) {
@@ -1087,7 +1088,9 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // zerar-issues-14, tarefa 5 (achado 2): `eval $'...'` e `eval $"..."` são
     // texto que o bash expande com regras que o gate não lê (`\n`, `\t`, `\x41`),
     // então o script é ilegível. Mesma regra que vale para o script do `bash -c`.
-    return { interno, ilegivel: contemConstrucaoIlegivel(interno) || /^\$["']/.test(interno) };
+    // Revisão de segurança do commit 6b306b39: o `$'` em QUALQUER ponto do texto
+    // (`eval echo hi\; $'gh' issue close 12`), não só no começo.
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) || /\$["']/.test(interno) };
   }
 
   const p2 = extrairPrimeiroToken(p1.resto);
@@ -1112,7 +1115,10 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
       if (!atual.tok.startsWith("-")) break;
       atual = extrairPrimeiroToken(atual.resto);
     }
-    return { interno: null, ilegivel: temGhComoPalavra(p1.resto) };
+    // Sem -Command o `powershell.exe` roda o texto posicional como comando. Falha
+    // fechada: `gh` encostado em separador do PowerShell (`;&|(){}`, aspa, crase)
+    // também conta, não só o `gh` separado por espaço (revisão do commit 6b306b39).
+    return { interno: null, ilegivel: temGhComoPalavra(p1.resto) || /(^|[\s;&|(){}"'`])gh(\.exe)?([\s;&|(){}"'`]|$)/i.test(p1.resto) };
   }
 
   if (exe === "cmd") {
@@ -1158,6 +1164,10 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
         return { interno: null, ilegivel: true, escopo: "palavra" };
       }
       const interno = desempacota(zona.palavra);
+      // O fish tem sintaxe própria: `(cmd)` substitui comando e a contrabarra
+      // escapa diferente. Script de fish com `\`, `(` ou `$` é ilegível
+      // (revisão de segurança do commit 6b306b39).
+      if (exe === "fish" && /[\\($]/.test(interno)) return { interno: null, ilegivel: true, escopo: "palavra" };
       return { interno, ilegivel: contemConstrucaoIlegivel(interno), escopo: "palavra" };
     }
     // Se começa com - ou + mas não é a flag esperada, pula (e o valor dela,

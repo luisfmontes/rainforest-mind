@@ -704,8 +704,13 @@ function arquivoDeScriptExecutado(caminhoBruto, cwd) {
 // Shells que leem o script da entrada padrão: `bash <<< 'x'` roda `x`.
 const SHELLS_DE_HERE_STRING = new Set(["bash", "sh", "zsh", "ksh", "dash", "fish"]);
 
-/** Texto depois do primeiro `<<<` que está FORA de aspas no segmento, ou null. */
-function restoDepoisDeHereString(segmento) {
+/**
+ * Texto depois de CADA `<<<` que está FORA de aspas no segmento. O bash usa o
+ * último here-string, e conferir só o primeiro deixava `bash <<< 'echo' <<< $'gh ...'`
+ * passar (revisão de segurança do commit 6b306b39): todos são conferidos.
+ */
+function restosDepoisDeHereString(segmento) {
+  const restos = [];
   let aspa = null;
   let ansi = false;
   for (let i = 0; i < segmento.length; i++) {
@@ -716,10 +721,10 @@ function restoDepoisDeHereString(segmento) {
       continue;
     }
     if (c === "\\") { i++; continue; }
-    if (c === "<" && segmento.startsWith("<<<", i)) return segmento.slice(i + 3);
+    if (c === "<" && segmento.startsWith("<<<", i)) { restos.push(segmento.slice(i + 3)); i += 2; continue; }
     if (c === "'" || c === '"') { ansi = segmento[i - 1] === "$"; aspa = c; }
   }
-  return null;
+  return restos;
 }
 
 /** A palavra que o bash lê logo depois do `<<<` (com aspas, `$'...'` e contrabarra). */
@@ -773,9 +778,9 @@ function processarSegmento(segmento, cwd) {
   // (`bash <<< 'x'`, `bash <<<$'x'`, com ou sem espaço) é o script, lido como o
   // `bash -c` dessa palavra. O `--` faz a palavra ser o script, nunca uma opção.
   if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm)) {
-    const resto = restoDepoisDeHereString(segmento);
-    const palavra = resto === null ? "" : palavraDeHereString(resto);
-    if (palavra !== "") {
+    for (const resto of restosDepoisDeHereString(segmento)) {
+      const palavra = palavraDeHereString(resto);
+      if (palavra === "") continue;
       const hs = desempacotarWrapperDeString(`bash -c -- ${palavra}`);
       if (hs.ilegivel) bloqueiaIlegivel(segmento);
       if (hs.interno !== null) {
