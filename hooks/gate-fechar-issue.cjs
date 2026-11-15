@@ -328,10 +328,11 @@ function segmentosParaGate(cmd) {
     // o mesmo, e `<#` abre bloco ate `#>`.
     const abreBlocoPs = FERRAMENTA === "PowerShell" && c === "<" && cmd[i + 1] === "#";
     if (aspa === null && (abreBlocoPs || (c === "#" && (i === 0 || /[\s;&|()]/.test(cmd[i - 1]))))) {
-      // `${` aberto em QUALQUER ponto antes, nao so na linha: `${x:-` + quebra +
-      // `a #b}; gh ...` fecha a chave na linha de baixo e o gh roda.
-      const antes = cmd.slice(0, i);
-      const dentroDeChaves = antes.lastIndexOf("${") > antes.lastIndexOf("}");
+      // Qualquer `${` antes do `#`, em qualquer linha, deixa o comentario duvidoso:
+      // `${x:-` + quebra + `a #b}; gh ...` fecha a chave na linha de baixo e o gh
+      // roda, e chave aninhada (`${x:-${y}` ...) engana contagem por ultima ocorrencia
+      // (revisao de seguranca do commit 6207a501). Falha fechada.
+      const dentroDeChaves = cmd.slice(0, i).includes("${");
       const espacoEscapado = FERRAMENTA !== "PowerShell" && i > 0 && escapadaPorContrabarra(cmd, i - 1);
       const comentarioCerto = abreBlocoPs || ((i === 0 || /[\s;&|]/.test(cmd[i - 1])) && !espacoEscapado && !dentroDeChaves);
       let fimComentario;

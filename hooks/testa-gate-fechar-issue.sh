@@ -4796,6 +4796,8 @@ caso_ferr r14v2-com-9 0 PowerShell '<# bloco #> Write-Host oi'
 caso_ferr r14v2-com-10 2 Bash $'echo a\\ #; g$()h issue close 12'
 # `${` aberto numa linha e fechado na seguinte: o `#` dentro dele nao e comentario.
 caso_ferr r14v2-com-11 2 Bash $'echo ${x:-\na #b}; gh issue close 12'
+# Chave aninhada antes do `#` (revisao de seguranca do commit 6207a501).
+caso_ferr r14v2-com-13 2 Bash $'echo ${x:-${y}\na #b}; gh issue close 12'
 # Comentario certo pode citar gh (W2).
 caso_ferr r14v2-com-12 0 Bash $'echo ${x} ok\nls # gh pr merge 7'
 
