@@ -940,9 +940,10 @@ COMANDO_CRASE_14=$'echo "$(echo \'(\' ) \'`gh issue close 12`\' "'
 EXIT_CRASE_14=$?
 [ $EXIT_CRASE_14 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_14)"
 
-# Caso (crase-15): dolar-parenteses aninhado 20 vezes estoura o teto e barra → exit 2 (D7 de gate-crase)
+# Caso (crase-15): dolar-parenteses aninhado 20 vezes sem gh → exit 0 (D4d de zerar-issues-14: o teto
+# de chamadas virou orcamento de caracteres, e sem gh de escrita o gate libera)
 echo
-echo "== (crase-15) dolar-parenteses aninhado 20 vezes estoura o teto e barra → exit 2 =="
+echo "== (crase-15) dolar-parenteses aninhado 20 vezes sem gh → exit 0 =="
 COMANDO_CRASE_15=$'echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo x)")")")")")")")")")")")")")")")")")")")"'
 (
   export PATH="$SBP/bin:$PATH"
@@ -950,7 +951,7 @@ COMANDO_CRASE_15=$'echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo 
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-crase-15"
 EXIT_CRASE_15=$?
-[ $EXIT_CRASE_15 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_15)"
+[ $EXIT_CRASE_15 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_15)"
 
 # Caso (crase-16): commit por heredoc citado com crase de texto que nao e gh → exit 0 (D7 de gate-crase)
 echo
@@ -4662,6 +4663,96 @@ caso_gate f699-27 0 $'bash -c -x \'echo hi\' x'
 caso_gate f699-28 0 $'bash -c "echo"\'x\''
 caso_gate f699-29 0 $'bash -c "echo hi" x -I"C:\\x"'
 caso_gate f699-30 0 $'bash -c \'gh issue view 12\' x'
+
+# Rodada 14 (D2/D3/D4/D5): casos com ferramenta explicita (Bash ou PowerShell)
+caso_ferr() { # $1 rotulo, $2 exit esperado, $3 ferramenta, $4 comando
+  local rot="$1" esp="$2" ferr="$3" cmd="$4" ex
+  echo
+  echo "== ($rot) exit $esp [$ferr]: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    PAYLOAD=$(node -e 'const [cwd,tool,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:tool,tool_input:{command:cmd}}))' "$SBP_WIN" "$ferr" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  [ $ex -eq "$esp" ] && test_ok "$rot exit $esp" || test_fail "$rot exit $esp (foi $ex: $(cat "$SBP/err-$rot"))"
+}
+
+# Caso (#694): $IFS divide a palavra no bash; o gate troca $IFS e ${IFS} por espaco fora de aspas simples
+echo
+echo '== (#694) $IFS divide a palavra =='
+caso_ferr r14-ifs-1 2 Bash 'gh$IFS issue close 12'
+caso_ferr r14-ifs-2 2 Bash 'gh${IFS}issue${IFS}close${IFS}12'
+caso_ferr r14-ifs-3 2 Bash $'echo "$(echo \')\'; gh${IFS}issue close 12)"'
+caso_ferr r14-ifs-4 2 Bash 'echo "$(echo ${x:-)} ; gh issue close 12)"'
+caso_ferr r14-ifs-5 2 Bash 'echo "$(printf %s ${y/)/} && gh issue close 12)"'
+caso_ferr r14-ifs-6 2 Bash $'bash <<<$\'gh issue close 12\''
+caso_ferr r14-ifs-7 2 Bash $'bash <<< $\'gh issue close 12\''
+caso_ferr r14-ifs-8 2 Bash $'bash <<<$"gh issue close 12"'
+caso_ferr r14-ifs-9 0 Bash 'echo "$IFS"'
+caso_ferr r14-ifs-10 0 Bash 'IFS=: read a b <<< "x:y"'
+caso_ferr r14-ifs-11 0 Bash 'echo "${x:-a}"'
+caso_ferr r14-ifs-12 0 Bash $'cat <<< $\'texto\''
+caso_ferr r14-ifs-13 0 Bash 'echo $IFSX'
+
+# Caso (#692, D4c): no PowerShell a crase escapa o caractere seguinte e nao abre substituicao
+echo
+echo '== (#692) PowerShell: crase escapa o caractere seguinte =='
+caso_ferr r14-ps-1 2 PowerShell 'echo `"; gh issue close 12'
+caso_ferr r14-ps-2 0 PowerShell 'Write-Host "a`tb"'
+
+# Caso (#692, D4b): here-string com $' e $" le a palavra inteira ate a aspa que fecha
+echo
+echo '== (#692) here-string com $ e aspas: palavra inteira =='
+caso_ferr r14-hs-1 0 Bash $'bash <<<$\'echo hi\''
+
+# Caso (#692, D4a): ${...} dentro de $(...) nao conta parenteses
+echo
+echo '== (#692) ${...} dentro de $(...) =='
+caso_ferr r14-ex-1 2 Bash 'echo "$(echo ${x:-)}; gh issue close 12)"'
+caso_ferr r14-ex-2 0 Bash 'echo "$(echo ${x:-)})"'
+
+# Caso (#706, D5): o resto depois do delimitador de heredoc comeca depois dele
+echo
+echo '== (#706) resto depois do delimitador de heredoc =='
+caso_ferr r14-d5-1 2 Bash $'cat > novo.md <<\'EOF\'\nx\nEOF\ngh issue close 12'
+# gh literal no corpo do heredoc barra desde antes desta rodada (falha fechada).
+caso_ferr r14-d5-2 2 Bash $'cat > novo.md <<\'EOF\'\ngh issue close 12\nEOF\necho ok'
+
+# Caso (#692, D4d): orcamento de caracteres varridos, somado em todas as recursoes
+echo
+echo '== (#692) orcamento: 3000 $(true) planos saem 0 =='
+(
+  node -e 'const fs=require("fs");fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:"echo "+"$(true) ".repeat(3000)}}))' "$SBP_WIN" "$SBP/orc-planos.json"
+  node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-planos.json"
+) 2>"$SBP/err-orc-planos"
+EXIT_ORC_PLANOS=$?
+[ $EXIT_ORC_PLANOS -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_ORC_PLANOS: $(head -c 300 "$SBP/err-orc-planos"))"
+
+echo
+echo '== (#692) orcamento: 16 niveis de "$(echo ..)" com 400 KB e gh saem 2 em menos de 5 s =='
+node -e 'const fs=require("fs");let s="x".repeat(400*1024-16*12-40)+" gh issue close 12";for(let i=0;i<16;i++)s="echo \"$(echo "+s+")\"";fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:s}}))' "$SBP_WIN" "$SBP/orc-400k.json"
+ORC_T0=$(date +%s%3N)
+node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-400k.json" 2>"$SBP/err-orc-400k"
+EXIT_ORC_400K=$?
+ORC_MS=$(( $(date +%s%3N) - ORC_T0 ))
+[ $EXIT_ORC_400K -eq 2 ] && [ $ORC_MS -lt 5000 ] && test_ok "exit 2 em ${ORC_MS} ms" || test_fail "exit $EXIT_ORC_400K em ${ORC_MS} ms (esperado 2 em menos de 5000 ms)"
+
+# Caso (#692, D4d): orcamento estourado e falha fechada. Procurar so o gh de escrita
+# deixava passar flag entre substantivo e verbo e expansao de chaves (revisao de
+# seguranca do commit 3f3f2e11); estourado, qualquer gh como palavra barra.
+orc_estoura() {
+  local nome="$1" esperado="$2" cauda="$3"
+  echo
+  echo "== (#692) orcamento estourado: $nome → exit $esperado =="
+  node -e 'const fs=require("fs");let s="x".repeat(400*1024-16*12-40)+" "+process.argv[3];for(let i=0;i<16;i++)s="echo \"$(echo "+s+")\"";fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:s}}))' "$SBP_WIN" "$SBP/orc-est.json" "$cauda"
+  node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-est.json" 2>"$SBP/err-orc-est"
+  local ex=$?
+  [ $ex -eq "$esperado" ] && test_ok "exit $esperado" || test_fail "exit $ex (esperado $esperado: $(head -c 200 "$SBP/err-orc-est"))"
+}
+orc_estoura "gh issue -R o/r close 12" 2 'gh issue -R o/r close 12'
+orc_estoura "gh issue {close,} 12" 2 'gh issue {close,} 12'
+orc_estoura "sem gh" 0 'ghost high a-gh'
 
 # Resultado final
 echo

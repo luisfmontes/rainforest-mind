@@ -40,7 +40,7 @@ const {
   colapsaContinuacaoDeLinhaNoTopo, semContrabarra, reduzEscapeAspasDuplas, contemConstrucaoIlegivel,
 } = require("./lib/tokens-comando.cjs");
 const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
-const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
+const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica, restoDepoisDoHeredoc } = require("./lib/heredoc.cjs");
 
 /**
  * Normaliza o nome de um executável: remove caminho, extensão e aspas.
@@ -204,13 +204,80 @@ function abreAnsiC(s, i) {
   return n % 2 !== 0;
 }
 
-// Teto de chamadas do segmentosParaGate por evento (D7 de
-// docs/rainforest/design/gate-crase.md). A recursao em crase e em $(...)
-// percorre o texto de dentro mais de uma vez; aninhamento fundo cresceria
-// sem limite e estouraria o tempo do hook, e o hook que estoura deixa passar.
-// Acima do teto o gate barra (falha fechada).
-const TETO_SEGMENTACAO = 2000;
-let chamadasSegmentacao = 0;
+// Orcamento de caracteres varridos pelo segmentosParaGate por evento, somados em
+// todas as recursoes (D4d da rodada 14; antes era um teto de chamadas, D7 de
+// docs/rainforest/design/gate-crase.md). A recursao em crase e em $(...) percorre
+// o texto de dentro mais de uma vez; aninhamento fundo cresceria sem limite e
+// estouraria o tempo do hook. Conta caracteres, nao relogio: a mesma entrada
+// estoura sempre no mesmo ponto. Estourado, barra se sobra um gh como palavra no
+// comando achatado (sem aspas, contrabarra, $, crase, parenteses e chaves) e libera
+// se nao sobra: procurar so o gh de escrita deixava passar `gh issue -R o/r close`
+// e `gh issue {close,}` (revisao de seguranca do commit 3f3f2e11). Falha fechada.
+const ORCAMENTO_VARREDURA = 2000000;
+let caracteresVarridos = 0;
+function gastarVarredura(n) {
+  caracteresVarridos += n;
+  if (caracteresVarridos <= ORCAMENTO_VARREDURA) return;
+  const achatado = trocarIfsPorEspaco(COMANDO_INTEIRO).replace(/["'`\\$(){}]/g, "");
+  if (/(^|[^\w./-])gh(\.exe)?([^\w.-]|$)/i.test(achatado)) {
+    bloqueia(
+      "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+      "Razão: o comando tem substituição (crase ou $(...)) aninhada demais para o gate ler com segurança.\n\n" +
+      "Rode o 'gh' direto, sem aninhar, ou divida o comando.\n"
+    );
+  }
+  process.exit(0);
+}
+
+// D3 (rodada 14, #694): o bash divide a palavra no $IFS, e o gate lia `gh$IFS`
+// como uma palavra so. Fora de aspas simples, `$IFS` e `${IFS}` valem um espaco
+// na copia que o gate analisa. Dentro de aspas simples e de $'...' o bash nao
+// expande, e a contrabarra escapa o seguinte. `$IFSx` e outra variavel, nao troca.
+function trocarIfsPorEspaco(s) {
+  let trocado = "";
+  let aspa = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === "\\" && aspa !== "'" && i + 1 < s.length) {
+      trocado += c + s[i + 1];
+      i += 1;
+      continue;
+    }
+    if (aspa === "'" || aspa === "$'") {
+      if (c === "'") aspa = null;
+      trocado += c;
+      continue;
+    }
+    if (c === '"') {
+      aspa = aspa === null ? '"' : null;
+      trocado += c;
+      continue;
+    }
+    if (c === "'" && aspa === null) {
+      aspa = "'";
+      trocado += c;
+      continue;
+    }
+    if (c === "$" && s[i + 1] === "'" && aspa === null) {
+      aspa = "$'";
+      trocado += "$'";
+      i += 1;
+      continue;
+    }
+    if (c === "$" && s.startsWith("{IFS}", i + 1)) {
+      trocado += " ";
+      i += 5;
+      continue;
+    }
+    if (c === "$" && s.startsWith("IFS", i + 1) && !/[A-Za-z0-9_]/.test(s[i + 4] || "")) {
+      trocado += " ";
+      i += 3;
+      continue;
+    }
+    trocado += c;
+  }
+  return trocado;
+}
 // D2 (gate-segmentador, Issue #689): dentro de aspas duplas a contrabarra so
 // escapa `"`, `\`, `$` e crase; em aspas ANSI-C ($'...') escapa qualquer um.
 const ESCAPAVEIS_EM_ASPAS_DUPLAS = new Set(['"', "\\", "$", "`"]);
@@ -228,14 +295,9 @@ const HEREDOC_CANONICO = /^\$\(cat <<'([A-Za-z_][A-Za-z0-9_]*)'\n[\s\S]*?\n\1\n\
 const INTERIOR_COMPLEXO = /['"`#<\\]|\bcase\b/;
 
 function segmentosParaGate(cmd) {
-  chamadasSegmentacao += 1;
-  if (chamadasSegmentacao > TETO_SEGMENTACAO) {
-    bloqueia(
-      "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
-      "Razão: o comando tem substituição (crase ou $(...)) aninhada demais para o gate ler com segurança.\n\n" +
-      "Rode o 'gh' direto, sem aninhar, ou divida o comando.\n"
-    );
-  }
+  gastarVarredura(cmd.length);
+  // D3 (rodada 14): a copia que o gate analisa ja tem `$IFS` como espaco.
+  cmd = trocarIfsPorEspaco(cmd);
   // Tarefa 13 (#309, revisao 2): colapsa contrabarra+LF/CRLF de nivel
   // superior (nao citada em aspas simples) ANTES de fatiar em segmentos —
   // senao o `\n` cru vira fronteira de segmento incondicional (abaixo) e
@@ -264,6 +326,13 @@ function segmentosParaGate(cmd) {
     // conferida tambem dentro de $(...) entre aspas, alem da recursao do P4
     // (D7): pular a regiao do $(...) dependia de achar o fim dele contando
     // parenteses sem entender aspas nem heredoc, e isso abria bypass.
+    // D4c (rodada 14): no PowerShell a crase escapa o caractere seguinte: `" e
+    // `t sao literais e nao abrem substituicao. Dentro de aspas simples nao escapa.
+    if (FERRAMENTA === "PowerShell" && c === "`" && aspa !== "'" && i + 1 < cmd.length) {
+      atual += c + cmd[i + 1];
+      i += 1;
+      continue;
+    }
     if (c === "`" && aspa !== "'" && aspa !== "$'" && !escapadaPorContrabarra(cmd, i)) {
       let j = i + 1;
       let internoCrase = "";
@@ -313,6 +382,7 @@ function segmentosParaGate(cmd) {
       if (aspa === '"' && c === "$" && cmd[i + 1] === "(") {
         // D6 (gate-segmentador): forma canonica do heredoc citado vai inteira
         // para `atual` e o interior e recursado; o corpo nao entra no laco.
+        gastarVarredura(cmd.length - i);
         const canonico = HEREDOC_CANONICO.exec(cmd.slice(i));
         // A primeira linha igual ao delimitador tem de ser a que vem antes do
         // `)`: um DELIM anterior fecha o heredoc no bash, e o resto executa
@@ -330,6 +400,23 @@ function segmentosParaGate(cmd) {
         let j = i + 2;
         let interno = "";
         while (j < cmd.length && profundidade > 0) {
+          // D4a (rodada 14, #692): a expansao ${...} inteira, com as chaves
+          // balanceadas, sai da contagem; o ')' dentro dela nao fecha o $(.
+          if (cmd[j] === "$" && cmd[j + 1] === "{") {
+            let chaves = 0;
+            let k = j + 1;
+            for (; k < cmd.length; k += 1) {
+              if (cmd[k] === "{") chaves += 1;
+              else if (cmd[k] === "}") {
+                chaves -= 1;
+                if (chaves === 0) break;
+              }
+            }
+            const fimExpansao = Math.min(k + 1, cmd.length);
+            interno += cmd.slice(j, fimExpansao);
+            j = fimExpansao;
+            continue;
+          }
           if (cmd[j] === "(") profundidade += 1;
           else if (cmd[j] === ")") {
             profundidade -= 1;
@@ -440,6 +527,19 @@ function segmentosParaGate(cmd) {
       // gate-segmentador). Fora de aspas `\` escapa o seguinte (`gh\ issue\
       // close`, quinta revisao); entre aspas duplas escapa ", \, $ e crase.
       while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) {
+        // D4b (rodada 14, #692): `$'...'` e `$"..."` sao aspas do bash, nao um `$`
+        // solto. O `$` sai e a palavra e lida ate a aspa que fecha; no `$'` a
+        // contrabarra escapa o caractere seguinte, como no ANSI-C do bash.
+        if (cmd[k] === "$" && (cmd[k + 1] === "'" || cmd[k + 1] === '"')) {
+          const tipoAspa = cmd[k + 1];
+          k += 2;
+          while (k < cmd.length && cmd[k] !== tipoAspa) {
+            if (cmd[k] === "\\" && k + 1 < cmd.length && (tipoAspa === "'" || ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1]))) { conteudo += cmd[k + 1]; k += 2; continue; }
+            conteudo += cmd[k]; k++;
+          }
+          if (k < cmd.length) k++; // fecha a aspa
+          continue;
+        }
         const aspaDaPalavra = cmd[k] === "'" || cmd[k] === '"' ? cmd[k] : null;
         if (aspaDaPalavra) {
           k++;
@@ -519,7 +619,7 @@ function segmentosParaGate(cmd) {
           // Fechado quando o corpo NAO chega ate `fim` (a linha do delimitador
           // ficou de fora dele); sem fechamento, o corpo é tudo até o fim.
           const fechado = inicioCorpo + 1 + heredoc.corpo.length < heredoc.fim;
-          const depois = fechado ? cmd.slice(heredoc.fim - 1) : '';
+          const depois = fechado ? restoDepoisDoHeredoc(cmd, heredoc.fim) : '';
           cmd = cmd.slice(0, inicioCorpo) + depois;
         }
         i = j - 1;
