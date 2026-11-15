@@ -15,8 +15,10 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   depois do squash) compara o `verificar.head` com a ponta do PR mergeado, não com o HEAD.
   O PR vem do `pr` do `--json` do `marcar`. A ponta vem de `gh pr view <pr> --json
   state,headRefOid` e só vale com `state` `MERGED`. Sem `pr`, ou com o PR não mergeado, a
-  recusa diz que o HEAD não contém o código verificado e manda rodar o `marcar` na branch do
-  fluxo ou passar o `pr`. Ela não manda mais reabrir o executar. Sem `gh` ou sem rede, sai 69** —
+  comparação volta a ser contra o HEAD, como na base (é o caso do rebase da branch do fluxo
+  depois do `verificar`), e a recusa, se houver, acrescenta a dica de passar o `pr` do PR
+  mergeado. Sem `gh` ou sem rede, sai 69. (Emendado na revisão 1, decidido sem o usuário: a
+  primeira versão recusava sem `pr` e quebrava o fechar depois de um rebase.)** —
   porquê: o que foi mergeado é a ponta do PR. Comparar o código verificado com ela mede
   exatamente o que a D1 da #567 quer medir: código que mudou depois do `verificar` e entrou
   na `main`. Contra o HEAD de uma branch nova, o diff `merge-base..HEAD` sai vazio e qualquer
@@ -25,10 +27,14 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   Critério: na reprodução da #714 (estado com `verificar.head` = A, PR mergeado cuja ponta
   tem o mesmo conteúdo de A, HEAD numa branch nova da `main` com o CHANGELOG da `main`
   diferente), o `marcar` sai 0. Com um arquivo de código diferente entre A e a ponta do PR,
-  sai 2. Sem `pr`, sai 2 com a mensagem nova, que não contém "Reabra o executar". Na branch
-  do fluxo, onde o HEAD contém A, nada muda.
-- **D2 — Linha de continuação dentro de `busca:` vira recusa.** Uma linha indentada, sem
-  hífen e não vazia, logo depois de um item ou de outra continuação, é recusada pelo
+  sai 2. Sem `pr`, sai 2 e a recusa traz a dica do `pr`. Na branch do fluxo rebaseada depois
+  do `verificar`, sem PR mergeado, sai 0 como na base. Na branch do fluxo, onde o HEAD contém
+  A, nada muda.
+- **D2 — Linha de continuação dentro de `busca:` vira recusa.** Quando há `desfecho:` depois
+  do `busca:`, o bloco vai até ele, e toda linha não vazia que não é item `- ` é recusada
+  (indentada ou na margem, `-catalogo` sem espaço). Item depois de linha em branco continua
+  sendo item e é conferido. Sem `desfecho:` depois, vale a regra da indentação: uma linha
+  indentada, sem hífen e não vazia, logo depois de um item ou de outra continuação, é recusada pelo
   `conferir-busca` com o número da tarefa e o formato esperado: cada item cabe numa linha
   só. Antes ela era descartada em silêncio, e o `arquivo:linha` que caía nela não era
   conferido (#709) — porquê: recusar é o que a doc já promete ("confere toda ocorrência"),
