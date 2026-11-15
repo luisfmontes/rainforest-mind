@@ -92,6 +92,12 @@ o que ele disse que teria, alargue para a convenção documentada no
 repositório e reporte a divergência, em vez de concluir que o dado não
 existe.
 
+**Código do projeto fora da bateria roda com a pasta pessoal desviada**:
+`HOME`, `USERPROFILE`, `APPDATA` e `LOCALAPPDATA` apontados para um
+`mktemp -d` no mesmo comando. Experimento fica de preferência como teste
+temporário dentro da bateria, rodado por ela. Script fora do repositório não é
+isolamento: o código grava onde o ambiente aponta (#697).
+
 <!-- perfil-de-trabalho:inicio -->
 ## O padrão de evidência de quem recebe este trabalho
 
