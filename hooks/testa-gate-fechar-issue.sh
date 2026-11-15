@@ -4626,6 +4626,43 @@ EXIT_614_7=$?
 ERR_614_7="$(cat "$SBP/err-614-7")"
 echo "$ERR_614_7" | grep -qF "Closes caixa/outro#12" && test_ok "614-7 stderr sugere Closes caixa/outro#12" || test_fail "614-7 stderr sem 'Closes caixa/outro#12' ($ERR_614_7)"
 
+# (#699/#703/#708) bash -c com argumento posicional, --, exec -a, builtin e cmd //c.
+# Payload real de PreToolUse (Bash) pelo caso_gate. Em `bash -c` o script e so a
+# primeira palavra depois do -c (D1): $0, $1... nao rodam. Sai 2 quando essa palavra
+# leva gh de escrita; sai 0 quando o gh esta so nos argumentos ou nao existe.
+echo
+echo "== (#699/#703/#708) bash -c com argumento posicional, --, exec -a, builtin e cmd //c =="
+caso_gate f699-1 2 'bash -c "gh issue close 12" x'
+caso_gate f699-2 2 $'bash -c \'gh pr merge 5\' x'
+caso_gate f699-3 2 'sh -c "gh issue close 12" _'
+caso_gate f699-4 2 $'bash -c \'gh issue close 12\' x y'
+caso_gate f699-5 2 'bash -c "gh issue close 12" -- x'
+caso_gate f699-6 2 $'bash -c -- \'gh pr merge 5\''
+caso_gate f699-7 2 $'exec -a x bash -c \'gh issue close 12\''
+caso_gate f699-8 2 $'builtin eval \'gh issue close 12\''
+caso_gate f699-9 2 $'cmd //c bash -c "echo"\' \\"; gh issue close 12\''
+caso_gate f699-10 2 $'eval "echo"\' \\"; gh issue close 12\''
+caso_gate f699-11 2 $'cmd /c bash -c "echo"\' \\"; gh issue close 12\''
+caso_gate f699-12 2 $'bash -c "echo"\' " x "; gh issue close 12\''
+caso_gate f699-13 2 $'bash -c \'echo \'"\'"\' x \'"\'"\'; gh issue close 12\''
+caso_gate f699-14 2 $'bash -c -x \'gh issue close 12\' x'
+caso_gate f699-15 2 $'exec -la x bash -c \'gh issue close 12\''
+caso_gate f699-16 2 $'eval -- \'gh issue close 12\''
+caso_gate f699-17 2 $'bash -c \'eval -- "gh issue close 12"\''
+caso_gate f699-18 2 'cmd /q /c "gh issue close 12"'
+caso_gate f699-19 2 'cmd /c "gh issue close 12"'
+caso_gate f699-20 2 $'bash -c "echo"\'x; gh issue close 12\''
+caso_gate f699-21 2 $'bash -c "gh issue close 12"\' x\''
+caso_gate f699-22 2 $'bash -c \'gh issue close 12\'" x"'
+caso_gate f699-23 0 $'bash -c \'echo hi\' x'
+caso_gate f699-24 0 $'bash -c -- \'echo hi\''
+caso_gate f699-25 0 $'bash -c \'echo hi\' x -I"C:\\x"'
+caso_gate f699-26 0 'builtin echo x'
+caso_gate f699-27 0 $'bash -c -x \'echo hi\' x'
+caso_gate f699-28 0 $'bash -c "echo"\'x\''
+caso_gate f699-29 0 $'bash -c "echo hi" x -I"C:\\x"'
+caso_gate f699-30 0 $'bash -c \'gh issue view 12\' x'
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

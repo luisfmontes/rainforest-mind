@@ -41,13 +41,22 @@ function tokensComAspas(cmd, opcoes = {}) {
   // inteira com a regra errada. O token sai com `mista: true` (revisão 6 de
   // gate-segmentador); sem mistura, o token não ganha o campo.
   let modos = new Set();
-  const empurra = () => {
+  // `raw` (#699): o texto ORIGINAL da palavra mista com aspa simples. `textoAPartir`
+  // o devolve como esta, senao a remontagem pela primeira aspa parte a palavra no
+  // meio (`"echo"' " x "; gh issue close 12'` virava `"echo "`, e o gh sumia). So a
+  // mistura com aspa simples: `"$P"/x.sh` segue remontada como `"$P/x.sh"` (testa-gate-staging-total).
+  let inicioTok = 0;
+  const empurra = (fim) => {
     const t = { v: atual, q: citado, aspa: primeiraAspa };
-    if (modos.size > 1) t.mista = true;
+    if (modos.size > 1) {
+      t.mista = true;
+      if (modos.has("'")) t.raw = cmd.slice(inicioTok, fim);
+    }
     out.push(t);
   };
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
+    if (!temAlgo && !/\s/.test(c)) inicioTok = i;
     // D8 (gate-segmentador, Issue #689): com `opcoes.contrabarra` (Bash), fora
     // de aspas simples a contrabarra escapa o caractere seguinte, que nao
     // abre, fecha nem separa. Fora de aspas a contrabarra some (a remocao que
@@ -69,14 +78,14 @@ function tokensComAspas(cmd, opcoes = {}) {
       modos.add(c);
       if (primeiraAspa === null) primeiraAspa = c;
     } else if (/\s/.test(c)) {
-      if (temAlgo) empurra();
+      if (temAlgo) empurra(i);
       atual = ""; temAlgo = false; citado = false; primeiraAspa = null; modos = new Set();
     } else {
       atual += c; temAlgo = true;
       modos.add("nu");
     }
   }
-  if (temAlgo) empurra();
+  if (temAlgo) empurra(cmd.length);
   return out;
 }
 
@@ -128,6 +137,8 @@ function nomeDeWrapper(tok) {
 // nunca um comando.
 const WRAPPERS_QUE_REPASSAM = new Set([
   "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time", "stdbuf",
+  // #694/#703: `builtin` repassa o comando como o `command` (`builtin eval '...'`).
+  "builtin",
 ]);
 
 // Operadores de fronteira de segmento com DOIS caracteres que tem que ser
@@ -197,6 +208,8 @@ const FLAGS_COM_VALOR = {
   xargs: new Set(["-n", "-I", "-d", "-P"]),
   timeout: new Set(["-s", "--signal", "-k", "--kill-after"]),
   stdbuf: new Set(["-i", "-o", "-e", "--input", "--output", "--error"]),
+  // #703: `exec -a NOME` consome o nome (o bash e o MSYS rodam o comando depois dele).
+  exec: new Set(["-a"]),
 };
 
 /** `NOME=valor` isolado — atribuicao de variavel antes do comando de verdade. */
@@ -232,6 +245,11 @@ function pularFlagsDoWrapper(toks, i, wrapper, captura) {
     const tok = toks[i].v;
     if (wrapper === "nice" && /^-n\d+$/.test(tok)) {
       i += 1;
+      continue;
+    }
+    // #703: `exec -la NOME`: o `a` no fim do agrupamento consome o valor seguinte.
+    if (wrapper === "exec" && /^-[cl]*a$/.test(tok)) {
+      i += 2;
       continue;
     }
     const base = baseDaFlag(tok);
@@ -328,7 +346,9 @@ function textoAPartir(toks, i) {
   // `desempacota` reduz de volta ao valor exato (D8 de gate-segmentador). Aspas
   // simples com `'\''` nao voltavam: `bash -c echo\ \'x\'\;\ gh ...` escondia o
   // `gh` (revisao 5). Sem a opcao, nada muda.
-  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? '"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"' : t.v))).join(" ");
+  // #699: palavra mista sai como o texto original (`t.raw`); a remontagem por
+  // uma aspa so so vale para palavra de uma aspa.
+  return toks.slice(i).map((t) => (t.raw !== undefined ? t.raw : t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? '"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"' : t.v))).join(" ");
 }
 
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------
@@ -872,6 +892,88 @@ function caminhoComVariavelELiteral(str) {
   return semExpansao.length > 0 && !semExpansao.startsWith('-');
 }
 
+// Opcoes do shell que consomem o valor seguinte, depois do `-c`
+// (`bash -c -o pipefail 'x'`): mesma lista de `CURTAS_COM_VALOR`/`LONGAS_COM_VALOR`.
+const OPCOES_COM_VALOR_APOS_C = new Set(["-o", "+o", "-O", "+O", "--rcfile", "--init-file"]);
+
+/**
+ * #699 (D1): a palavra do script depois do `-c`. O bash ainda aceita opcoes
+ * (`-x`, `-o pipefail`) e um `--` isolado entre o `-c` e o script; a partir
+ * dali, a PRIMEIRA palavra do shell e o script, e as seguintes sao `$0`,
+ * `$1`... que nao rodam. Devolve essa palavra CRUA, com as aspas, montada como
+ * o bash a monta: trechos citados e nus colados ate o primeiro espaco fora de
+ * aspas (contrabarra escapa o caractere seguinte, como no bash).
+ */
+function palavraDoScript(resto) {
+  let s = resto.replace(/^\s+/, "");
+  let viuFimDasOpcoes = false;
+  for (;;) {
+    const p = viuFimDasOpcoes ? null : extrairPrimeiroToken(s);
+    if (!p || p.citado || !/^[-+]/.test(p.tok)) break;
+    if (p.tok === "--") { viuFimDasOpcoes = true; s = p.resto; continue; }
+    const valor = OPCOES_COM_VALOR_APOS_C.has(p.tok) ? extrairPrimeiroToken(p.resto) : null;
+    s = valor ? valor.resto : p.resto;
+  }
+  s = s.replace(/^\s+/, "");
+  let palavra = "";
+  let aspa = null;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i];
+    if (aspa) {
+      if (aspa === '"' && c === "\\" && i + 1 < s.length) { palavra += c + s[i + 1]; i += 1; continue; }
+      if (c === aspa) aspa = null;
+      palavra += c;
+      continue;
+    }
+    if (/\s/.test(c)) break;
+    if (c === "\\" && i + 1 < s.length) { palavra += c + s[i + 1]; i += 1; continue; }
+    if (c === '"' || c === "'") aspa = c;
+    palavra += c;
+  }
+  // Aspas mistas SEM contrabarra: o valor que o bash passa ao -c (aspas tiradas),
+  // re-citado em aspas duplas para o desempacotador devolver exatamente esse valor.
+  if (palavraEMista(palavra) && !palavra.includes("\\")) {
+    return `"${valorDeAspasMistas(palavra).replace(/(["$`])/g, "\\$1")}"`;
+  }
+  return palavra;
+}
+
+/**
+ * #699: a palavra do script mistura aspas (`"echo"' \"; gh x'`). O bash reduz
+ * cada trecho pela propria aspa, e o desempacotador so reduz palavra de uma
+ * aspa so. Com contrabarra, a palavra e ilegivel: `\"` dentro de aspas simples
+ * vira `"` na hora do bash e pode abrir outro comando. Sem contrabarra, o valor
+ * (`valorDeAspasMistas`) e exato e o gate le o que roda.
+ *
+ * So a leitura do BASH (com contrabarra) conta: o script de `bash -c` e sempre
+ * palavra de bash, mesmo chamado pelo PowerShell. Ler `\"` como fechamento de
+ * aspas (leitura sem contrabarra) marcava `"echo \"oi\""` como mista.
+ */
+function palavraEMista(palavra) {
+  return tokensComAspas(palavra, { contrabarra: true }).some((t) => t.mista);
+}
+
+function palavraIlegivel(palavra) {
+  return palavra.includes("\\") && palavraEMista(palavra);
+}
+
+/** Valor de palavra com aspas mistas e SEM contrabarra: tira as aspas, como o bash. */
+function valorDeAspasMistas(palavra) {
+  let valor = "";
+  let aspa = null;
+  for (const c of palavra) {
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      else valor += c;
+    } else if (c === "'" || c === '"') {
+      aspa = c;
+    } else {
+      valor += c;
+    }
+  }
+  return valor;
+}
+
 function desempacotarWrapperDeString(segmento, opcoes = {}) {
   const { ferramenta } = opcoes;
   const p1 = extrairPrimeiroToken(segmento);
@@ -946,9 +1048,14 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
   }
 
   if (exe === "cmd") {
-    const flag = p2.tok.toLowerCase();
-    if (flag !== "/c" && flag !== "/k") return { interno: null, ilegivel: false };
-    const interno = desempacota(p2.resto);
+    // #694: `cmd` aceita chaves antes do /c (`/q`, `/s`, `/d`, `/e:on`) e a forma
+    // com duas barras (`//c`, `//k`). As chaves de uma letra saem antes do /c.
+    let atual = p2;
+    while (atual && /^\/{1,2}[a-z](:\w+)?$/i.test(atual.tok) && !/^\/{1,2}[ck]$/i.test(atual.tok)) {
+      atual = extrairPrimeiroToken(atual.resto);
+    }
+    if (!atual || !/^\/{1,2}[ck]$/i.test(atual.tok)) return { interno: null, ilegivel: false };
+    const interno = desempacota(atual.resto);
     return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
   }
 
@@ -966,8 +1073,12 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     const tokLower = current.tok.toLowerCase();
     const ehFlagEsperada = tokLower === flagEsperada || /^-[a-z]*c$/i.test(current.tok);
     if (ehFlagEsperada) {
-      const interno = desempacota(current.resto);
-      return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+      // #699 (D1): o script e so a palavra depois do -c (ver palavraDoScript).
+      // `escopo: "palavra"` diz ao gate que o resto do segmento (`$0`, `$1`...)
+      // nao entra na checagem de aspas mistas: so a palavra do script entra.
+      if (palavraIlegivel(palavraDoScript(current.resto))) return { interno: null, ilegivel: true, escopo: "palavra" };
+      const interno = desempacota(palavraDoScript(current.resto));
+      return { interno, ilegivel: contemConstrucaoIlegivel(interno), escopo: "palavra" };
     }
     // Se começa com - ou + mas não é a flag esperada, pula (e o valor dela,
     // se for flag reconhecida com valor) e tenta o próximo token.

@@ -1638,11 +1638,16 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   const internoDoEval = ehEvalDoBash
     ? toksComAspas.slice(pos + 1).map((t) => (t.q && t.aspa === '"' ? reduzEscapeAspasDuplas(t.v) : t.v)).join(" ")
     : null;
-  const { interno, ilegivel } = pos === null
+  const resDesempacote = pos === null
     ? { interno: null, ilegivel: false }
     : ehEvalDoBash
       ? { interno: internoDoEval, ilegivel: contemConstrucaoIlegivel(internoDoEval) }
       : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, scriptComVariavel: 'desconhecido' });
+  const { interno, ilegivel } = resDesempacote;
+  // #699: `bash -c` e primos (escopo "palavra") leem so a palavra do script; o
+  // resto do segmento (`$0`, `$1`...) nao roda, e a checagem de aspas mistas
+  // dele barrava argumento sem gh (#708). A palavra mista ja sai ilegivel do desempacotador.
+  const escopoPalavra = resDesempacote.escopo === "palavra";
   // Revisao 6 de gate-segmentador (Q1 A): palavra de aspas mistas com
   // contrabarra (`"echo"' \"; gh issue close 12'`) tem a contrabarra reduzida
   // aqui pela regra da PRIMEIRA aspa, e o bash reduz cada trecho pela propria
@@ -1661,7 +1666,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // dialeto do WRAPPER, nao a ferramenta: `bash -c` pelo PowerShell segue barrando.
   const exeDoWrapper = pos === null ? "" : normalizarExecutavel(toksComAspas[pos].v);
   const wrapperSemContrabarra = ["cmd", "pwsh", "powershell", "iex", "invoke-expression", "&"].includes(exeDoWrapper);
-  const mistaComGh = !wrapperSemContrabarra && interno !== null && depois.some((t) => t.mista && t.v.includes("\\"));
+  const mistaComGh = !wrapperSemContrabarra && interno !== null && !escopoPalavra && depois.some((t) => t.mista && t.v.includes("\\"));
   if (ilegivel || mistaComGh) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).
