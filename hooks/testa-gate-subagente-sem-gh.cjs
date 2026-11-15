@@ -134,6 +134,29 @@ caso('bash -c "$x" (ilegível) em subagente', r.status, 2);
 r = rodar('eval "$x"');
 caso('eval "$x" (ilegível) em subagente', r.status, 2);
 
+// zerar-issues-14, tarefa 5 (achado 2): here-string que alimenta um shell é o
+// script, e `$'...'` como script de eval ou de here-string é ilegível.
+r = rodar(`bash <<<$'gh issue close 12'`);
+caso("(achado 2) bash <<<$'gh issue close 12' em subagente", r.status, 2);
+
+r = rodar(`bash <<< $'gh issue close 12'`);
+caso("(achado 2) bash <<< $'gh issue close 12' (com espaço) em subagente", r.status, 2);
+
+r = rodar(`eval $'echo hi\\ngh issue close 12'`);
+caso("(achado 2) eval $'echo hi\\ngh issue close 12' (\\n literal) em subagente", r.status, 2);
+
+r = rodar(`eval $'gh\\tissue close 12'`);
+caso("(achado 2) eval $'gh\\tissue close 12' em subagente", r.status, 2);
+
+r = rodar(`bash <<< 'gh issue close 12'`);
+caso("(achado 2) bash <<< 'gh issue close 12' em subagente", r.status, 2);
+
+r = rodar(`cat <<< $'texto'`);
+caso("(achado 2) cat <<< $'texto' (não é shell) em subagente", r.status, 0);
+
+r = rodar(`bash <<<"echo hi"`);
+caso('(achado 2) bash <<<"echo hi" em subagente', r.status, 0);
+
 r = rodar("cat > /tmp/x.sh <<'EOF'\ngh issue close 12\nEOF");
 caso("cat > /tmp/x.sh <<'EOF' com gh issue close 12 no corpo em subagente", r.status, 2);
 

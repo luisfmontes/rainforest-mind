@@ -701,6 +701,49 @@ function arquivoDeScriptExecutado(caminhoBruto, cwd) {
  * efetivo ONDE ESTE SEGMENTO roda (D4) — usado só para resolver caminho
  * relativo de arquivo executado.
  */
+// Shells que leem o script da entrada padrão: `bash <<< 'x'` roda `x`.
+const SHELLS_DE_HERE_STRING = new Set(["bash", "sh", "zsh", "ksh", "dash", "fish"]);
+
+/** Texto depois do primeiro `<<<` que está FORA de aspas no segmento, ou null. */
+function restoDepoisDeHereString(segmento) {
+  let aspa = null;
+  let ansi = false;
+  for (let i = 0; i < segmento.length; i++) {
+    const c = segmento[i];
+    if (aspa) {
+      if ((aspa === '"' || ansi) && c === "\\") { i++; continue; }
+      if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "\\") { i++; continue; }
+    if (c === "<" && segmento.startsWith("<<<", i)) return segmento.slice(i + 3);
+    if (c === "'" || c === '"') { ansi = segmento[i - 1] === "$"; aspa = c; }
+  }
+  return null;
+}
+
+/** A palavra que o bash lê logo depois do `<<<` (com aspas, `$'...'` e contrabarra). */
+function palavraDeHereString(resto) {
+  const s = resto.replace(/^[ \t]+/, "");
+  let palavra = "";
+  let aspa = null;
+  let ansi = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (aspa) {
+      if ((aspa === '"' || ansi) && c === "\\" && i + 1 < s.length) { palavra += c + s[i + 1]; i++; continue; }
+      if (c === aspa) aspa = null;
+      palavra += c;
+      continue;
+    }
+    if (/[\s;&|()<>]/.test(c)) break;
+    if (c === "\\" && i + 1 < s.length) { palavra += c + s[i + 1]; i++; continue; }
+    if (c === "'" || c === '"') { ansi = palavra.endsWith("$"); aspa = c; }
+    palavra += c;
+  }
+  return palavra;
+}
+
 function processarSegmento(segmento, cwd) {
   const toks = tokensComAspas(segmento);
   if (toks.length === 0) return;
@@ -724,6 +767,21 @@ function processarSegmento(segmento, cwd) {
     const achado = arq === null ? null : arquivoDeScriptExecutado(arq, cwd);
     if (achado !== null) bloqueiaArquivo(achado);
     return;
+  }
+
+  // zerar-issues-14, tarefa 5 (achado 2): here-string que alimenta um shell
+  // (`bash <<< 'x'`, `bash <<<$'x'`, com ou sem espaço) é o script, lido como o
+  // `bash -c` dessa palavra. O `--` faz a palavra ser o script, nunca uma opção.
+  if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm)) {
+    const resto = restoDepoisDeHereString(segmento);
+    const palavra = resto === null ? "" : palavraDeHereString(resto);
+    if (palavra !== "") {
+      const hs = desempacotarWrapperDeString(`bash -c -- ${palavra}`);
+      if (hs.ilegivel) bloqueiaIlegivel(segmento);
+      if (hs.interno !== null) {
+        for (const sub of segmentosParaGate(hs.interno)) processarSegmento(sub, cwd);
+      }
+    }
   }
 
   const { interno, ilegivel } = pos === null

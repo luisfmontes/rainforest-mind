@@ -378,6 +378,8 @@ const WRAPPERS_DE_COMANDO = {
   zsh: "-c",
   ksh: "-c",
   dash: "-c",
+  // zerar-issues-14, tarefa 5 (achado 9): fish também roda o script de `-c`.
+  fish: "-c",
 };
 
 // W1 (rodada 14, lote 3, 2026-09-04): o laco que procura o -c em
@@ -1006,6 +1008,24 @@ function valorDeAspasMistas(palavra) {
   return valor;
 }
 
+/**
+ * Rede de segurança (zerar-issues-14, tarefa 5, achado 5): um `gh` como PALAVRA
+ * do texto (sem aspas, por palavra, não por substring). Barra `/usr/bin/gh` e
+ * `gh.exe`; deixa passar `--repo gh/foo` e um caminho com `gh` no meio, onde o
+ * `gh` é só um pedaço de caminho de argumento.
+ */
+function temGhComoPalavra(texto) {
+  return texto.replace(/["']/g, "").split(/\s+/).some((p) => p !== "" && normalizarNomeExecutavel(p) === "gh");
+}
+
+// Parâmetros do pwsh/powershell que CONSOMEM o valor seguinte (achado 8,
+// zerar-issues-14, tarefa 5): sem consumir, `-ExecutionPolicy Bypass` deixaria
+// `Bypass` como se fosse o fim das opções e o `-Command` depois dele sumiria.
+const PWSH_PARAMS_COM_VALOR = [
+  "-configurationname", "-configurationfile", "-custompipename", "-executionpolicy",
+  "-inputformat", "-outputformat", "-settingsfile", "-windowstyle", "-workingdirectory",
+];
+
 function desempacotarWrapperDeString(segmento, opcoes = {}) {
   const { ferramenta } = opcoes;
   const p1 = extrairPrimeiroToken(segmento);
@@ -1064,19 +1084,35 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
       return { interno: null, ilegivel: true };
     }
     const interno = desempacota(p1.resto);
-    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+    // zerar-issues-14, tarefa 5 (achado 2): `eval $'...'` e `eval $"..."` são
+    // texto que o bash expande com regras que o gate não lê (`\n`, `\t`, `\x41`),
+    // então o script é ilegível. Mesma regra que vale para o script do `bash -c`.
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) || /^\$["']/.test(interno) };
   }
 
   const p2 = extrairPrimeiroToken(p1.resto);
   if (!p2) return { interno: null, ilegivel: false };
 
   if (exe === "pwsh" || exe === "powershell") {
-    if (casaPrefixoDeFlag(p2.tok, "-encodedcommand")) {
-      return { interno: null, ilegivel: true };
+    // zerar-issues-14, tarefa 5 (achado 8): o -Command pode vir depois de outros
+    // parâmetros (`-NoProfile`, `-ExecutionPolicy Bypass`), e parâmetro com valor
+    // consome o valor seguinte. Sem -Command, falha fechada se houver `gh` como palavra.
+    let atual = p2;
+    while (atual) {
+      if (casaPrefixoDeFlag(atual.tok, "-encodedcommand")) return { interno: null, ilegivel: true };
+      if (casaPrefixoDeFlag(atual.tok, "-command")) {
+        const interno = desempacota(atual.resto);
+        return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+      }
+      if (PWSH_PARAMS_COM_VALOR.some((nome) => casaPrefixoDeFlag(atual.tok, nome))) {
+        const valor = extrairPrimeiroToken(atual.resto);
+        atual = valor ? extrairPrimeiroToken(valor.resto) : null;
+        continue;
+      }
+      if (!atual.tok.startsWith("-")) break;
+      atual = extrairPrimeiroToken(atual.resto);
     }
-    if (!casaPrefixoDeFlag(p2.tok, "-command")) return { interno: null, ilegivel: false };
-    const interno = desempacota(p2.resto);
-    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+    return { interno: null, ilegivel: temGhComoPalavra(p1.resto) };
   }
 
   if (exe === "cmd") {
@@ -1086,8 +1122,13 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     while (atual && /^\/{1,2}[a-z](:\w+)?$/i.test(atual.tok) && !/^\/{1,2}[ck]$/i.test(atual.tok)) {
       atual = extrairPrimeiroToken(atual.resto);
     }
-    if (!atual || !/^\/{1,2}[ck]$/i.test(atual.tok)) return { interno: null, ilegivel: false };
-    const interno = desempacota(atual.resto);
+    if (!atual) return { interno: null, ilegivel: false };
+    // zerar-issues-14, tarefa 5 (achado 7): o cmd aceita o comando colado à flag
+    // (`//cgh issue close 12`, `/c"gh issue close 12"`). O texto colado é o
+    // começo do comando, e o resto do segmento vem depois dele.
+    const colado = /^\/{1,2}[ck](.+)$/i.exec(atual.tok);
+    if (!colado && !/^\/{1,2}[ck]$/i.test(atual.tok)) return { interno: null, ilegivel: false };
+    const interno = desempacota((colado ? colado[1] : "") + atual.resto);
     return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
   }
 
@@ -1110,8 +1151,10 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
       // nao entra na checagem de aspas mistas: so a palavra do script entra.
       // Rede de seguranca (zerar-issues-14, tarefa 5): `gh` como palavra depois
       // do script, nas palavras sem aspas, e ilegivel, qualquer que seja o script.
+      // zerar-issues-14, tarefa 5 (achado 2): script `$'...'`/`$"..."` é ilegível.
+      // (achado 5): a rede olha palavra por palavra, não o texto (`--repo gh/foo` passa).
       const zona = palavraDoScript(current.resto, valoresDaOpcao(current.tok));
-      if (zona.ilegivel || palavraIlegivel(zona.palavra) || /(^|[^\w-])gh([^\w-]|$)/.test(zona.resto.replace(/["']/g, ""))) {
+      if (zona.ilegivel || /^\$["']/.test(zona.palavra) || palavraIlegivel(zona.palavra) || temGhComoPalavra(zona.resto)) {
         return { interno: null, ilegivel: true, escopo: "palavra" };
       }
       const interno = desempacota(zona.palavra);

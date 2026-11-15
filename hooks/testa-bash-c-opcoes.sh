@@ -47,6 +47,18 @@ espera_bloqueio "bash -c \"-x\" 'gh issue close 12'"
 espera_bloqueio "bash -c -xo errexit 'gh issue close 12'"
 espera_bloqueio "bash -c 'echo' 'gh issue close 12'"
 espera_bloqueio "bash -c -o errexit 'gh issue close 12'"
+# achado 4 (zerar-issues-14, tarefa 5): `'-o'` citado vira opcao, nao script; so ehOpcaoDisfarcada barra.
+espera_bloqueio "bash -c '-o' errexit 'g\\h issue close 12'"
+# achado 5: a rede olha palavra por palavra; `/usr/bin/gh` e `gh` como palavra barram.
+espera_bloqueio "bash -c 'echo hi' x /usr/bin/gh"
+# achado 7: o cmd aceita o comando colado a //c.
+espera_bloqueio "cmd //cgh issue close 12"
+espera_bloqueio "cmd //c\"gh issue close 12\""
+# achado 8: -Command depois de outros parametros, e parametro com valor consome o valor.
+espera_bloqueio "pwsh -NoProfile -Command \"gh issue close 12\""
+espera_bloqueio "powershell -NoProfile -ExecutionPolicy Bypass -Command \"gh issue close 12\""
+# achado 9: fish roda o script de -c.
+espera_bloqueio "fish -c 'gh issue close 12'"
 
 echo
 echo "== passa: o script lido nao fecha Issue =="
@@ -54,6 +66,13 @@ espera_passa "bash -co errexit 'echo hi'"
 espera_passa "bash -c -xo errexit 'echo hi' x"
 espera_passa "bash -c 'echo hi' x"
 espera_passa "bash -xc 'echo hi'"
+# achado 5: `gh` dentro de um caminho ou de um argumento nao e a palavra gh.
+espera_passa "bash -c 'echo hi' x --repo gh/foo"
+espera_passa "bash -c 'ls' x /srv/gh/y"
+# achado 8 e 9: o -Command sem gh, o cmd com comando seguro e o fish sem gh passam.
+espera_passa "pwsh -NoProfile -Command \"Get-ChildItem\""
+espera_passa "cmd //c dir"
+espera_passa "fish -c 'echo hi'"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
