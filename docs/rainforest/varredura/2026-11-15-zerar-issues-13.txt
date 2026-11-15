@@ -1,0 +1,447 @@
+Data: 2026-11-15
+Termos: fechar, squash, extrairBusca, experimento ad hoc
+
+$ gh issue list --state all --search "fechar" --limit 200 --json number,title,state
+[{"number":694,"state":"OPEN","title":"gate-fechar-issue: builtin eval e $IFS escondem gh de escrita"},{"number":714,"state":"OPEN","title":"fechar ok recusa depois do squash quando roda numa branch nova da main"},{"number":708,"state":"OPEN","title":"gate-fechar-issue: palavra mista em argumento posicional do bash -c barra sem gh"},{"number":692,"state":"OPEN","title":"gate-fechar-issue: ${...} em \"$(...)\", here-string com $'...' e crase do PowerShell escondem gh issue close"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":681,"state":"CLOSED","title":"fechar-issue.cjs recusa Issue com 'Pronto quando:', o formato comum do repo"},{"number":682,"state":"CLOSED","title":"gate-fechar-issue barra 'gh pr create --help' e 'gh help pr create'"},{"number":441,"state":"CLOSED","title":"estado: verificar reprovado depois do fechar ok nao reabre o fechar"},{"number":689,"state":"CLOSED","title":"gate-fechar-issue: here-string com palavra nua e aspa escapada escondem gh issue close"},{"number":664,"state":"CLOSED","title":"gate-fechar-issue não reconhece -F (atalho de --body-file) e recusa como editor interativo"},{"number":592,"state":"CLOSED","title":"/feedback prescreve 'CORRIGE #<n>:' e o gate-fechar-issue barra essa forma"},{"number":594,"state":"CLOSED","title":"gate-fechar-issue: temMarcadorEvidencia consulta a Issue no cwd do hook e lê erro como falta de evidência"},{"number":614,"state":"CLOSED","title":"gate-fechar-issue: Issue citada por URL de outro repo é consultada no repo do comando"},{"number":576,"state":"CLOSED","title":"esperar-ci: repositório sem CI sai 5 (como CI vermelho) e trava o merge"},{"number":575,"state":"CLOSED","title":"fechar: <slug>.pr.md editado depois do verificar conta como código e exige reabrir o executar"},{"number":449,"state":"CLOSED","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":407,"state":"CLOSED","title":"gate-fechar-issue barra --body-file criado por heredoc no mesmo comando"},{"number":405,"state":"CLOSED","title":"gate-fechar-issue barra laco e bash scripts/$b.sh sem gh"},{"number":567,"state":"CLOSED","title":"estado.cjs: commit depois do verificar ok nao reabre revisar nem verificar"},{"number":591,"state":"CLOSED","title":"Segue #576: esperar-ci sai 5 em repositório cujo único workflow não dispara em PR"},{"number":578,"state":"CLOSED","title":"estado.cjs: docDoEstagio devolve realpath e a trava pos-verificar erra com raiz por junction"},{"number":616,"state":"CLOSED","title":"esperar-ci sai 5 quando o run do PR ainda não foi registrado"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":337,"state":"CLOSED","title":"gate-fechar-issue barra bash $t sem aspas como comando encapsulado"},{"number":414,"state":"CLOSED","title":"gate-fechar-issue barra comando sem gh que carrega env com set -a e ponto"},{"number":362,"state":"CLOSED","title":"gate-fechar-issue barra laco sem gh quando a variavel esta sem aspas"},{"number":496,"state":"CLOSED","title":"gate-fechar-issue descarta o --repo de gh pr merge e lê a descrição do PR no repo da sessão"},{"number":529,"state":"CLOSED","title":"Achado de revisao aprovada que cabe no PR nao tem caminho de volta para executar"},{"number":269,"state":"CLOSED","title":"gate-fechar-issue dita '--saida <saida-ou-arquivo>', e --saida cola o caminho como se fosse a saida"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":587,"state":"CLOSED","title":"esperar-ci le queda de rede como CI vermelho (exit 5 em vez de 69)"},{"number":423,"state":"CLOSED","title":"estado.cjs marcar revisar: caminho com acento sai octal-escapado do git e acusa creep falso"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":561,"state":"CLOSED","title":"gate-worktree: HOME redefinido na linha engana a expansão de ~ (continuação da #552)"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":589,"state":"CLOSED","title":"conferir-mutacao: placar do cargo test nao reconhecido, vermelho legitimo vira 'pulada (corte de shell)' e trava o verificar"},{"number":470,"state":"CLOSED","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":602,"state":"CLOSED","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"},{"number":580,"state":"CLOSED","title":"gate-worktree: caminho por variável fora do segmento de leitura simples não é julgado (|, $(, argumento)"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":456,"state":"CLOSED","title":"Gate de staging deixa passar git.cmd, GIT.EXE, nome com espaco e | iex"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":564,"state":"CLOSED","title":"aviso-fluxo não vê escrita pelo Bash: código entra sem fluxo aberto"},{"number":379,"state":"CLOSED","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":145,"state":"CLOSED","title":"A #118 foi fechada com o defeito do titulo vivo — nada exige rodar o criterio de pronto antes de fechar Issue"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"},{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":382,"state":"CLOSED","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"},{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"},{"number":541,"state":"CLOSED","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":257,"state":"CLOSED","title":"Portaria: autorizacao de subagente exige a palavra exata e culpa o estagio quando o usuario erra a digitacao"},{"number":392,"state":"CLOSED","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":176,"state":"CLOSED","title":"O conferir-versao.cjs mede a propria pasta de instalacao, entao no plugin instalado ele nunca roda"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"},{"number":265,"state":"CLOSED","title":"gate-publicacao: .rainforest-gate-off nao e herdado pelo worktree, e nao esta no .gitignore"},{"number":218,"state":"CLOSED","title":"estado.cjs ignora flag desconhecida em silêncio: --dry-run em marcar gravou design aprovado"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"},{"number":298,"state":"CLOSED","title":"gate-agente-em-voo promete avisar UMA vez e repete a cada turno em sessao interativa"},{"number":23,"state":"CLOSED","title":"limpar-branches.cjs remove a branch padrao do repo quando --base aponta para outra ref"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":89,"state":"CLOSED","title":"conferir-fluxo monta 'git diff' com execSync e nome de branch interpolado: injecao de comando pelo --head do revisar"},{"number":290,"state":"CLOSED","title":"foco.cjs rotacionar descarta pela posicao, nao pela data: com avanco novo no topo, some o mais recente"},{"number":289,"state":"CLOSED","title":"gate-worktree: cd com caminho MSYS (/c/...) vira incerto e barra commit no scratchpad, chamando o worktree de principal"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":254,"state":"CLOSED","title":"Catraca de mutacao: 'pulada' fecha o verificar como se fosse medida"},{"number":282,"state":"CLOSED","title":"Captura parada desde 03/09: spawn do claude.cmd dá EINVAL e a fila trava calada"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":273,"state":"CLOSED","title":"testa-cli-externo Teste 3: teto de 8s contra fixture de 60s vermelha intermitente na CI"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":198,"state":"CLOSED","title":"observar.cjs no SessionEnd estoura o orcamento COMPARTILHADO de 60s do CLI e mata os outros hooks — 19 sessoes vazadas"},{"number":182,"state":"CLOSED","title":"conferir-mutacao.cjs deixa worktree temporario travado a cada rodada, e o acumulo quebra o despacho de subagente"},{"number":223,"state":"CLOSED","title":"despachar-codex monta comando como string de shell: injecao por --saida e por config"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":281,"state":"CLOSED","title":"catraca de mutacao sai 0 quando nenhuma mutacao declarada foi aplicada"},{"number":100,"state":"CLOSED","title":"execSync com valor interpolado em setup.cjs e slug sem validacao em estado.cjs — vizinhos da #89"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":276,"state":"CLOSED","title":"despachos.jsonl nao tem leitor: fora_de_fluxo e escreve_conferido nascem divida"},{"number":272,"state":"CLOSED","title":"Hooks de SessionEnd quebram com exit 1 quando o payload e o JSON null"},{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"},{"number":261,"state":"CLOSED","title":"gate-staging-total: mensagem citaria o repo errado com -C — nao reproduz, falta a linha exata"},{"number":279,"state":"CLOSED","title":"revisar: creep nao tem carve-out para artefato que outra skill obriga a criar"},{"number":263,"state":"CLOSED","title":"gate-mensagem-commit nao reconhece flag curta agrupada (-am, -qm) e nao isenta corpo de heredoc"},{"number":125,"state":"CLOSED","title":"Nenhum dado do rainforest tem copia fora da maquina — e a primeira pergunta e para onde"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":112,"state":"CLOSED","title":"run-vigia.ps1 grava o ERROS.md em duas raizes diferentes — e com RFM_ROOT definido elas se partem"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"},{"number":175,"state":"CLOSED","title":"limpar-branches --remoto ignora a classe mergeada-por-squash e afirma que nao havia remoto para apagar"},{"number":163,"state":"CLOSED","title":"REGRESSAO em testa-conferir-fluxo (verde em 0bb922c), mais duas vermelhas: uma bateria que nunca rodou em CI e um bloco sumido"},{"number":148,"state":"CLOSED","title":"reaberto_por aceita texto livre do --json, e exigir recusa onde marcar deixa passar"},{"number":206,"state":"CLOSED","title":"Design e doc de uso se contradizem sobre o mesmo mecanismo, e nada mede isso: dois revisores discordaram lendo o mesmo commit"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":142,"state":"CLOSED","title":"O guarda de \"nao remover worktree sujo\" mede o repositorio PAI, e por isso responde \"sujo\" para tudo"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"}]
+
+
+$ gh issue list --state all --search "squash" --limit 200 --json number,title,state
+[{"number":714,"state":"OPEN","title":"fechar ok recusa depois do squash quando roda numa branch nova da main"},{"number":692,"state":"OPEN","title":"gate-fechar-issue: ${...} em \"$(...)\", here-string com $'...' e crase do PowerShell escondem gh issue close"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":82,"state":"CLOSED","title":"limpar-branches classifica toda branch de PR squashed como 'trabalho vivo' — e squash e a convencao da main"},{"number":175,"state":"CLOSED","title":"limpar-branches --remoto ignora a classe mergeada-por-squash e afirma que nao havia remoto para apagar"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":161,"state":"CLOSED","title":"testa-limpar-branches captura 2>&1 antes de JSON.parse: em Node 24 o DEP0190 contamina o payload (o CI pina o 22)"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":73,"state":"CLOSED","title":"As 16 skills sao arquivo unico e plano: consultar o detalhe de UMA regra custa ~16,8k tokens"},{"number":79,"state":"CLOSED","title":"Orcamento de nucleo a 7 bytes do teto: uma frase a mais derruba a suite"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"}]
+
+
+$ gh issue list --state all --search "extrairBusca" --limit 200 --json number,title,state
+[{"number":709,"state":"OPEN","title":"conferir-busca: linha de continuação de item do busca: escapa da conferência"}]
+
+
+$ gh issue list --state all --search "experimento ad hoc" --limit 200 --json number,title,state
+[{"number":697,"state":"OPEN","title":"Revisor so leitura gravou no dado real do usuario ao rodar codigo do projeto fora da bateria"}]
+
+
+$ gh pr list --state all --search "fechar" --limit 200 --json number,title,state
+[{"number":688,"state":"MERGED","title":"Estado: fechar ok do fechar-issue-pronto-e-ajuda (PR #687 mergeado)"},{"number":712,"state":"MERGED","title":"Estado: fechar ok do gate-segmentador (PR #711 mergeado)"},{"number":705,"state":"MERGED","title":"Estado: fechar ok do observar-orcamento (PR #704 mergeado)"},{"number":691,"state":"MERGED","title":"Estado: fechar ok do gate-crase (PR #690 mergeado)"},{"number":716,"state":"MERGED","title":"Estado: fechar ok do gate-publicacao-gh (PR #715 mergeado)"},{"number":673,"state":"MERGED","title":"Estado: fechar ok do regua-testes (PR #672 mergeado)"},{"number":700,"state":"MERGED","title":"Estado: fechar ok do aviso-contexto-compactar (PR #698 mergeado)"},{"number":696,"state":"MERGED","title":"Estado: fechar ok do conta-reserva-avisa (PR #695 mergeado)"},{"number":670,"state":"MERGED","title":"Estado: fechar ok do catraca-colapso (PR #669 mergeado)"},{"number":668,"state":"MERGED","title":"Estado: fechar ok do busca-doc (PR #667 mergeado)"},{"number":607,"state":"MERGED","title":"Estado: fechar ok do gate-worktree"},{"number":686,"state":"MERGED","title":"Estado: fechar ok do caixa-confere-requires (PR #684 mergeado)"},{"number":660,"state":"MERGED","title":"Estado: fechar ok do deriva-design (PR #659 mergeado)"},{"number":656,"state":"MERGED","title":"Estado: fechar ok do leitores-cegos (PR #655 mergeado)"},{"number":604,"state":"MERGED","title":"Estado: fechar ok do placar-vitest"},{"number":677,"state":"MERGED","title":"Estado: fechar ok do aviso-contexto-alto (PR #676 mergeado)"},{"number":713,"state":"MERGED","title":"Estado: fechar ok do reuso-antes-de-criar (PR #710 mergeado)"},{"number":675,"state":"MERGED","title":"Estado: fechar ok do gate-git-quebrado (PR #674 mergeado)"},{"number":683,"state":"MERGED","title":"Estado: fechar ok do gate-pr-flag-curta (PR #680 mergeado)"},{"number":666,"state":"MERGED","title":"Estado: fechar ok do receita-corpo-pr (PR #665 mergeado)"},{"number":663,"state":"MERGED","title":"Estado: fechar ok do poda-trava-manutencao (PR #662 mergeado)"},{"number":687,"state":"MERGED","title":"fechar-issue aceita Pronto quando e o gate deixa passar a ajuda do gh (2.12.1)"},{"number":658,"state":"MERGED","title":"Estado: fechar ok do complexidade-no-diff (PR #657 mergeado)"},{"number":650,"state":"MERGED","title":"Estado: fechar ok do complexidade-por-funcao (PR #649 mergeado)"},{"number":647,"state":"MERGED","title":"Estado: fechar ok do lgpd-e-duplicata (PR #646 mergeado)"},{"number":508,"state":"MERGED","title":"Estado do fluxo fechar-push-merge: fechar ok (#506, 1.64.0)"},{"number":690,"state":"MERGED","title":"gate-fechar-issue confere o comando dentro de crases (2.12.2)"},{"number":652,"state":"MERGED","title":"Estado: fechar ok do branch-datada-e-componentes (PR #651 mergeado)"},{"number":640,"state":"MERGED","title":"Estado: fechar ok do actions-node24 (PR #639 mergeado)"},{"number":638,"state":"MERGED","title":"Estado: fechar ok do release-automatica (PR #637 mergeado)"},{"number":622,"state":"MERGED","title":"Estado: fechar ok do colheita-observacoes (PR #621 mergeado)"},{"number":619,"state":"MERGED","title":"Estado: fechar ok do lote B (PR #618 mergeado)"},{"number":644,"state":"MERGED","title":"Estado: fechar ok do issues-conta-veredito-saude (PR #643 mergeado)"},{"number":634,"state":"MERGED","title":"Estado: fechar ok do rodar-longo-flaky (PR #633 mergeado)"},{"number":629,"state":"MERGED","title":"Estado: fechar ok do aviso-fluxo-gitignored (PR #628 mergeado)"},{"number":680,"state":"MERGED","title":"gate-fechar-issue: -F, valor colado e flag curta com caixa (2.11.1)"},{"number":711,"state":"MERGED","title":"gate-fechar-issue não se deixa esconder por here-string, contrabarra e $(...) (2.13.3)"},{"number":617,"state":"MERGED","title":"Estado: fechar ok do ferramentas-do-fluxo (PR #615 mergeado)"},{"number":631,"state":"MERGED","title":"Estado: fechar ok do colheita-coordenacao-e-gates (PR #630 mergeado)"},{"number":627,"state":"MERGED","title":"Estado: fechar ok do gate-memoria-sem-banco (PR #626 mergeado)"},{"number":636,"state":"MERGED","title":"Estado: fechar ok do folga-no-teto-das-skills (PR #635 mergeado)"},{"number":534,"state":"MERGED","title":"Estado do fluxo bearer-variavel: fechar ok (#532)"},{"number":665,"state":"MERGED","title":"gate-fechar-issue: recusas do corpo do PR com uma receita só (2.8.2)"},{"number":625,"state":"MERGED","title":"Estado: fechar ok do colheita-pos-2-1-0 (PR #624 mergeado)"},{"number":635,"state":"MERGED","title":"Folga no teto de 16 KB de quatro skills (2.2.2)"},{"number":486,"state":"MERGED","title":"Estado do fluxo laco: fechar ok (#484)"},{"number":555,"state":"MERGED","title":"Estado do fluxo gate-worktree-brechas: fechar ok (#554)"},{"number":439,"state":"MERGED","title":"estado: fechar ok do memoria-por-assunto"},{"number":528,"state":"MERGED","title":"Estado do fluxo glob-duas-estrelas: fechar ok (#526)"},{"number":493,"state":"MERGED","title":"Estado do fluxo recarga-janelas: fechar ok (#492)"},{"number":570,"state":"MERGED","title":"estado: reabrir e trava de codigo depois do verificar (#567, #529, 1.70.0)"},{"number":516,"state":"MERGED","title":"Estado do fluxo jornada-presenca-humana: fechar ok (#515)"},{"number":525,"state":"MERGED","title":"Estado do fluxo gate-matar-por-nome: fechar ok (#524)"},{"number":488,"state":"MERGED","title":"Estado do fluxo pr-aviso-node: fechar ok (#487)"},{"number":467,"state":"MERGED","title":"Estado do fluxo mods-pr-e-plugins: fechar ok"},{"number":630,"state":"MERGED","title":"Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0)"},{"number":394,"state":"MERGED","title":"estado zerar-issues-15: fechar com PR #393"},{"number":566,"state":"MERGED","title":"Estado dos fluxos setup e gate-worktree-552: fechar ok (#562, #563)"},{"number":540,"state":"MERGED","title":"Estado do fluxo conta-achados: fechar ok (#538, 1.67.4)"},{"number":615,"state":"MERGED","title":"Lote A: saude, gate-fechar-issue e esperar-ci sem falso alarme (2.0.5)"},{"number":521,"state":"MERGED","title":"Estado do fluxo executar-autonomo: fechar ok (#520, 1.66.0)"},{"number":506,"state":"MERGED","title":"Versao 1.64.0: fechar com push conferido e merge confirmado pelo state"},{"number":505,"state":"MERGED","title":"Estado do fluxo pasta-unica: fechar ok (#504, 1.63.0)"},{"number":557,"state":"MERGED","title":"Estado do fluxo gate-palavra-bash: fechar ok (#556, 1.67.11)"},{"number":551,"state":"MERGED","title":"Estado do fluxo estado-trava-unica: fechar ok (#550, 1.67.9)"},{"number":549,"state":"MERGED","title":"Estado do fluxo pr-achados-menores: fechar ok (#548, 1.67.8)"},{"number":547,"state":"MERGED","title":"Estado do fluxo deixado-vira-pendencia: fechar ok (#546, 1.67.7)"},{"number":544,"state":"MERGED","title":"Estado do fluxo rodar-gate-mecanico: fechar ok (#542, 1.67.6)"},{"number":443,"state":"MERGED","title":"estado: verificar reprovado reabre o fechar (#441, 1.50.1)"},{"number":536,"state":"MERGED","title":"Estado do fluxo revisita-context-mode: fechar ok (#535, 1.67.3)"},{"number":500,"state":"MERGED","title":"Estado do fluxo flaky-teto: fechar ok (#499, 1.61.0)"},{"number":611,"state":"MERGED","title":"Manutenção: fecha 3 estados entregues e guarda o log dos vigias"},{"number":618,"state":"MERGED","title":"Lote B: paralelo por tarefa, esperar-ci, Issue de outro repo, teto e catraca (2.0.6)"},{"number":513,"state":"MERGED","title":"Estado do fluxo executar-dag-painel: fechar ok (#512, 1.65.0)"},{"number":511,"state":"MERGED","title":"Estado do fluxo timeout-memoria-assunto: fechar ok (#510, 1.64.1)"},{"number":502,"state":"MERGED","title":"Estado do fluxo troca-de-conta: fechar ok (#501, 1.62.0)"},{"number":376,"state":"MERGED","title":"Versao 1.35.2: recusa do gate de PR nomeia o marcador de evidencia"},{"number":469,"state":"MERGED","title":"Pendencia do fluxo so sai com destino (#449), versao 1.56.0"},{"number":637,"state":"MERGED","title":"Release do GitHub sai sozinha a cada versão nova (2.3.0)"},{"number":483,"state":"MERGED","title":"Achado que cabe no PR aberto entra nele, sem virar Issue"},{"number":497,"state":"MERGED","title":"Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2)"},{"number":349,"state":"MERGED","title":"estado: zerar-issues-10 fechado"},{"number":354,"state":"MERGED","title":"zerar-issues-11: mensagem do bash $t e trava de gatilho sob demanda (1.29.0)"},{"number":406,"state":"MERGED","title":"Revisao bimestral 2026-10-05: 214 observacoes triadas, v1.41.0"},{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"},{"number":710,"state":"MERGED","title":"Reuso antes de criar: catálogo lê Method TLPP, plano confere reuso, revisar acha duplicata (2.14.0)"},{"number":314,"state":"MERGED","title":"fluxo zerar-issues-8: grava o fechamento do estagio"},{"number":504,"state":"MERGED","title":"Versao 1.63.0: uma pasta so de config e conta.cjs unificar"},{"number":579,"state":"MERGED","title":"Lote 1021: CI em 3 shards, exit 8 sem CI, .pr.md isento (1.73.0)"},{"number":358,"state":"MERGED","title":"estado: zerar-issues-12 fechado"},{"number":371,"state":"MERGED","title":"Estado: zerar-issues-13 fechado (PR #370) e fluxo 8 arquivado"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":300,"state":"MERGED","title":"fluxo: fecha zerar-issues-6"},{"number":345,"state":"MERGED","title":"estado: zerar-issues-9 fechado"},{"number":501,"state":"MERGED","title":"Troca automatica de conta Claude pelo uso e /conta (1.62.0)"},{"number":633,"state":"MERGED","title":"testa-rodar-longo confere a identidade do processo, nao so o PID (#632, 2.2.1)"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":324,"state":"MERGED","title":"prompts: tira arqueologia datada e drift da regra 10"},{"number":286,"state":"MERGED","title":"Estado: fecha o fluxo guias-e-sensores (#285)"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":333,"state":"MERGED","title":"estado: veredito-fora-da-linha fechado"},{"number":491,"state":"MERGED","title":"Gate de staging reconhece git.cmd, GIT.EXE, espaco no fim e iex (#456)"},{"number":655,"state":"MERGED","title":"Leitor cego no plano e diagnóstico cego no depurar (2.6.0)"},{"number":393,"state":"MERGED","title":"zerar-issues-15: #377 #378 #379 #382 #385 (1.39.2)"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":348,"state":"MERGED","title":"zerar-issues-10: #346 #344 #342 #341 #340 #339 (1.27.0)"},{"number":432,"state":"MERGED","title":"Versao 1.48.0: enxerto do mattpocock/skills v1.3"},{"number":425,"state":"MERGED","title":"Versao 1.46.1: deixado para depois fecha item resolvido e ignora Q de decisao"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":621,"state":"MERGED","title":"Colheita das observações: fluxo pulado, pedido de licença e pergunta que a memória responde viram trava (2.1.0)"},{"number":178,"state":"MERGED","title":"Versão 1.2.0: preflight e mecanismos na régua, recibo de colheita no fechar"},{"number":586,"state":"MERGED","title":"gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1)"},{"number":395,"state":"MERGED","title":"git-por-caminho: git e gh pelo caminho (#392, 1.39.3)"},{"number":351,"state":"MERGED","title":"gate-subagente-sem-gh: subagente nao escreve no GitHub (1.28.0)"},{"number":283,"state":"MERGED","title":"Captura volta: claude.cmd resolve para o claude.exe real"},{"number":252,"state":"MERGED","title":"fluxo: fecha o registro da Régua 3 (concluído na janela principal)"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":288,"state":"MERGED","title":"conferir-versao: PR so de estado de fluxo nao exige bump"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":520,"state":"MERGED","title":"Modo autonomo: do plano aprovado ao PR mergeado (1.66.0)"},{"number":179,"state":"MERGED","title":"Relatorio: rodada cega de 2026-09-04 (com errata de entrada)"},{"number":285,"state":"MERGED","title":"Guias e sensores: marca de categoria, teto por hook, sensor na evidencia do verificar"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":318,"state":"MERGED","title":"gates: & com alvo literal no PowerShell e comando comum, nao ilegivel"},{"number":59,"state":"MERGED","title":"O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas"},{"number":315,"state":"MERGED","title":"Adapta o Rainforest Mind para o Codex (multihost, 1.25.0)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":140,"state":"MERGED","title":"Segunda opiniao cross-model: auditor de outra familia no revisar, e o transporte de CLI externo em um lugar so"},{"number":556,"state":"MERGED","title":"gate-worktree: palavra de comando lida como o bash (#530, 1.67.11)"},{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"},{"number":87,"state":"MERGED","title":"auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":137,"state":"MERGED","title":"Fluxo 11 — Conselho: debate estruturado com membros Claude, Codex e Gemini"},{"number":201,"state":"MERGED","title":"Fluxo 10 (critico): arquivado como superado, com a substituicao provada item a item"},{"number":92,"state":"MERGED","title":"Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":203,"state":"MERGED","title":"Adendo do fluxo 5: decisoes registradas, construcao bloqueada pelo gate da propria casa"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":30,"state":"MERGED","title":"A classificacao estava certa e apagou a main mesmo assim (#23)"},{"number":202,"state":"MERGED","title":"Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado"},{"number":105,"state":"MERGED","title":"CI: so no PR, e run superado se cancela — a cota de Actions bateu 90%"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":147,"state":"MERGED","title":"Fluxo 6 — Portoes: oraculos executaveis, e o lint que audita a autoria deles"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":205,"state":"MERGED","title":"Issue #189: conferir-versao olha o numero declarado e nao sai 0 sem ter medido"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "squash" --limit 200 --json number,title,state
+[{"number":99,"state":"MERGED","title":"Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo'"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":619,"state":"MERGED","title":"Estado: fechar ok do lote B (PR #618 mergeado)"},{"number":508,"state":"MERGED","title":"Estado do fluxo fechar-push-merge: fechar ok (#506, 1.64.0)"},{"number":506,"state":"MERGED","title":"Versao 1.64.0: fechar com push conferido e merge confirmado pelo state"},{"number":690,"state":"MERGED","title":"gate-fechar-issue confere o comando dentro de crases (2.12.2)"},{"number":570,"state":"MERGED","title":"estado: reabrir e trava de codigo depois do verificar (#567, #529, 1.70.0)"},{"number":556,"state":"MERGED","title":"gate-worktree: palavra de comando lida como o bash (#530, 1.67.11)"},{"number":104,"state":"MERGED","title":"Versao 0.77.0: o dia das sete issues, e as cinco provas que nao provavam"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"}]
+
+
+$ gh pr list --state all --search "extrairBusca" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "experimento ad hoc" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "fechar"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "squash"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "extrairBusca"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "experimento ad hoc"
+(vazio)
+
+$ git log --all --grep="fechar" --oneline
+536fc249 Estado: fechar ok do gate-publicacao-gh (PR #715 mergeado) (#716)
+63a0e718 Estado: fechar ok do reuso-antes-de-criar (PR #710 mergeado) (#713)
+05470fa4 Reuso antes de criar: catálogo lê Method TLPP, plano confere reuso, revisar acha duplicata (2.14.0) (#710)
+7895d8e0 Estado: fechar ok do gate-segmentador (PR #711 mergeado) (#712)
+56c63465 gate-fechar-issue não se deixa esconder por here-string, contrabarra e $(...) (2.13.3) (#711)
+17942d8a Estado: fechar ok do observar-orcamento (PR #704 mergeado) (#705)
+969e24b1 Estado: fechar ok do aviso-contexto-compactar (PR #698 mergeado) (#700)
+e5449dd8 Estado: fechar ok do conta-reserva-avisa (PR #695 mergeado) (#696)
+d51cc2e6 Troca de conta avisa quando trava e a pasta manual volta (2.13.0) (#695)
+e3d7896d Estado: fechar ok do gate-crase (PR #690 mergeado) (#691)
+41e814a3 gate-fechar-issue confere o comando dentro de crases (2.12.2) (#690)
+656dc9e3 Estado: fechar ok do fechar-issue-pronto-e-ajuda (PR #687 mergeado) (#688)
+537c46b3 fechar-issue aceita Pronto quando e o gate deixa passar a ajuda do gh (2.12.1) (#687)
+6c8ab17c Estado: fechar ok do caixa-confere-requires (PR #684 mergeado) (#686)
+c278aa06 Estado: fechar ok do gate-pr-flag-curta (PR #680 mergeado) (#683)
+77ff9113 gate-fechar-issue: -F, valor colado e flag curta com caixa (2.11.1) (#680)
+4a168701 Estado: fechar ok do aviso-contexto-alto (PR #676 mergeado) (#677)
+a2694dfb Estado: fechar ok do gate-git-quebrado (PR #674 mergeado) (#675)
+09359d28 Gate barra subagente quando o git não responde (2.10.1) (#674)
+3099637e Estado: fechar ok do regua-testes (PR #672 mergeado) (#673)
+678a000a Estado: fechar ok do catraca-colapso (PR #669 mergeado) (#670)
+017ddfa3 Estado: fechar ok do busca-doc (PR #667 mergeado) (#668)
+4fa56a3d Estado: fechar ok do receita-corpo-pr (PR #665 mergeado) (#666)
+510c08cd gate-fechar-issue: recusas do corpo do PR com uma receita só (2.8.2) (#665)
+01af2737 Estado: fechar ok do poda-trava-manutencao (PR #662 mergeado) (#663)
+8cd49833 Estado: fechar ok do deriva-design (PR #659 mergeado) (#660)
+cc521c62 Estado: fechar ok do complexidade-no-diff (PR #657 mergeado) (#658)
+7cf92dbb Estado: fechar ok do leitores-cegos (PR #655 mergeado) (#656)
+1d4ca1c6 Estado: fechar ok do branch-datada-e-componentes (PR #651 mergeado) (#652)
+9e2f5400 Estado: fechar ok do complexidade-por-funcao (PR #649 mergeado) (#650)
+2ad359fd Estado: fechar ok do lgpd-e-duplicata (PR #646 mergeado) (#647)
+fa663d6e Estado: fechar ok do issues-conta-veredito-saude (PR #643 mergeado) (#644)
+aa8a9489 Estado: fechar ok do actions-node24 (PR #639 mergeado) (#640)
+a2a8beaf Estado: fechar ok do release-automatica (PR #637 mergeado) (#638)
+a73487ea Release do GitHub sai sozinha a cada versão nova (2.3.0) (#637)
+a27b9450 Estado: fechar ok do folga-no-teto-das-skills (PR #635 mergeado) (#636)
+c8b7919e Folga no teto de 16 KB de quatro skills (2.2.2) (#635)
+6169212f Estado: fechar ok do rodar-longo-flaky (PR #633 mergeado) (#634)
+1c7a14b1 Estado: fechar ok do colheita-coordenacao-e-gates (PR #630 mergeado) (#631)
+1d7dcb4f Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0) (#630)
+816d5e6a Estado: fechar ok do aviso-fluxo-gitignored (PR #628 mergeado) (#629)
+e74626e7 Estado: fechar ok do gate-memoria-sem-banco (PR #626 mergeado) (#627)
+1426ca72 gate-pergunta-memoria sem o canal do banco: 11 de 11 bloqueios eram falso positivo (2.1.2) (#626)
+78d97854 Estado: fechar ok do colheita-pos-2-1-0 (PR #624 mergeado) (#625)
+46773615 Estado: fechar ok do colheita-observacoes (PR #621 mergeado) (#622)
+b1d6623b Estado: fechar ok do lote B (PR #618 mergeado) (#619)
+3e93ca47 Lote B: paralelo por tarefa, esperar-ci, Issue de outro repo, teto e catraca (2.0.6) (#618)
+e37ba660 Estado: fechar ok do ferramentas-do-fluxo (PR #615 mergeado) (#617)
+f882989a Lote A: saude, gate-fechar-issue e esperar-ci sem falso alarme (2.0.5) (#615)
+2720ed6c Manutenção: fecha 3 estados entregues e guarda o log dos vigias (#611)
+45273f8b Estado: fechar ok do gate-worktree (PR #605 mergeado) (#607)
+0533241c Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4) (#605)
+b6603a19 Estado: fechar ok do placar-vitest (PR #603 mergeado) (#604)
+b593073e Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0) (#598)
+89dbf3b8 Apoio ao dev, lote 5: harness (1.79.0) (#597)
+f908a317 Apoio ao dev, lote 4: busca com trecho, resumo invalidado, posicao servida (1.78.0) (#596)
+a50e25ce Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0) (#595)
+c2fdd79b Conta e vigia: -Teste só leitura, aviso da pasta manual, estado segue o login (1.74.0) (#588)
+458a18a1 gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1) (#586)
+32251117 Lote 1021: CI em 3 shards, exit 8 sem CI, .pr.md isento (1.73.0) (#579)
+46d1574f conferir-mutacao: modo no lugar para runtime vivo (#527, #569, 1.72.0) (#577)
+68c1cbad gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1) (#572)
+d14bec85 estado: reabrir e trava de codigo depois do verificar (#567, #529, 1.70.0) (#570)
+01e5c294 Estado dos fluxos setup e gate-worktree-552: fechar ok (#566)
+f756527e Estado do fluxo gate-palavra-bash: fechar ok (#556, 1.67.11) (#557)
+399e7097 Estado do fluxo gate-worktree-brechas: fechar ok (#554) (#555)
+8ea10829 Estado do fluxo estado-trava-unica: fechar ok (#550, 1.67.9) (#551)
+403ff68e Estado do fluxo pr-achados-menores: fechar ok (#548, 1.67.8) (#549)
+2ba55b12 Estado do fluxo deixado-vira-pendencia: fechar ok (#546, 1.67.7) (#547)
+f4af098a Estado do fluxo rodar-gate-mecanico: fechar ok (#542, 1.67.6) (#544)
+41a02fa6 Estado do fluxo conta-achados: fechar ok (#538, 1.67.4) (#540)
+9f6b9ca3 Estado do fluxo revisita-context-mode: fechar ok (#535, 1.67.3) (#536)
+32212e5f Estado do fluxo bearer-variavel: fechar ok (#532) (#534)
+bae41ad3 Estado do fluxo glob-duas-estrelas: fechar ok (#526) (#528)
+bc8e758b Estado do fluxo gate-matar-por-nome: fechar ok (#524) (#525)
+2da57d25 Estado do fluxo executar-autonomo: fechar ok (#520, 1.66.0) (#521)
+b13a86bb Modo autonomo: do plano aprovado ao PR mergeado (1.66.0) (#520)
+9912e991 Estado do fluxo jornada-presenca-humana: fechar ok (#485, 1.65.1) (#515) (#516)
+8bf3e2e0 Versao 1.65.1: jornada so conta prompt digitado (#485) (#515)
+dcf3ac1c Estado do fluxo executar-dag-painel: fechar ok (#512, 1.65.0) (#513)
+f10bfbb3 Estado do fluxo timeout-memoria-assunto: fechar ok (#510, 1.64.1) (#511)
+5ebeb3e5 Estado do fluxo fechar-push-merge: fechar ok (#506, 1.64.0) (#508)
+74b75b34 Versao 1.64.0: fechar com push conferido e merge confirmado pelo state (#506)
+2e1808d8 Estado do fluxo pasta-unica: fechar ok (#504, 1.63.0) (#505)
+86df1785 Estado do fluxo troca-de-conta: fechar ok (#501, 1.62.0) (#502)
+cc1da988 Estado do fluxo flaky-teto: fechar ok (#499, 1.61.0) (#500)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+8df6e7b7 Estado do fluxo recarga-janelas: fechar ok (#492, 1.60.0) (#493)
+17bbf66d Estado do fluxo pr-aviso-node: fechar ok (#487, 1.59.2) (#488)
+7e8b3fd2 Achado que cabe no PR aberto entra nele, sem virar Issue (#483)
+cc1ed7ee Estado do fluxo laco: fechar ok (#484, 1.59.0) (#486)
+f29d4dde Versao 1.58.0: compactar a 60%, linha do PR na barra, node absoluto (#481)
+1305d89c Portaria diz por que a branch ficou fora do fluxo (#447) (#471)
+2ee28b93 Pendencia do fluxo so sai com destino (#449), versao 1.56.0 (#469)
+32583219 Estado do fluxo mods-pr-e-plugins: fechar ok (PR #464, 1f5007f0) (#467)
+f11f8100 Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0 (#459)
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+ab9b1cb7 Merge pull request #443 from luisfmontes/fluxo/fechar-reabre
+481966cd estado: verificar reprovado reabre o fechar em ok (1.50.1)
+0ec8724f estado: verificar e fechar ok depois da emenda 4
+88e99465 estado: fechar ok (PR #440)
+3d1d3ba9 estado: fechar ok do memoria-por-assunto (#439)
+38fc3315 Portaria: manifesto por estagio e mensagem sem beco (#430, tarefa 6)
+69d0b313 Ancora do fechar re-medida e regra 16 fora do enxerto
+50ded347 Versao 1.48.0: enxerto do mattpocock/skills v1.3
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+522f9431 estado: fechar ok, PR #422
+0656db33 Abertura inteira na conta de trabalho via session.append (#418)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+dc439026 /transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0) (#415)
+5baf9210 Revisao bimestral: texto novo cabe nos tetos de skill e de injecao
+02d2110f E30: regua checa cobertura do material de origem antes de fechar
+b53bc177 E27: fechar troca a base da PR empilhada antes de mergear a de baixo
+469d1b14 estado git-por-caminho: verificar ok e fechar com PR #395
+4b2ce642 tarefa 2: hooks gate-* e portaria pelo caminho
+4d4d5bda Merge pull request #394 from luisfmontes/estado-zerar-issues-15
+696d5c88 estado zerar-issues-15: fechar com PR #393
+dcec222d estado mapa-de-estagios: fechar com PR #391
+bd394557 estado relogio-issues: fechar com PR #390
+ab99e8dc estado relogio: fechar com PR #389
+a4d58afb estado: fechar com PR #383
+d6563fc2 gate-fechar-issue: comando da mensagem citado entre aspas
+49e24ae1 Versao 1.35.2: recusa do gate de PR nomeia o marcador de evidencia
+f612c8ad Estado: fechar ok (PR #374)
+a853d74b Estado: fechar ok, PR #370
+01edd884 Tarefa 1: Mensagem do bash $b diz por que barra (injeção -c)
+6c8d6e9b Estado: fechar ok, PR #365
+34b4bd75 Correção Defei tos A e B do plano 2026-09-30-semear-travas (tarefa 5)
+e0043f71 gate-fechar-issue: exemplo da mensagem de variavel sem linha gh
+d9f639d8 gate-fechar-issue: --body-file com variavel tem mensagem propria (#350)
+00fb4f9a gate-fechar-issue: wrapper ilegivel orienta bash "$t" (#337)
+23ece7c7 gate-subagente-sem-gh: lê script executado antes de rodar (D4/D5)
+02d5d99a gate-subagente-sem-gh: nega gh de escrita em subagente (tarefa 1)
+956cf168 estado: zerar-issues-10 fechado
+6237bb1a zerar-issues-10: unifica escape+continuacao em aspas duplas (#339)
+299a9ef6 zerar-issues-10: gate-fechar-issue normaliza caminhos MSYS em --body-file (#344)
+909f1faa testa-conferir-categoria: linha de sucesso com 17 guias
+d803d88a estado: multihost fechado
+53152c46 multihost: sobe para 1.24.0 e reancora corpos das skills na 1.23.15
+552c1fca revisao 2: bash $VAR so resolve com toda ocorrencia legivel
+7e0b7b8f plano: emenda tarefa 1 com gate-fechar-issue.cjs (creep)
+ed1b65b1 Tarefa 2 (#313): escape de aspas duplas reduzido antes do colapso
+303a490c Merge pull request #333 from luisfmontes/fluxo/veredito-fechar
+c6e8c7af estado: veredito-fora-da-linha fechado
+83358cec estado: beads revisado e verificado, fechar armado
+9f850130 estado: revisar e verificar ok, fechar armado
+b717b5f9 estado: revisar e verificar ok, fechar armado
+c3f2f38b plano: tarefa 21 cobre o bump 1.23.9
+35c339de estado: verificar reprovado devolve revisar a pendente (D10, tarefa 14)
+2ac92476 depurar: teste de regressao para o falso aviso de captura parada
+a56533fe prompts: tira arqueologia datada e drift da regra 10
+9b21e95b docs: fechar execucao multihost 1.23 na base corrente
+ce826d46 fluxo zerar-issues-8: grava o fechamento, que ficou fora do PR #310
+99bc95a8 zerar-issues-8: tarefa 14, colapso de continuacao segue o bash de verdade
+82837b95 zerar-issues-8: tarefa 13, continuacao de linha no topo do comando (#309)
+115da24c zerar-issues-8: tarefas 11-12 - |& e continuacao de linha na fronteira de segmento (#309, revisao 2)
+7054f133 zerar-issues-8: tarefas 8-9, coproc e parametro especial (achados 1-2 da revisao)
+b4c9d1e8 gate: variavel citada com aspas duplas, sozinha e por ultimo, e caminho de script (#309)
+1d84dddd Estado: regua selada fecha o fluxo com o PR #308
+4813243a Versao 1.21.0: instrucao de comportamento das skills ganha trava
+aa073a78 verificar: fecha ok; os quatro criterios rodados contra o artefato real
+893d3715 nona revisão: caso do degrau skill isolado, contagem do resíduo e comentário da regra 12
+f6872939 revisar rodada 7: primeira com 0 bloqueantes; reprovado por 6 menores
+eaae2a6f revisar rodada 6: reprovado, 1 bloqueante e 5 menores
+5e7a31a6 executar rodada 7: fecha ok; a segunda fonte fecha o bloqueante
+f4d617a0 registra a decisao sobre os literais repetidos e completa o item 20
+94e60a3c executar rodada 6: parcial; o conserto que eu prescrevi nao fecha o bloqueante
+1fbe4769 conferir-invariantes: vivacidade do nao_deve de producao
+cefad9d1 revisar rodada 5: reprovado, 1 bloqueante e 4 menores
+e3471bad conferir-invariantes recusa quem nao mede; bateria ganha linha de base
+8fdb478b design D5: corrige a procedencia que a A1 ja tinha corrigido na tabela
+2f43c1a1 invariantes do fechar: corrige a procedencia que eu mesmo errei em A1
+af46176f executar: corrige os quatro achados do revisar
+510150c2 brainstorm: design do invariante de comportamento nas skills de acao
+eabeb898 Alinha manifesto Codex em 1.19.2 e reancora as ancoras de corpo
+3bdb0ffa fluxo memoria-reconciliacao: fecha com PR #305
+99c38d47 Corrige catraca_mutacao e registra distancia ate a origin/main
+7a3f9ac3 fluxo: fecha zerar-issues-6 (PR #297 mergeado)
+db0797dd Versao 1.18.0: zerar-issues-5
+ff184204 Tarefa 21: docs coerentes com a entrega (revisar zerar-issues-5)
+be8c49eb fechar-issue: sem --confirmo; --saida recusa caminho de arquivo
+3a9b5106 Design zerar-issues-5: medicao das 20 issues e fechar sem frase
+5b298837 conferir-versao: PR so de estado de fluxo nao exige bump
+80897b33 fluxo: fecha guias-e-sensores (PR #285 mergeado)
+d330e2d0 fluxo: fecha o revisar de guias-e-sensores
+e2d1a2c1 plano: as sete baterias que as regras novas invalidaram ganham tarefa
+73847e3e as seis baterias restantes: duas causas, nenhuma delas a Tarefa 6
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+b4554485 integra tarefa 5: fechar verificar com ok exige sensor na evidencia
+aca2e949 integra tarefa 5: fechar verificar com ok exige sensor na evidencia
+63db97b6 design: guias e sensores, cinco enxertos do Harness Engineering
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+a8e1f639 fluxo: fecha o registro da Régua 3 (concluído na janela principal) (#252)
+8025a18b Teto de commits conta so a branch, nao o que veio no merge da main
+a5f98990 Estado: fechar da rodada 3 (PR #247)
+59f58081 Docs: heredoc e dado no gate de Issue, radar custa quatro chamadas
+2c558a09 Emendar o plano com os arquivos que o trabalho realmente tocou
+6b5b97a2 D1: heredoc em gate-fechar-issue
+f099da39 Estado: fechar ok — PR #242 aberto, fluxo zerar-issues completo
+26990b73 Fechar o executar com a catraca de mutacao satisfeita por tarefa
+461e6a74 Declarar agentes nativos do Claude Code em todos os seis estágios
+c90a0c30 Revisar: REPROVADO com 5 achados; executar reaberto
+de2bec4d Versao 1.9.0 (MINOR): gate de mensagem de commit, --confirmo, exit 69, duplicacao e carimbos
+38a36c47 Refechar o executar do absorver-plugin-terceiro apos o aviso da rodada 2
+f263df06 Refechar o executar do absorver-plugin-terceiro apos a rodada dos avisos
+546376d0 Refechar o executar do absorver-plugin-terceiro apos a rodada dos avisos
+a53c5cd3 Pôr no README e no travas-mecanicas o que o lote absorver-plugin-terceiro trouxe
+05919c37 Documentar exit 69, carimbo de base e gate de release nas skills
+64a0ce21 Exigir frase de confirmação ao fechar Issue
+861a04b9 Plano: 15 tarefas em 3 ondas para as 14 decisoes do absorver-plugin-terceiro
+91ea18a3 Plano: reaponta as mutacoes da 11 e da 22 para o nome atual da funcao
+82f63ec9 Catraca de verificar le plano.arquivo, nao <slug>.md; fixture t6b honesta
+bb570aee Estado: 18 de 19; T10 e T12 integradas e validadas
+2ba92952 Estado: recusa flag desconhecida ANTES de gravar (Issue #218)
+4eb56571 Trava do iniciar não vale em CI: o runner é o clone dedicado por definição
+2dcf5873 Estado: fechar ok, PR #228
+01d3d0fb Estado: fechar ok, PR #227
+7a919d51 Estado: revisar (2 rodadas) e verificar ok; fechar aberto
+56ca3941 Estado: executar ok (7 tarefas, T6 no fechar)
+0fcbc5e6 D8: o checador de creep enxerga pasta e portao datado
+f9f461f1 Estado: fechar ok, PR #222
+3a28f1f7 Estado: revisar e verificar ok; fechar aberto
+77ca9b79 Emenda do plano: a tarefa 5 cobre a fixture que a integracao mexeu
+fcfca59e Adendo do fluxo 5: decisoes registradas, construcao bloqueada pelo gate da propria casa
+2184eed9 Fluxo 10 (critico) arquivado como superado, com a substituicao provada item a item
+c7853922 Design e plano da Issue #189: conferir-versao passa a olhar o numero
+d61d3144 Emenda pos-fechar: D13 e tarefa 5 cobrem o bump de versao
+0862541b Lote 4: os sete estagios fechados — PR #188
+6a303404 Segunda rodada de revisao: dois consertos tinham efeito colateral que o texto nao dizia
+0ad38d99 Fluxo: fechar ok — PR #186
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+3efd28e6 Tarefa 9: Gate Stop detecta agentes em voo que morreram
+57ef8982 Tarefa 3: gate-fechar-issue — bloquear palavras-chave falsas em português
+a074e052 R21: Corrigir wrapper citado em posicao de comando e script em wrapper de string
+d54b54ef Merge pull request #183 from luisfmontes/fluxo/guardas
+e6569e66 Lote 3: fechar ok — PR #183
+4fbb3805 Fluxo: executar ok (3a passada) — achados da rodada 5 fechados
+009c54cd 1.3.0 — quinto gate, guardas medem o repositorio da operacao, backup fora da maquina
+4009dbbc Achado 3 da rodada 5: varredura do concluido nao crasha com JSON ilegivel
+b6bce104 Lote 3 rodada 19: injecao no pr merge, chaves como fronteira, apostrofo no conferir
+9579c02a Gate git-verificacao: fecha shell com caminho, eval, escape e backslash
+d98b1095 Documenta o verbo `concluido` de estado.cjs na skill fechar
+fb190484 Lote 3: 17a revisao reprovada (injecao no gate-fechar-issue; &{...} atravessa dois gates)
+10754147 Adiciona o verbo concluido ao estado.cjs
+f2487c81 Fluxo nao-mente: design aprovado (12 decisoes) e plano ok (4 tarefas)
+81fdfc69 Relatorio: rodada cega de 2026-09-04, com errata de entrada
+694288e5 Merge pull request #178 from luisfmontes/versao/1.2.0
+4bcee9b9 Versao 1.2.0: preflight e mecanismos na regua, recibo de colheita no fechar
+724c3b89 Fluxo 12: fechar ok — PR #177
+2fcc9b04 Lote 3 rodada 13: prefixo e wrapper de string compostos no staging-total e no gate-fechar-issue
+d44b9d84 Merge lote 3 rodada 8 (flags de env/sudo, cd via wrapper, gate-fechar-issue sobre tokens-comando, $( ) em aspas duplas, --body por token) into fluxo/guardas
+71674621 Lote 3 rodada 8: flags de env/sudo, cd via wrapper, gate-fechar-issue sobre tokens-comando, $( ) em aspas duplas, --body por token
+07ad9849 Merge lote 3 rodada 5 (gate-fechar-issue: subshell, grupo, $( ), prefixos) into fluxo/guardas
+b85f2499 Lote 3 rodada 5: gate-fechar-issue ve subshell, grupo, $( ) e prefixos que passam o comando adiante
+ecf66cf0 Merge lote 3 rodada 4 (gate-fechar-issue por segmento) into fluxo/guardas
+795c2383 Lote 3 rodada 4: gate-fechar-issue confere cada segmento e a string do bash -c
+c0ba0ac7 Merge lote 3 rodada 3 (R12 fechar-issue, F6 vigia) into fluxo/guardas
+06f8974d Lote 3 rodada 3: R12 criterio exige parenteses, F6 vigia sanitiza caminho antes do ERROS.md
+c9ba72d9 Lote 3 rodada 2: Consertos F3, F4, F5, F7 e casos novos (g-j)
+ef546cbb Lote 3: stub do gh da bateria de fechar-issue em Node, nao em batch
+30706677 Lote 3 T13: Melhorias na bateria e ajustes finais
+ca314a55 Ajustar esperado de gates em testa-config.sh: 4 → 5 (adicionado gate-fechar-issue)
+24c0286c Lote 3 T13: Hook barra `gh issue close` e `gh pr create/merge` sem evidência
+00284378 Lote 3 T14: fechar-issue recusa sem critério de pronto no corpo
+4261043b Lote 3 T12: Fechar Issue com evidência — segurança e funcionalidade
+94207294 Lote 3 T12: Trava de sandbox com resolver-executavel
+ddb8bfa6 Lote 3 T12: Fechar Issue com evidência — marcador, comando e saída
+78231fa9 Lote 3: design dos guardas, backup fora da maquina e fechar Issue com criterio (brainstorm da sessao)
+dc2afda7 Fluxo 7: estado fechado (executar 3 rodadas, revisar ok, verificar ok, fechar pr)
+932f6f3e 1.1.0 — recibo de colheita no fechar (fluxo 7)
+96f6a350 Fluxo 7 rodada 2: A1-A3 + R1 + baterias novas
+6659f5c6 Fluxo 7 T7: documenta recibo.cjs na tabela de scripts do README
+df51b1b5 Fluxo 7 T5: Encaixe do recibo no fechar de estado.cjs
+3e75d6d9 Fluxo 7: design formal e os tres desencontros com a arvore real
+0c132b60 Fluxo 6: fechar ok — versao 0.81.0, destino PR #147, Issue #148 aberta
+36484469 Fluxo 6: fechar ok — versao 0.81.0, destino PR #147, Issue #148 aberta
+ab3776e6 Fluxo 6: os dois achados da auditoria cross-model (codex)
+d50345d8 Fluxo 6: os dois achados da auditoria cross-model (codex)
+3b689d37 Vigias: a porta unica quebrou duas baterias vizinhas, e as duas tinham razao
+4f7c825c Vigias: a porta unica quebrou duas baterias vizinhas, e as duas tinham razao
+714a8d5a Fluxo 9: fechar ok, versao 0.80.0, destino PR
+af8d3156 Fluxo 9: fechar ok, versao 0.80.0, destino PR
+714a15c6 Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+0843a7fb Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+a9213641 Delta do prompt passou por revisar e verificar
+a44b1ef1 Delta do prompt passou por revisar e verificar
+c18181f0 Fluxo 9 T9: verificacao manual unica, com o log de despacho como evidencia primaria
+2dc5c2fa Fluxo 9 T9: verificacao manual unica, com o log de despacho como evidencia primaria
+f1e1fa39 Estado do fluxo 2: fechar ok com o PR #133 como evidencia
+9ddc7d8c Estado do fluxo 2: fechar ok com o PR #133 como evidencia
+2bbb62d2 Estado do fluxo 1: fechar ok com o PR #132 como evidencia
+ffe2f6d9 Estado do fluxo 1: fechar ok com o PR #132 como evidencia
+a3099867 Tarefa 4 do ciclo-por-maquina: proximo cola o bloco do ultimo reprovado
+caee620f Tarefa 4 do ciclo-por-maquina: proximo cola o bloco do ultimo reprovado
+0a299efc Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+e0c85241 Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+40a97cc7 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+c8517178 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+63afa051 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+1b18a725 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+c21bd779 Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+d7111a7f Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+10054d1b Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+0c9226be Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+5b03465b Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava (#92)
+f8236e36 Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava (#92)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+c3d775c0 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+3e615363 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+bc200f77 A classificacao estava certa e apagou a main mesmo assim (#23) (#30)
+1c2f4457 A classificacao estava certa e apagou a main mesmo assim (#23) (#30)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+4fe42088 A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+441b2a5a A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+da72ec7f Conferencia de entrega e teste de saude sobrevivem a despacho paralelo (#13)
+05541310 Conferencia de entrega e teste de saude sobrevivem a despacho paralelo (#13)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+0391bbbf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+278622d6 O nucleo avisa que agente nomeado nao entrega sozinho, e a 0.51.0 sai
+e21670e5 O nucleo avisa que agente nomeado nao entrega sozinho, e a 0.51.0 sai
+26f9e1de A pergunta 4 passa a aceitar codigo, e nao so issue de terceiro
+60dff7a7 A pergunta 4 passa a aceitar codigo, e nao so issue de terceiro
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+d8a9f709 v0.49.0: o cache e indexado por VERSAO, e por isso nada de hoje carregava
+5216c2b6 v0.49.0: o cache e indexado por VERSAO, e por isso nada de hoje carregava
+7a0369d5 A esteira de sete estagios, e o /grill vira /brainstorm
+60252094 A esteira de sete estagios, e o /grill vira /brainstorm
+b2b22b14 ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+4f9a803a ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+62c206b6 Colhe o lote que dava pra fechar hoje: entrega antes de capacidade, e build cruzado; v0.29.0
+e72f1bf8 Colhe o lote que dava pra fechar hoje: entrega antes de capacidade, e build cruzado; v0.29.0
+
+$ git log --all --grep="squash" --oneline
+11d99344 Gate de publicação confere o texto de gh issue e gh pr (2.14.1) (#715)
+41e814a3 gate-fechar-issue confere o comando dentro de crases (2.12.2) (#690)
+b1d6623b Estado: fechar ok do lote B (PR #618 mergeado) (#619)
+e83d3122 Portaria fora de repo e aviso de fluxo pelo shell (#565, #564, 1.71.0) (#574)
+d14bec85 estado: reabrir e trava de codigo depois do verificar (#567, #529, 1.70.0) (#570)
+68d8f93e regua selada: modelo de ameaca escrito e leitura imune a config comum
+8c1a7ddb Issue #175: corrigir defeito de --remoto em limpar-branches.cjs
+1047cb80 Versao 0.77.0: o dia das sete issues, e as cinco provas que nao provavam (#104)
+f45d1971 Versao 0.77.0: o dia das sete issues, e as cinco provas que nao provavam (#104)
+10054d1b Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+0c9226be Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+01cbf1bc Fecha a #51: as tres travas de isolamento passam a valer na borda (#58)
+5948bc61 Fecha a #51: as tres travas de isolamento passam a valer na borda (#58)
+4fe42088 A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+441b2a5a A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+
+$ git log --all --grep="extrairBusca" --oneline
+(vazio)
+
+$ git log --all --grep="experimento ad hoc" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"obs-2026-09-03-commit-e-pr-fora-do-estagio-fechar","titulo":"Commit e PR feitos a mao, fora do estagio fechar, repetiram dois incidentes ja documentados"}
+{"id":"obs-2026-09-16-fechar-issue-sem-frase","titulo":"Fechar issue exige frase digitada mesmo quando o fluxo ja entregou o conserto"}
+{"id":"degrau-posicional-nas-skills-de-acao","titulo":"Degrau posicional para as invariantes das skills de acao: fechar a frase preservada em comentario HTML"}
+{"id":"obs-fechar-traz-as-proprias-observacoes","titulo":"No fechar, trazer as proprias observacoes antes de perguntar"}
+{"id":"2026-09-29-fechar-issue-nao-planejada","titulo":"Saida do gate-fechar-issue para encerrar Issue como nao planejada"}
+{"id":"fechar-marcar-antes-do-merge","titulo":"fechar: marcar o estagio antes do merge quando o fluxo mergeia"}
+{"id":"obs-2026-10-06-perguntei-observacao-ao-fechar-estagio-nao-sessao","titulo":"Fechei o brainstorm com 'alguma observacao desta sessao?' como se fosse fim de sessao"}
+{"id":"fechar-push-conferido-e-merge-confirmado","titulo":"fechar: conflito e upstream antes do push, CI e merge confirmados pelo state"}
+{"id":"obs-2026-10-11-gate-pr-nao-le-body-file-no-tmp-do-bash","titulo":"gate-fechar-issue nao le --body-file gravado em /tmp do Git Bash"}
+{"id":"gh-intermediario-no-path","titulo":"gh intermediario no PATH para o gate-fechar-issue ver o argv real"}
+{"id":"obs-2026-10-27-estado-fechar-fora-do-pr","titulo":"Estado do fechar gravado depois do merge sujou branch já mergeada"}
+
+
