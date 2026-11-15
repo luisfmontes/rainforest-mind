@@ -33,8 +33,8 @@
     ],
     "tarefas_ok": 4,
     "tarefas": 4,
-    "comando": "node scripts/integrar-tarefa.cjs (volta 2: tarefas 4,3,1,2; passo 3 conferir-fluxo mutacoes)",
-    "saida": "t4 86a70349; t3 5f5ba504; t1 bdcf4e50; t2 ae447a66 — todas aceitas",
+    "comando": "node scripts/integrar-tarefa.cjs (volta 3: tarefa 3; passo 3 conferir-fluxo mutacoes)",
+    "saida": "t3 bf409905 aceita; tarefas 1, 2 e 4 inalteradas desde a volta 2",
     "mutacao": [
       {
         "tarefa": 1,
