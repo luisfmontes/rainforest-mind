@@ -24,6 +24,7 @@ mutacao:
   de: const alvoFechar = alvoDoFechar(estado, extra, refCodigo.head);
   para: const alvoFechar = 'HEAD';
   bateria: `bash scripts/testa-estado-reabrir.sh`
+  timeout: `1200000`
   fixture: testa-estado-reabrir.sh, seção "(t) #714: marcar fechar ok numa branch nova da main depois do squash compara com a ponta do PR"
 prova-na-base: verde — o cenário exige repositório com PR squash-mergeado e um gh falso no PATH; quem o monta é a seção nova da bateria
 Implementação: `arquivosDeCodigoDesde(head, slug, estado, alvo = 'HEAD')` troca o `'HEAD'` fixo do diff, do `merge-base` e do `ls-tree` por `alvo`. O `git status` (sujos) só entra quando `alvo === 'HEAD'`. `recusaCodigoDepois` ganha o mesmo parâmetro e o repassa. No bloco do `marcar` que monta `refCodigo`, para `estagio === 'fechar'` entra exatamente a linha do `de:` acima. Ela usa uma função nova `alvoDoFechar(estado, extra, head)` com estas saídas:
