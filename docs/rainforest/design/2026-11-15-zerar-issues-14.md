@@ -75,6 +75,26 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
     heredoc canônico casa sem copiar o resto do comando. O custo fica linear no tamanho: 600 `"$(`
     em 12 KB estouravam o orçamento.
   Porquê: a revisão 1 reproduziu cada forma com o payload real.
+- **Emendas da revisão 2 e das revisões de segurança automáticas (commits 4fb5da84 a 39c15107).**
+  - (comentário) Linha com `#` que termina em contrabarra tem duas leituras: o `#` abre
+    comentário e a contrabarra não continua nada, ou o `#` está citado ou escapado e o bash junta
+    as linhas sem espaço. O `gate-fechar-issue` acompanha as aspas desde o início do comando e
+    escolhe a leitura principal pelo que vê. A outra leitura vira segmento extra, julgado pelo
+    gate normal, então só barra quando uma das duas é escrita de verdade. A junção atravessa
+    várias linhas de continuação, inclusive vazias. Critério: `echo "a #b"; g\` + quebra +
+    `h issue close 12` sai 2, e `gh issue comment 5 --body "ver #3" \` + quebra + `--repo o/r`
+    sai 0, como na base.
+  - (`$IFS` antes de `#`) `close$IFS#12` vira `close \#12`: o espaço separa a palavra, e a
+    contrabarra impede que o gate leia comentário onde o bash não lê.
+  - (here-string como script) No gate de subagente, `bash <arquivo> <<< palavra` lê o arquivo, e
+    a palavra é dado. O caminho só conta como arquivo se não passar por `dev` ou `proc` e não
+    tiver variável, substituição, glob, chave, til ou contrabarra. Opção com valor (`-o`, `+O`,
+    `--rcfile`, `--init-file`) consome a palavra seguinte.
+  - (PowerShell) `pwsh x.ps1` e `pwsh -File x.ps1` rodam arquivo. O `powershell.exe` lê o
+    posicional como `-Command`, então o atalho de arquivo só vale quando o caminho é o texto
+    inteiro. Caminho tem só caractere de caminho. `-ec` é apelido de `-EncodedCommand`.
+  Porquê: cada forma foi reproduzida com o payload real, e o falso positivo do `#3` foi medido
+  contra a base 7731a8c0.
 - **D5 — O resto do comando depois de um heredoc começa depois do delimitador.** O
   `cmd.slice(heredoc.fim - 1)` vira uma função de `hooks/lib/heredoc.cjs`
   (`restoDepoisDoHeredoc`), usada nas duas cópias do segmentador: `gate-subagente-sem-gh.cjs`
@@ -90,6 +110,11 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   na seção "Fora de escopo" deste design como resíduo aceito, com o comando — porquê: sem modelo
   escrito, cada revisão acha um vetor novo. Foi assim que o #689 gerou seis Issues em oito
   revisões.
+  Emenda (parada das revisões automáticas): a revisão de segurança que chega a cada commit
+  trouxe 2–3 achados por commit, quase todos sobre as linhas recém-escritas. Cada achado novo é
+  reproduzido contra a base 7731a8c0 e contra o HEAD. Se a base barra e o HEAD passa, é
+  regressão e se conserta. Se os dois passam, vira resíduo nesta seção "Fora de escopo", sem
+  commit.
 - **D7 — Entrega em um PR, versão 2.16.0** — porquê: há comportamento novo nos gates. As seis
   Issues fecham pelo `fechar-issue.cjs` depois do merge.
 
