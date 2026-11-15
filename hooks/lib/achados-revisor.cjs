@@ -192,10 +192,12 @@ function citacaoNaAbertura(abertura, caminhos) {
   let linha = null;
   for (const caminho of caminhos) {
     if (arquivo && caminho.length <= arquivo.length) continue;
-    // o caminho começa num limite: `xa.cjs:3` não é citação de `a.cjs`
+    // o caminho começa num limite: `xa.cjs:3` não é citação de `a.cjs`, e
+    // `docs/sub/README.md:10` não é citação de `README.md` (sufixo depois de
+    // `/` ou `\`). Espaço continua valendo como limite (`[preexistente] a.cjs:5`).
     for (let i = abertura.indexOf(`${caminho}:`); i >= 0; i = abertura.indexOf(`${caminho}:`, i + 1)) {
       const n = /^\d+/.exec(abertura.slice(i + caminho.length + 1));
-      if (n && (i === 0 || !/[\w.-]/.test(abertura[i - 1]))) { arquivo = caminho; linha = Number(n[0]); break; }
+      if (n && (i === 0 || !/[\w./\\-]/.test(abertura[i - 1]))) { arquivo = caminho; linha = Number(n[0]); break; }
     }
   }
   return arquivo ? { arquivo, linha } : null;

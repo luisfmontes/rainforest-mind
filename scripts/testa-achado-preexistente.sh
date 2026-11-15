@@ -50,6 +50,12 @@ mkdir -p "$R_POSIX/$PE_DIR"
 printf 'p1\np2\np3\n' > "$R_POSIX/$PE_DIR/x y.prw"
 # b.cjs não entra no diff da fixture: é o arquivo que o C1 cita como fora da entrega.
 printf 'b1\nb2\nb3\n' > "$R_POSIX/b.cjs"
+# Arquivos da base fora do diff, citados com sufixo de caminho (#697/D4, emenda):
+# `docs/sub/README.md` e `hooks/scripts/estado.cjs`. O diff toca README.md e
+# scripts/estado.cjs, que são sufixos deles (criados só no commit da entrega).
+mkdir -p "$R_POSIX/docs/sub" "$R_POSIX/hooks/scripts"
+printf 'd1\nd2\nd3\nd4\nd5\nd6\nd7\nd8\nd9\nd10\n' > "$R_POSIX/docs/sub/README.md"
+printf 'e1\ne2\ne3\ne4\ne5\ne6\ne7\ne8\ne9\ne10\n' > "$R_POSIX/hooks/scripts/estado.cjs"
 git -C "$R_POSIX" add -A
 git -C "$R_POSIX" commit -qm base
 git -C "$R_POSIX" remote add origin "$REMOTO"
@@ -57,7 +63,12 @@ git -C "$R_POSIX" push -q origin main
 git -C "$R_POSIX" fetch -q origin
 printf 'l1\nl2\nNOVA\nl4\nl5\n' > "$R_POSIX/a.cjs"
 printf 'p1\nP2 NOVA\np3\n' > "$R_POSIX/$PE_DIR/x y.prw"
-git -C "$R_POSIX" commit -qam "altera a linha 3 de a.cjs e a 2 do prw"
+# README.md e scripts/estado.cjs entram no diff (arquivos novos, linha 10 incluída).
+printf 'r1\nr2\nr3\nr4\nr5\nr6\nr7\nr8\nr9\nr10\nr11\nr12\n' > "$R_POSIX/README.md"
+mkdir -p "$R_POSIX/scripts"
+printf 's1\ns2\ns3\ns4\ns5\ns6\ns7\ns8\ns9\ns10\ns11\ns12\n' > "$R_POSIX/scripts/estado.cjs"
+git -C "$R_POSIX" add -A
+git -C "$R_POSIX" commit -qm "altera a linha 3 de a.cjs e a 2 do prw; README.md e scripts/estado.cjs entram no diff"
 
 # Repo sem remoto: não há origin/main, então a marca não é conferível.
 R2_POSIX="$RAIZ_POSIX/sem-remoto"
@@ -348,6 +359,32 @@ r=1
 if [ "$CRIT_EXIT" -eq 0 ] && [ "$(ordem_c7 "$CRIT_ERR")" = "sim" ] \
   && ! tem "$CRIT_OUT" 'x y.prw:3' && ! tem "$CRIT_OUT" '[preexistente]'; then r=0; fi
 registra "(#697/D4, caminho com espaço e acento) achado que cita linha não alterada de arquivo que o diff altera sai na seção da entrega" $r
+
+# D4 (#697), sufixo de caminho: o diff toca `README.md` e `scripts/estado.cjs`, e a
+# linha 10 dos dois está no diff. Os preexistentes citam `docs/sub/README.md:10` e
+# `hooks/scripts/estado.cjs:10` (fora do diff). O sufixo depois de `/` não casa com
+# o arquivo do diff: os dois saem na seção antiga, sem recusa e sem ir à da entrega.
+TXT_C8='**[alta]** [preexistente] docs/sub/README.md:10 — defeito antigo em arquivo fora do diff
+**[alta]** [preexistente] hooks/scripts/estado.cjs:10 — defeito antigo em arquivo fora do diff
+**[media]** b.cjs:1 — defeito novo
+VEREDITO: reprovado'
+# ordem_c8 <stderr>: sim se não há seção da entrega, a antiga vem e os dois citados vêm depois dela.
+ordem_c8() {
+  node -e '
+const e = process.argv[1];
+const nova = e.indexOf("## Preexistentes no arquivo da entrega");
+const antiga = e.indexOf("## Preexistentes (não são da entrega");
+const p1 = e.indexOf("docs/sub/README.md:10 — defeito antigo");
+const p2 = e.indexOf("hooks/scripts/estado.cjs:10 — defeito antigo");
+process.stdout.write(nova < 0 && antiga >= 0 && p1 > antiga && p2 > antiga ? "sim" : "nao");
+' "$1"
+}
+critica_com "$TXT_C8" C8
+r=1
+if [ "$CRIT_EXIT" -eq 0 ] && [ "$(ordem_c8 "$CRIT_ERR")" = "sim" ] \
+  && ! tem "$CRIT_OUT" 'docs/sub/README.md:10' && ! tem "$CRIT_OUT" 'hooks/scripts/estado.cjs:10' \
+  && ! tem "$CRIT_ERR" 'marca [preexistente] recusada'; then r=0; fi
+registra "(#697/D4, sufixo) preexistente que cita docs/sub/README.md:10 ou hooks/scripts/estado.cjs:10 sai na seção antiga, não na da entrega" $r
 
 # --comparacao: só o bloco; sai 0 também com veredito ok na janela atual.
 ta="$(transcrito_com_texto "$TXT_C1" ANT5)"
