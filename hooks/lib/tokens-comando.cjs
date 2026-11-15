@@ -780,10 +780,25 @@ function contemConstrucaoIlegivel(str) {
   // sem esses caracteres nao via `$@`/`$*` como variavel nenhuma. `ehVariavelCitadaFinal`
   // continua so aceitando `"$nome"`/`"${nome}"` (identificador), entao
   // `"$@"`/`"$*"` nunca escapam por aquele ramo do caminho de script.
-  // `$'...'`/`$"..."` (ANSI-C e tradução de locale) em qualquer ponto do script
-  // o bash expande com regras que o gate não lê (zerar-issues-14, revisão de
-  // segurança do commit c66b56ee): vale para todo wrapper, não só o `eval`.
-  return /\$\(|`|\$[A-Za-z_{0-9@*#?$!'"-]/.test(str);
+  // `$'...'`/`$"..."` (ANSI-C e tradução de locale) FORA de aspas, em qualquer
+  // ponto do script, o bash expande com regras que o gate não lê (zerar-issues-14,
+  // revisão de segurança do commit c66b56ee). Dentro de aspas o `$` seguido de
+  // aspa é texto, como a âncora de regex em `grep 'x$'` (revisão 2).
+  return /\$\(|`|\$[A-Za-z_{0-9@*#?$!-]/.test(str) || temAspaDeCifraoForaDeAspas(str);
+}
+
+/** `$'` ou `$"` que abre aspa (fora de aspas e sem contrabarra antes). */
+function temAspaDeCifraoForaDeAspas(s) {
+  let aspa = null;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (aspa === "'") { if (c === "'") aspa = null; continue; }
+    if (c === "\\") { i++; continue; }
+    if (aspa === '"') { if (c === '"') aspa = null; continue; }
+    if (c === "$" && (s[i + 1] === "'" || s[i + 1] === '"')) return true;
+    if (c === "'" || c === '"') aspa = c;
+  }
+  return false;
 }
 
 /**
@@ -1104,8 +1119,11 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // parâmetros (`-NoProfile`, `-ExecutionPolicy Bypass`), e parâmetro com valor
     // consome o valor seguinte. Sem -Command, falha fechada se houver `gh` como palavra.
     let atual = p2;
+    let viuFile = false;
     while (atual) {
-      if (casaPrefixoDeFlag(atual.tok, "-encodedcommand")) return { interno: null, ilegivel: true };
+      // `-ec` é apelido de -EncodedCommand e não prefixo dele (revisão 2).
+      if (casaPrefixoDeFlag(atual.tok, "-encodedcommand") || /^[-/]ec$/i.test(atual.tok)) return { interno: null, ilegivel: true };
+      if (/^-f(i(l(e)?)?)?$/i.test(atual.tok)) viuFile = true;
       if (casaPrefixoDeFlag(atual.tok, "-command")) {
         const interno = desempacota(atual.resto);
         return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
@@ -1126,6 +1144,9 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     const posicional = atual ? `${atual.tok} ${atual.resto}`.trim() : "";
     const ghColado = temGhComoPalavra(p1.resto) || /(^|[\s;&|(){}"'`])gh(\.exe)?([\s;&|(){}"'`]|$)/i.test(p1.resto);
     if (posicional === "") return { interno: null, ilegivel: ghColado };
+    // `-File x.ps1` e `pwsh x.ps1` rodam um ARQUIVO: interno nulo, para o gate
+    // ler o script do disco como fazia na base (revisão 2: `x.ps1` relativo passava).
+    if (viuFile || /\.ps1$/i.test(atual.tok)) return { interno: null, ilegivel: ghColado };
     return { interno: desempacota(posicional), ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
   }
 

@@ -403,6 +403,13 @@ const casosRevisao = [
   [`powershell -NoProfile -File ${ps1Abs}`, 2, "(revisão) powershell -File <.ps1>"],
   ["./m.ps1", 2, "(revisão) ./m.ps1 (caminho direto)"],
   ['pwsh -Command "gh issue close 12"', 2, "(revisão) pwsh -Command com gh issue close"],
+  // zerar-issues-14, revisão 2: .ps1 relativo, -ec, here-string de dado, regex com $' e $IFS.
+  ["pwsh -File m.ps1", 2, "(r14 rev 2) pwsh -File <.ps1 relativo>"],
+  ["pwsh m.ps1", 2, "(r14 rev 2) pwsh <.ps1 relativo>"],
+  ["pwsh -nop -ec Z2ggaXNzdWUgY2xvc2UgMTI=", 2, "(r14 rev 2) pwsh -ec (apelido de -EncodedCommand)"],
+  ['bash ./deploy.sh <<< "$answer"', 0, "(r14 rev 2) here-string como dado de script de arquivo"],
+  [`bash -c 'grep -c "^$" f.txt'`, 0, "(r14 rev 2) $ seguido de aspa dentro de aspas e texto"],
+  ["gh${IFS}issue${IFS}close${IFS}12", 2, "(r14 rev 2) $IFS no gate de subagente"],
   ["pwsh -EncodedCommand ZwBoAA==", 2, "(revisão) pwsh -EncodedCommand (ilegível)"],
   ['cmd /c "gh issue close 12"', 2, "(revisão) cmd /c com gh issue close"],
   [`node --eval="require('child_process').execSync('gh issue close 12')"`, 2, "(revisão 2) node --eval=\"...\" (flag com = e valor citado)"],

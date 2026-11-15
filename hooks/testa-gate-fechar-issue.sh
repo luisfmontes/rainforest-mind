@@ -4678,7 +4678,7 @@ caso_ferr() { # $1 rotulo, $2 exit esperado, $3 ferramenta, $4 comando
   [ $ex -eq "$esp" ] && test_ok "$rot exit $esp" || test_fail "$rot exit $esp (foi $ex: $(cat "$SBP/err-$rot"))"
 }
 
-# Caso (#694): $IFS divide a palavra no bash; o gate troca $IFS e ${IFS} por espaco fora de aspas simples
+# Caso (#694): $IFS divide a palavra no bash; o gate troca $IFS e ${IFS} por espaco no comando inteiro
 echo
 echo '== (#694) $IFS divide a palavra =='
 caso_ferr r14-ifs-1 2 Bash 'gh$IFS issue close 12'
@@ -4803,6 +4803,13 @@ caso_ferr r14v2-com-13 2 Bash $'echo ${x:-${y}\na #b}; gh issue close 12'
 caso_ferr r14v2-com-14 2 Bash 'echo a$IFS#; gh issue close 12'
 caso_ferr r14v2-com-15 2 PowerShell 'echo a` #; gh issue close 12'
 caso_ferr r14v2-com-16 0 PowerShell 'Write-Host oi # gh issue close 12'
+# Revisao 2 da zerar-issues-14: `((` aritmetico, bloco <# #> sem `;`, contrabarra no
+# fim de linha de comentario, e `$` seguido de aspa dentro de aspas (regex).
+caso_ferr r14v3-1 2 Bash '(( 1 # 2 )); gh issue close 12'
+caso_ferr r14v3-2 2 PowerShell '<# nota #> gh issue close 12'
+caso_ferr r14v3-3 2 Bash $'echo hi #x\\\ngh issue close 12'
+caso_ferr r14v3-4 0 Bash $'bash -c "ls | grep \'x$\'"'
+caso_ferr r14v3-5 0 Bash $'eval "grep \'x$\' f"'
 # Com qualquer `${` antes, o comentario e duvidoso e citar gh barra: custo aceito
 # da falha fechada (a contagem de chaves e enganavel por aninhamento).
 caso_ferr r14v2-com-12 2 Bash $'echo ${x} ok\nls # gh pr merge 7'

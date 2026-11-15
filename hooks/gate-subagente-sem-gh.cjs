@@ -207,6 +207,10 @@ let TEXTOS_DE_HEREDOC = [];
  * segue o mesmo precedente de manter a própria segmentação.
  */
 function segmentosParaGate(cmd) {
+  // D3 (rodada 14), revisao 2: o bash divide a palavra no `$IFS` tambem aqui
+  // (`gh${IFS}issue${IFS}close${IFS}12`). Mesma troca do gate-fechar-issue,
+  // inclusive o `_` quando colado num `#` (o comentario e decidido antes da expansao).
+  cmd = cmd.replace(/(\$\{IFS\}|\$IFS(?![A-Za-z0-9_]))(?=(#?))/g, (m, ifs, cerquilha) => (cerquilha ? "_" : " "));
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "";
@@ -777,7 +781,13 @@ function processarSegmento(segmento, cwd) {
   // zerar-issues-14, tarefa 5 (achado 2): here-string que alimenta um shell
   // (`bash <<< 'x'`, `bash <<<$'x'`, com ou sem espaço) é o script, lido como o
   // `bash -c` dessa palavra. O `--` faz a palavra ser o script, nunca uma opção.
-  if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm)) {
+  // Revisao 2: shell que roda um ARQUIVO (`bash ./deploy.sh <<< "$x"`) le o
+  // here-string como dado, nao como script. Palavra com `/` ou `.` antes do `<<<`,
+  // que nao seja opcao, e o arquivo. `bash -o pipefail <<<` segue lido como script.
+  const argsAntes = pos === null ? [] : toks.slice(pos + 1);
+  const corte = argsAntes.findIndex((t) => t.v.includes("<<<"));
+  const rodaArquivo = (corte === -1 ? argsAntes : argsAntes.slice(0, corte)).some((t) => !/^[-+]/.test(t.v) && /[/.]/.test(t.v));
+  if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm) && !rodaArquivo) {
     for (const resto of restosDepoisDeHereString(segmento)) {
       const palavra = palavraDeHereString(resto);
       if (palavra === "") continue;

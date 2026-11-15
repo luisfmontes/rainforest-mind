@@ -264,6 +264,12 @@ function segmentosParaGate(cmd) {
   // senao o `\n` cru vira fronteira de segmento incondicional (abaixo) e
   // parte `gh issue \<LF>close 12` em dois pedaços que isolados nao
   // bloqueiam. Ver docblock de `colapsaContinuacaoDeLinhaNoTopo`.
+  // Comentario termina na quebra: contrabarra no fim de uma linha que tem `#`
+  // depois de espaco ou operador nao continua nada (`echo hi #x\` + quebra +
+  // `gh ...` roda o gh; revisao 2 da zerar-issues-14, preexistente). Sem saber se o
+  // `#` esta entre aspas, a contrabarra sai mesmo assim: o pior caso e ler a linha
+  // de baixo como comando separado, que e falha fechada.
+  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(\r?\n)/gm, (m, linha, quebra) => linha + quebra);
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "";
@@ -336,7 +342,9 @@ function segmentosParaGate(cmd) {
       // `${x:-` + quebra + `a #b}; gh ...` fecha a chave na linha de baixo e o gh
       // roda, e chave aninhada (`${x:-${y}` ...) engana contagem por ultima ocorrencia
       // (revisao de seguranca do commit 6207a501). Falha fechada.
-      const dentroDeChaves = cmd.slice(0, i).includes("${");
+      // O mesmo vale para `((` (aritmetica): `(( 1 # 2 )); gh ...` roda o gh, e o
+      // bash nao le comentario dentro dele (revisao 2).
+      const dentroDeChaves = cmd.slice(0, i).includes("${") || cmd.slice(0, i).includes("((");
       // Espaco escapado antes do `#`: contrabarra no Bash, crase no PowerShell
       // (revisao de seguranca do commit 18ecb4bf).
       const escapeDoShell = FERRAMENTA === "PowerShell" ? "`" : "\\";
@@ -360,7 +368,10 @@ function segmentosParaGate(cmd) {
           "Tire o 'gh' do comentário, ou rode o comando 'gh' sem '#' na mesma linha.\n"
         );
       }
-      atual += cmd.slice(i, fimComentario);
+      // O bloco `<# ... #>` do PowerShell sai do segmento como espaco: deixado
+      // no texto, o token `#>` cortava o resto como comentario de linha
+      // (`<# nota #> gh issue close 12`; revisao 2, preexistente).
+      atual += abreBlocoPs ? " " : cmd.slice(i, fimComentario);
       i = fimComentario - 1;
       continue;
     }
