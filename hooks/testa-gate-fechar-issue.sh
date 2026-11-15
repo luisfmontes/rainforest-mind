@@ -4819,6 +4819,11 @@ caso_ferr r14v3-7 0 Bash $'echo "a #b" \\\necho ok'
 caso_ferr r14v4-1 2 Bash 'gh issue close$IFS#12'
 caso_ferr r14v4-2 2 Bash $'echo a #x\\\n# y\\\n# z\\\ngh issue close 12'
 caso_ferr r14v4-3 0 Bash $'echo a #x\\\n# y\\\necho ok'
+caso_ferr r14v4-5 2 Bash $'echo "a #b"; g\\\nh issue close 12'
+caso_ferr r14v4-6 2 Bash $'echo a\\ #b; g\\\nh issue close 12'
+caso_ferr r14v4-7 2 Bash $'echo a\\ #b; g\\\n\\\nh issue close 12'
+caso_ferr r14v4-8 0 Bash $'echo a # nota\\\nls -la'
+caso_ferr r14v4-9 0 Bash 'pwsh ./scripts/x.ps1'
 caso_ferr r14v4-4 2 Bash 'powershell "Write-Host `$x; .\x.ps1"'
 # Com qualquer `${` antes, o comentario e duvidoso e citar gh barra: custo aceito
 # da falha fechada (a contagem de chaves e enganavel por aninhamento).

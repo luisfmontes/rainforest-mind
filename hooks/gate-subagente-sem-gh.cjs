@@ -800,7 +800,12 @@ function processarSegmento(segmento, cwd) {
       if (/^[-+][A-Za-z]*[oO]$/.test(v) || /^--(rcfile|init-file)$/.test(v)) k += 1;
       continue;
     }
-    rodaArquivo = /[/.]/.test(v) && !/^\/(dev\/stdin|dev\/fd\/0|proc\/self\/fd\/0)$/.test(v);
+    // Falha fechada: caminho que passa por `dev` ou `proc` (`//dev/stdin`,
+    // `/dev/./stdin`, `../../dev/fd/0`) pode ser o stdin, e caminho montado por
+    // variavel ou substituicao nao se resolve aqui; nos dois o here-string e lido
+    // como script (revisao de seguranca do commit d9edb887).
+    const caminho = v.replace(/["']/g, "").replace(/\/+/g, "/");
+    rodaArquivo = /[/.]/.test(caminho) && !/(^|\/)(dev|proc)(\/|$)/.test(caminho) && !/[$`]/.test(caminho);
     break;
   }
   if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm) && !rodaArquivo) {

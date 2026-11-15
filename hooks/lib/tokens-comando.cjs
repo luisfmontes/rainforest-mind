@@ -1148,8 +1148,10 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // ler o script do disco como fazia na base (revisão 2: `x.ps1` relativo passava).
     // Só uma palavra sem espaço nem separador terminada em `.ps1` é caminho de
     // arquivo; a construção ilegível do texto continua barrando (revisão de
-    // segurança do commit 4fb5da84).
-    if (viuFile || /^[^\s;&|]+\.ps1$/i.test(atual.tok)) return { interno: null, ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
+    // segurança do commit 4fb5da84). E só caractere de caminho: parêntese,
+    // colchete, vírgula, `#` ou aspa no meio é sintaxe do PowerShell, não nome
+    // de arquivo (revisão de segurança do commit d9edb887).
+    if (viuFile || /^(["']?)[\w.\\\/:~-]+\.ps1\1$/i.test(atual.tok)) return { interno: null, ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
     return { interno: desempacota(posicional), ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
   }
 

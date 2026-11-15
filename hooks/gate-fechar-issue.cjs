@@ -276,16 +276,38 @@ function segmentosParaGate(cmd) {
   // A linha de baixo vai em lookahead, nao no match: consumida, ela escapava da
   // propria checagem quando tambem termina em contrabarra (duas linhas de
   // comentario seguidas; revisao de seguranca do commit 16571bcd).
-  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte) => {
-    if (/["']/.test(linha)) {
-      const juntas = (linha + " " + seguinte).replace(/["'`\\$(){}]/g, "").split(/[\s;&|<>#]+/);
-      if (juntas.some((p) => p !== "" && normalizarExecutavel(p) === "gh")) {
-        bloqueia(
-          "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
-          "Razão: há um 'gh' numa linha que termina em contrabarra depois de um '#' que pode estar entre aspas; o gate não sabe se a linha continua.\n\n" +
-          "Escreva o comando 'gh' numa linha só, sem '#' e sem contrabarra no fim.\n"
-        );
+  // A checagem da juncao vale com ou sem aspa: espaco escapado antes do `#`
+  // (`echo a\ #b; g\` + quebra + `h issue close 12`) tambem tira o `#` do
+  // comentario. O bash junta as linhas SEM espaco, e a continuacao pode atravessar
+  // varias linhas (inclusive vazias), entao a juncao segue enquanto a linha de
+  // baixo terminar em contrabarra, e as duas formas (com e sem espaco) sao
+  // checadas (revisao de seguranca do commit d9edb887).
+  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte, offset, texto) => {
+    let pos = offset + m.length + quebra.length;
+    let continuacao = "";
+    for (let n = 0; ; n++) {
+      if (n > 64) bloqueia(
+        "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+        "Razão: continuação de linha longa demais depois de um '#'; o gate não lê.\n"
+      );
+      const fim = texto.indexOf("\n", pos);
+      const prox = texto.slice(pos, fim < 0 ? undefined : fim).replace(/\r$/, "");
+      gastarVarredura(prox.length + 1);
+      if (fim >= 0 && /\\$/.test(prox)) {
+        continuacao += prox.replace(/\\+$/, "");
+        pos = fim + 1;
+        continue;
       }
+      continuacao += prox;
+      break;
+    }
+    const temGh = (t) => t.replace(/["'`\\$(){}]/g, "").split(/[\s;&|<>#]+/).some((p) => p !== "" && normalizarExecutavel(p) === "gh");
+    if (temGh(linha + continuacao) || temGh(linha + " " + continuacao)) {
+      bloqueia(
+        "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+        "Razão: há um 'gh' numa linha que termina em contrabarra depois de um '#' que pode não ser comentário; o gate não sabe se a linha continua.\n\n" +
+        "Escreva o comando 'gh' numa linha só, sem '#' e sem contrabarra no fim.\n"
+      );
     }
     return linha;
   });
