@@ -21,7 +21,7 @@
     "em": "2026-11-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-15",
     "em": "2026-11-15",
     "integradas": [
@@ -31,8 +31,8 @@
       4,
       5
     ],
-    "comando": "node scripts/integrar-tarefa.cjs (tarefas 1 a 5; passo 3 conferir-fluxo mutacoes)",
-    "saida": "t1 db99558c, t2 5b959725, t3 95f8ec34 (+ 5f17eecd orcamento sempre fechado), t4 d4d7c04d, t5 64565fcc aceitas",
+    "comando": "node scripts/integrar-tarefa.cjs (volta 2: tarefas 3 e 5) e commits de consertos das revisoes de seguranca",
+    "saida": "t5 2f9ea5e2 aceita; t3 e507e57c aceita (retomada); c66b56ee e 6207a501 consertos de seguranca",
     "mutacao": [
       {
         "tarefa": 1,
@@ -60,12 +60,7 @@
         "fixture": "testa-bash-c-opcoes.sh, caso -co errexit"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-15"
-    },
-    "reaberturas": 1,
-    "em_voo": []
+    "reaberturas": 1
   },
   "revisar": {
     "status": "reprovado",
