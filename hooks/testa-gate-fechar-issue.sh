@@ -4803,8 +4803,9 @@ caso_ferr r14v2-com-13 2 Bash $'echo ${x:-${y}\na #b}; gh issue close 12'
 caso_ferr r14v2-com-14 2 Bash 'echo a$IFS#; gh issue close 12'
 caso_ferr r14v2-com-15 2 PowerShell 'echo a` #; gh issue close 12'
 caso_ferr r14v2-com-16 0 PowerShell 'Write-Host oi # gh issue close 12'
-# Comentario certo pode citar gh (W2).
-caso_ferr r14v2-com-12 0 Bash $'echo ${x} ok\nls # gh pr merge 7'
+# Com qualquer `${` antes, o comentario e duvidoso e citar gh barra: custo aceito
+# da falha fechada (a contagem de chaves e enganavel por aninhamento).
+caso_ferr r14v2-com-12 2 Bash $'echo ${x} ok\nls # gh pr merge 7'
 
 echo
 echo '== (r14v2) "$(cat <<A sem fechamento repetido em 400 KB sai 2 em menos de 5 s =='
