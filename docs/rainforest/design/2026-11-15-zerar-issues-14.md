@@ -106,6 +106,9 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   chaves montando o executável, passam na base e no HEAD. A rede W2 não conhece essa forma.
 - Resíduo aceito (revisão 1, fora do modelo da D6): `gh${IFS:0:1}issue...` (expansão de
   substring) e `$'gh\x20issue...'` (codificação hexadecimal).
+- Resíduo aceito (volta 2, fora do modelo da D6): `powershell "& ('g'+'h') issue close 12"` monta
+  o executável por expressão do PowerShell, que precisa ser avaliada. É a mesma classe da
+  substituição que precisa executar.
 - O #707 (`gh api`, `gh release`, `gh gist` no gate de publicação) vai na rodada 15.
 
 ## Varredura

@@ -780,7 +780,10 @@ function contemConstrucaoIlegivel(str) {
   // sem esses caracteres nao via `$@`/`$*` como variavel nenhuma. `ehVariavelCitadaFinal`
   // continua so aceitando `"$nome"`/`"${nome}"` (identificador), entao
   // `"$@"`/`"$*"` nunca escapam por aquele ramo do caminho de script.
-  return /\$\(|`|\$[A-Za-z_{0-9@*#?$!-]/.test(str);
+  // `$'...'`/`$"..."` (ANSI-C e tradução de locale) em qualquer ponto do script
+  // o bash expande com regras que o gate não lê (zerar-issues-14, revisão de
+  // segurança do commit c66b56ee): vale para todo wrapper, não só o `eval`.
+  return /\$\(|`|\$[A-Za-z_{0-9@*#?$!'"-]/.test(str);
 }
 
 /**
@@ -1118,7 +1121,12 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // Sem -Command o `powershell.exe` roda o texto posicional como comando. Falha
     // fechada: `gh` encostado em separador do PowerShell (`;&|(){}`, aspa, crase)
     // também conta, não só o `gh` separado por espaço (revisão do commit 6b306b39).
-    return { interno: null, ilegivel: temGhComoPalavra(p1.resto) || /(^|[\s;&|(){}"'`])gh(\.exe)?([\s;&|(){}"'`]|$)/i.test(p1.resto) };
+    // O texto posicional é lido como o de um -Command (revisão do commit c66b56ee):
+    // vai para o segmentador, e construção ilegível nele barra.
+    const posicional = atual ? `${atual.tok} ${atual.resto}`.trim() : "";
+    const ghColado = temGhComoPalavra(p1.resto) || /(^|[\s;&|(){}"'`])gh(\.exe)?([\s;&|(){}"'`]|$)/i.test(p1.resto);
+    if (posicional === "") return { interno: null, ilegivel: ghColado };
+    return { interno: desempacota(posicional), ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
   }
 
   if (exe === "cmd") {
@@ -1167,7 +1175,9 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
       // O fish tem sintaxe própria: `(cmd)` substitui comando e a contrabarra
       // escapa diferente. Script de fish com `\`, `(` ou `$` é ilegível
       // (revisão de segurança do commit 6b306b39).
-      if (exe === "fish" && /[\\($]/.test(interno)) return { interno: null, ilegivel: true, escopo: "palavra" };
+      // Lista do que é permitido, não do que é proibido: o fish também expande
+      // `{a,b}`, `*`, `?` e `~` (revisão de segurança do commit c66b56ee).
+      if (exe === "fish" && !/^[A-Za-z0-9 \t._\/=:,+-]*$/.test(interno)) return { interno: null, ilegivel: true, escopo: "palavra" };
       return { interno, ilegivel: contemConstrucaoIlegivel(interno), escopo: "palavra" };
     }
     // Se começa com - ou + mas não é a flag esperada, pula (e o valor dela,

@@ -781,7 +781,9 @@ function processarSegmento(segmento, cwd) {
     for (const resto of restosDepoisDeHereString(segmento)) {
       const palavra = palavraDeHereString(resto);
       if (palavra === "") continue;
-      const hs = desempacotarWrapperDeString(`bash -c -- ${palavra}`);
+      // O nome real do shell: o `fish` tem regra própria no desempacotador
+      // (revisão de segurança do commit c66b56ee).
+      const hs = desempacotarWrapperDeString(`${exeNorm} -c -- ${palavra}`);
       if (hs.ilegivel) bloqueiaIlegivel(segmento);
       if (hs.interno !== null) {
         for (const sub of segmentosParaGate(hs.interno)) processarSegmento(sub, cwd);

@@ -165,6 +165,11 @@ caso("(rev 6b306b39) dois here-strings, o segundo com gh, em subagente", r.statu
 r = rodar(`eval "echo hi;" $'gh issue close 12'`);
 caso("(rev 6b306b39) eval com $' no meio do texto em subagente", r.status, 2);
 
+// Revisao de seguranca do commit c66b56ee: o here-string do fish passa pela regra
+// do fish (contrabarra e chaves sao ilegiveis), nao pela do bash.
+r = rodar(`fish <<< 'g{h,} issue close 12'`);
+caso("(rev c66b56ee) fish <<< com chaves em subagente", r.status, 2);
+
 r = rodar("cat > /tmp/x.sh <<'EOF'\ngh issue close 12\nEOF");
 caso("cat > /tmp/x.sh <<'EOF' com gh issue close 12 no corpo em subagente", r.status, 2);
 

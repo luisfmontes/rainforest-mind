@@ -66,6 +66,11 @@ espera_bloqueio "fish -c '(echo gh) issue close 12'"
 espera_bloqueio "pwsh -NoProfile \"gh;issue close 12\""
 espera_bloqueio "powershell -Version 5 -Command \"gh issue close 12\""
 espera_bloqueio "eval echo hi\\; \$'gh' issue close 12"
+# Revisao de seguranca do commit c66b56ee: fish por lista do que e permitido,
+# $' em qualquer ponto do script de bash -c, texto posicional do powershell.
+espera_bloqueio "fish -c 'g{h,} issue close 12'"
+espera_bloqueio "bash -c \"echo hi; \"\$'gh issue close 12'"
+espera_bloqueio "powershell \"gh issue close 12\""
 
 echo
 echo "== passa: o script lido nao fecha Issue =="
@@ -81,6 +86,7 @@ espera_passa "pwsh -NoProfile -Command \"Get-ChildItem\""
 espera_passa "cmd //c dir"
 espera_passa "fish -c 'echo hi'"
 espera_passa "pwsh -NoProfile -File x.ps1"
+espera_passa "powershell Get-ChildItem"
 espera_passa "powershell -NoProfile -Command \"Write-Host gh\""
 
 echo
