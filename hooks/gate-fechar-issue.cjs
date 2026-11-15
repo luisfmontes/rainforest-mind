@@ -265,29 +265,52 @@ function segmentosParaGate(cmd) {
   // senao o `\n` cru vira fronteira de segmento incondicional (abaixo) e
   // parte `gh issue \<LF>close 12` em dois pedaços que isolados nao
   // bloqueiam. Ver docblock de `colapsaContinuacaoDeLinhaNoTopo`.
-  // Comentario termina na quebra: contrabarra no fim de uma linha que tem `#`
-  // depois de espaco ou operador nao continua nada (`echo hi #x\` + quebra +
-  // `gh ...` roda o gh; revisao 2 da zerar-issues-14, preexistente). Sem saber se o
-  // `#` esta entre aspas, a contrabarra sai mesmo assim: o pior caso e ler a linha
-  // de baixo como comando separado, que e falha fechada.
-  // Com aspa na linha, o `#` pode estar citado e a contrabarra continuar a linha
-  // de verdade (`gh issue --body " #x" \` + quebra + `close 12`): a juncao das
-  // duas linhas com `gh` como palavra barra (revisao de seguranca do commit 4fb5da84).
-  // A linha de baixo vai em lookahead, nao no match: consumida, ela escapava da
-  // propria checagem quando tambem termina em contrabarra (duas linhas de
-  // comentario seguidas; revisao de seguranca do commit 16571bcd).
-  // A checagem da juncao vale com ou sem aspa: espaco escapado antes do `#`
-  // (`echo a\ #b; g\` + quebra + `h issue close 12`) tambem tira o `#` do
-  // comentario. O bash junta as linhas SEM espaco, e a continuacao pode atravessar
-  // varias linhas (inclusive vazias), entao a juncao segue enquanto a linha de
-  // baixo terminar em contrabarra, e as duas formas (com e sem espaco) sao
-  // checadas (revisao de seguranca do commit d9edb887).
-  // O `#` conta depois de qualquer inicio de palavra do bash, parentese e chave
-  // inclusive (`(#x\` + quebra + `gh ...`); tratar a mais como comentario e falha
-  // fechada, porque a juncao abaixo e checada (revisao do commit df379adb).
+  // Linha com `#` que termina em contrabarra tem duas leituras possiveis. Se o
+  // `#` abre comentario, a contrabarra nao continua nada (`echo hi #x\` + quebra
+  // + `gh ...` roda o gh); se o `#` esta citado ou escapado (`echo "a #b"; g\` +
+  // quebra + `h issue close 12`), o bash junta as linhas SEM espaco. O gate
+  // acompanha as aspas desde o inicio do comando (comentario pulado ate a quebra)
+  // e escolhe a leitura principal pelo que ve: `#` fora de aspas divide (a
+  // contrabarra sai), `#` citado junta. A outra leitura vira segmento extra,
+  // julgado pelo gate normal, porque o rastreio de aspas e simples (heredoc,
+  // `$(...)` com aspas dentro) e pode errar: so barra quando uma das leituras e
+  // escrita de verdade. Assim `gh issue comment 5 --body "ver #3" \` + quebra +
+  // `--repo o/r` e `gh pr create --title "Fix #12" \` + quebra + `--body-file b.md`
+  // passam como na base. A juncao segue enquanto a linha de baixo terminar em
+  // contrabarra (inclusive linha vazia), e a linha de baixo vai em lookahead para
+  // tambem ser examinada. O `#` conta depois de qualquer inicio de palavra
+  // nao escapado (parentese, chave, redirecao, crase). Revisoes de seguranca da
+  // zerar-issues-14 (commits 4fb5da84 a 9f85ee5b).
+  const leiturasExtras = [];
+  let varrido = 0;
+  let aspaAberta = null;
+  const varreAspas = (texto, ate, pararNoComentario) => {
+    let k = varrido;
+    let escapadoEm = -1;
+    for (; k < ate; k++) {
+      const ch = texto[k];
+      if (aspaAberta === "'") { if (ch === "'") aspaAberta = null; continue; }
+      if (aspaAberta === "$'" || aspaAberta === '"') {
+        if (ch === "\\") { k++; continue; }
+        if (ch === (aspaAberta === '"' ? '"' : "'")) aspaAberta = null;
+        continue;
+      }
+      if (ch === "\\") { k++; escapadoEm = k; continue; }
+      if (ch === "'") { aspaAberta = k > 0 && texto[k - 1] === "$" ? "$'" : "'"; continue; }
+      if (ch === '"') { aspaAberta = '"'; continue; }
+      if (ch === "#" && (k === 0 || (escapadoEm !== k - 1 && /[\s;&|(){}<>`]/.test(texto[k - 1])))) {
+        if (pararNoComentario) { varrido = k; return k; }
+        const nl = texto.indexOf("\n", k);
+        k = (nl < 0 ? texto.length : nl) - 1;
+      }
+    }
+    varrido = Math.max(k, ate);
+    return -1;
+  };
   cmd = cmd.replace(/^((?:[^\n]*[\s;&|(){}<>`])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte, offset, texto) => {
     let pos = offset + m.length + quebra.length;
     let continuacao = "";
+    const linhasDeBaixo = [];
     for (let n = 0; ; n++) {
       if (n > 64) bloqueia(
         "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
@@ -298,21 +321,27 @@ function segmentosParaGate(cmd) {
       gastarVarredura(prox.length + 1);
       if (fim >= 0 && /\\$/.test(prox)) {
         continuacao += prox.replace(/\\+$/, "");
+        linhasDeBaixo.push(prox.replace(/\\+$/, ""));
         pos = fim + 1;
         continue;
       }
       continuacao += prox;
+      linhasDeBaixo.push(prox);
       break;
     }
-    const temGh = (t) => t.replace(/["'`\\$(){}]/g, "").split(/[\s;&|<>#]+/).some((p) => p !== "" && normalizarExecutavel(p) === "gh");
-    if (temGh(linha + continuacao) || temGh(linha + " " + continuacao)) {
-      bloqueia(
-        "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
-        "Razão: há um 'gh' numa linha que termina em contrabarra depois de um '#' que pode não ser comentário; o gate não sabe se a linha continua.\n\n" +
-        "Escreva o comando 'gh' numa linha só, sem '#' e sem contrabarra no fim.\n"
-      );
+    if (offset > varrido) gastarVarredura(offset - varrido);
+    gastarVarredura(linha.length);
+    varreAspas(texto, offset, false);
+    if (aspaAberta === null && varreAspas(texto, offset + linha.length, true) >= 0) {
+      // `#` fora de aspas: leitura principal dividida, a juntada vai de extra.
+      varrido = offset + m.length;
+      leiturasExtras.push(linha + continuacao);
+      return linha;
     }
-    return linha;
+    // `#` citado (ou linha que comeca dentro de aspa): a contrabarra continua
+    // a linha; as linhas de baixo, cada uma sozinha, vao de extra.
+    for (const l of linhasDeBaixo) leiturasExtras.push(l);
+    return m;
   });
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
@@ -703,6 +732,9 @@ function segmentosParaGate(cmd) {
   }
 
   if (atual.trim()) segmentos.push(atual);
+  for (const juntada of leiturasExtras) {
+    for (const sub of segmentosParaGate(juntada)) segmentos.push(sub);
+  }
   return segmentos;
 }
 

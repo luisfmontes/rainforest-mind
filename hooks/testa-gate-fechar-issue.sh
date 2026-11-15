@@ -4812,7 +4812,11 @@ caso_ferr r14v3-4 0 Bash $'bash -c "ls | grep \'x$\'"'
 caso_ferr r14v3-5 0 Bash $'eval "grep \'x$\' f"'
 # `#` talvez citado com contrabarra no fim: a juncao com gh barra (revisao de
 # seguranca do commit 4fb5da84); sem gh, passa.
-caso_ferr r14v3-6 2 Bash $'gh issue --body " #x" \\\nclose 12'
+caso_ferr r14v3-6 2 Bash $'echo "a #b"; gh issue \\\nclose 12'
+# Falso positivo que a regra de comentario criou e a base nao tinha: `#` citado
+# no corpo de um gh legitimo com continuacao de linha (revisao do 9f85ee5b).
+caso_ferr r14v4-13 0 Bash $'gh issue comment 5 --body "ver #3" \\\n  --repo o/r'
+caso_ferr r14v4-14 0 Bash $'gh pr view 5 # status \\\nls'
 caso_ferr r14v3-7 0 Bash $'echo "a #b" \\\necho ok'
 # Revisoes de seguranca dos commits 4fb5da84 e 16571bcd: `$IFS` colado em `#`,
 # linhas de comentario seguidas terminando em contrabarra, e .ps1 com construcao.

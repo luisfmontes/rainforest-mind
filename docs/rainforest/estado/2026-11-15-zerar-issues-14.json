@@ -155,6 +155,13 @@
       "porque": "Todos dentro do modelo da D6 e com conserto local; as regressoes nasceram aqui e os preexistentes estao nos gates que a entrega toca",
       "estagio": "executar",
       "em": "2026-11-15T21:33:48.621Z"
+    },
+    {
+      "pergunta": "Quando parar de remendar achados da revisao de seguranca automatica que chega a cada commit?",
+      "escolha": "Cada achado novo e reproduzido contra a base 7731a8c0 e contra o HEAD: base barra e HEAD passa e regressao e se conserta; base e HEAD passam e residuo no design, sem commit.",
+      "porque": "Os tres commits seguintes atraíram 2-3 achados cada, quase todos sobre as linhas recem-escritas e nenhum ligado as Issues #692-#708; a regra limita o fluxo ao que a entrega piorou, dentro do D6.",
+      "estagio": "executar",
+      "em": "2026-11-15T22:27:38.345Z"
     }
   ]
 }
