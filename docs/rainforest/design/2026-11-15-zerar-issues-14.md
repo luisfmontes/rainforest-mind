@@ -140,6 +140,9 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   a regra das duas leituras não cobre (`` echo a `echo b #c \ `` + quebra + `echo don't` + quebra +
   `` gh issue close 12` ``). O gate de subagente não desce em crase nem pula o `--` do `eval`.
   Os três passam na base e no HEAD; o `gate-fechar-issue` barra os do gate de subagente.
+- Resíduo aceito (revisão de segurança do 6fed0986, preexistente): no gate de subagente,
+  `eval "$'gh'" issue close 12` e `eval '' "$'gh' issue close 12"` passam na base e no HEAD
+  (o `gate-fechar-issue` barra os dois).
 - Resíduo aceito (revisão 3, fora do modelo da D6): `echo 'gh issue close 12' | bash` e
   `source <(echo 'gh issue close 12')` são script lido por pipe ou substituição.
 - Resíduo aceito (revisão 3): linha de 100 KB de `# ` leva 2,6 s no regex das duas leituras

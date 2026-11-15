@@ -415,10 +415,13 @@ function segmentosParaGate(cmd) {
       // O mesmo vale para `((` (aritmetica): `(( 1 # 2 )); gh ...` roda o gh, e o
       // bash nao le comentario dentro dele (revisao 2).
       // So o `((` ainda aberto: `$(( n + 1 )) # nota` e `for ((...))` ja
-      // fecharam antes do `#` (revisao 3). Ultimo `((` depois do ultimo `))`, e nao
-      // contagem, para um `"))"` citado antes nao zerar a conta.
+      // fecharam antes do `#` (revisao 3). Duvidoso se a contagem de `((` passa a
+      // de `))` (aninhado: `(( $((1)) # 2 ))`) OU se o ultimo `((` vem depois do
+      // ultimo `))` (um `"))"` citado antes nao zera a conta). Falha fechada.
       const antesDoHash = cmd.slice(0, i);
-      const dentroDeChaves = antesDoHash.includes("${") ||
+      const abreAritm = (antesDoHash.match(/\(\(/g) || []).length;
+      const fechaAritm = (antesDoHash.match(/\)\)/g) || []).length;
+      const dentroDeChaves = antesDoHash.includes("${") || abreAritm > fechaAritm ||
         antesDoHash.lastIndexOf("((") > antesDoHash.lastIndexOf("))");
       // Espaco escapado antes do `#`: contrabarra no Bash, crase no PowerShell
       // (revisao de seguranca do commit 18ecb4bf).

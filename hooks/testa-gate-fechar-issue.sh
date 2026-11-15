@@ -4823,6 +4823,7 @@ caso_ferr r14v4-14 0 Bash $'gh pr view 5 # status \\\nls'
 # texto do eval/iex e ancora de regex, e continuacao longa nao tem teto de linhas.
 caso_ferr r14v5-1 0 Bash 'n=$(( n + 1 )) # chamadas ao gh'
 caso_ferr r14v5-2 2 Bash 'echo "))"; (( 1 # 2 )); gh issue close 12'
+caso_ferr r14v5-5 2 Bash '(( $((1)) # 2 )); gh issue close 12'
 caso_ferr r14v5-3 0 Bash "iex \"Get-ChildItem | Where-Object Name -match 'x\$'\""
 _r14v5_bs='\'
 _r14v5_nl='
