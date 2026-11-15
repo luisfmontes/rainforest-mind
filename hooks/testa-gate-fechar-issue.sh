@@ -4817,6 +4817,9 @@ caso_ferr r14v3-6 2 Bash $'echo "a #b"; gh issue \\\nclose 12'
 # no corpo de um gh legitimo com continuacao de linha (revisao do 9f85ee5b).
 caso_ferr r14v4-13 0 Bash $'gh issue comment 5 --body "ver #3" \\\n  --repo o/r'
 caso_ferr r14v4-14 0 Bash $'gh pr view 5 # status \\\nls'
+# Rastreio de aspas enganado (aspa solta no corpo do heredoc): a leitura extra
+# junta as linhas de baixo como o bash junta (revisao do commit 39c15107).
+caso_ferr r14v4-15 2 Bash $'cat <<EOF\n"\nEOF\necho x #c\\\ng\\\nh issue close 12'
 caso_ferr r14v3-7 0 Bash $'echo "a #b" \\\necho ok'
 # Revisoes de seguranca dos commits 4fb5da84 e 16571bcd: `$IFS` colado em `#`,
 # linhas de comentario seguidas terminando em contrabarra, e .ps1 com construcao.

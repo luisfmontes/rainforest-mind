@@ -310,7 +310,6 @@ function segmentosParaGate(cmd) {
   cmd = cmd.replace(/^((?:[^\n]*[\s;&|(){}<>`])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte, offset, texto) => {
     let pos = offset + m.length + quebra.length;
     let continuacao = "";
-    const linhasDeBaixo = [];
     for (let n = 0; ; n++) {
       if (n > 64) bloqueia(
         "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
@@ -321,12 +320,10 @@ function segmentosParaGate(cmd) {
       gastarVarredura(prox.length + 1);
       if (fim >= 0 && /\\$/.test(prox)) {
         continuacao += prox.replace(/\\+$/, "");
-        linhasDeBaixo.push(prox.replace(/\\+$/, ""));
         pos = fim + 1;
         continue;
       }
       continuacao += prox;
-      linhasDeBaixo.push(prox);
       break;
     }
     if (offset > varrido) gastarVarredura(offset - varrido);
@@ -339,8 +336,10 @@ function segmentosParaGate(cmd) {
       return linha;
     }
     // `#` citado (ou linha que comeca dentro de aspa): a contrabarra continua
-    // a linha; as linhas de baixo, cada uma sozinha, vao de extra.
-    for (const l of linhasDeBaixo) leiturasExtras.push(l);
+    // a linha. Na outra leitura (o `#` era comentario) as linhas de baixo
+    // continuam umas nas outras, entao vao de extra JUNTADAS como o bash junta
+    // (`g\` + quebra + `h issue close 12`; revisao do commit 39c15107).
+    leiturasExtras.push(continuacao);
     return m;
   });
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
