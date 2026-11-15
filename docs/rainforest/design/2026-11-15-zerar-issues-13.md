@@ -84,6 +84,7 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   formato que a doc não descreve.
 
 ## Fora de escopo
+- Resíduos aceitos da D4, achados nas revisões 2 e 3, sem cenário neste repositório: (1) caminho de fora do diff com espaço cujo trecho depois do último espaço coincide com um arquivo do diff; (2) citação absoluta de arquivo dentro de um diretório de topo chamado `a` ou `b` perde o diretório no corte do prefixo do git. Os dois só desviam o achado para a seção de Issue, sem liberar marca recusada.
 - P3 da #697 (hook que avisa `python`/`node` fora da bateria num subagente de leitura): a
   própria Issue o marca como pendente por falso positivo alto. Vai para `/ideia`.
 - A família de bypass do tokenizador (#692, #694, #699, #703, #706, #708) e o #707: rodadas 14
