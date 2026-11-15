@@ -22,14 +22,40 @@
     "em": "2026-11-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-15",
-    "em_voo": [],
     "em": "2026-11-15",
     "integradas": [
       1,
       2,
-      3
+      3,
+      4
+    ],
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "node scripts/integrar-tarefa.cjs (tarefas 1-4; passo 3 conferir-fluxo mutacoes por tarefa)",
+    "saida": "tarefa 3 aceito b3759d48; tarefa 2 aceito a57c7190; tarefa 1 aceito 34ee75a8; tarefa 4 aceito 5275407e",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-reabrir.sh, (t) #714 t1"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh, secao 9, catalogo (v) e (v2)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-achado-preexistente.sh, (#697/D4) preexistente em arquivo que o diff toca"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de metodo e numero de versao, sem comportamento a inverter"
+      }
     ]
   },
   "revisar": {
