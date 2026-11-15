@@ -4798,6 +4798,11 @@ caso_ferr r14v2-com-10 2 Bash $'echo a\\ #; g$()h issue close 12'
 caso_ferr r14v2-com-11 2 Bash $'echo ${x:-\na #b}; gh issue close 12'
 # Chave aninhada antes do `#` (revisao de seguranca do commit 6207a501).
 caso_ferr r14v2-com-13 2 Bash $'echo ${x:-${y}\na #b}; gh issue close 12'
+# $IFS colado no `#` e espaco escapado por crase no PowerShell (revisao de
+# seguranca do commit 18ecb4bf): o `#` fica no meio da palavra, nao e comentario.
+caso_ferr r14v2-com-14 2 Bash 'echo a$IFS#; gh issue close 12'
+caso_ferr r14v2-com-15 2 PowerShell 'echo a` #; gh issue close 12'
+caso_ferr r14v2-com-16 0 PowerShell 'Write-Host oi # gh issue close 12'
 # Comentario certo pode citar gh (W2).
 caso_ferr r14v2-com-12 0 Bash $'echo ${x} ok\nls # gh pr merge 7'
 

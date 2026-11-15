@@ -232,7 +232,11 @@ function gastarVarredura(n) {
 // `gh${IFS}` da linha seguinte. Falha fechada: a troca so vale na copia que o gate
 // analisa. `$IFSx` e outra variavel e nao troca.
 function trocarIfsPorEspaco(s) {
-  const trocado = s.replace(/\$\{IFS\}|\$IFS(?![A-Za-z0-9_])/g, " ");
+  // Colado num `#`, o `$IFS` vira `_` e nao espaco: o bash le o `#` no meio da
+  // palavra (o comentario e decidido antes da expansao), e o espaco inventado
+  // faria o gate ver um comentario que esconde o resto da linha (`a$IFS#; gh ...`,
+  // revisao de seguranca do commit 18ecb4bf).
+  const trocado = s.replace(/(\$\{IFS\}|\$IFS(?![A-Za-z0-9_]))(?=(#?))/g, (m, ifs, cerquilha) => (cerquilha ? "_" : " "));
   return trocado;
 }
 // D2 (gate-segmentador, Issue #689): dentro de aspas duplas a contrabarra so
@@ -333,7 +337,12 @@ function segmentosParaGate(cmd) {
       // roda, e chave aninhada (`${x:-${y}` ...) engana contagem por ultima ocorrencia
       // (revisao de seguranca do commit 6207a501). Falha fechada.
       const dentroDeChaves = cmd.slice(0, i).includes("${");
-      const espacoEscapado = FERRAMENTA !== "PowerShell" && i > 0 && escapadaPorContrabarra(cmd, i - 1);
+      // Espaco escapado antes do `#`: contrabarra no Bash, crase no PowerShell
+      // (revisao de seguranca do commit 18ecb4bf).
+      const escapeDoShell = FERRAMENTA === "PowerShell" ? "`" : "\\";
+      let escapes = 0;
+      for (let k = i - 2; k >= 0 && cmd[k] === escapeDoShell; k -= 1) escapes += 1;
+      const espacoEscapado = i > 0 && escapes % 2 === 1;
       const comentarioCerto = abreBlocoPs || ((i === 0 || /[\s;&|]/.test(cmd[i - 1])) && !espacoEscapado && !dentroDeChaves);
       let fimComentario;
       if (abreBlocoPs) {
