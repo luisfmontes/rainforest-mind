@@ -232,11 +232,12 @@ function gastarVarredura(n) {
 // `gh${IFS}` da linha seguinte. Falha fechada: a troca so vale na copia que o gate
 // analisa. `$IFSx` e outra variavel e nao troca.
 function trocarIfsPorEspaco(s) {
-  // Colado num `#`, o `$IFS` vira `_` e nao espaco: o bash le o `#` no meio da
-  // palavra (o comentario e decidido antes da expansao), e o espaco inventado
+  // Colado num `#`, o `$IFS` vira espaco + contrabarra: o bash le o `#` no meio
+  // da palavra (o comentario e decidido antes da expansao), e o espaco sozinho
   // faria o gate ver um comentario que esconde o resto da linha (`a$IFS#; gh ...`,
-  // revisao de seguranca do commit 18ecb4bf).
-  const trocado = s.replace(/(\$\{IFS\}|\$IFS(?![A-Za-z0-9_]))(?=(#?))/g, (m, ifs, cerquilha) => (cerquilha ? "_" : " "));
+  // revisao do commit 18ecb4bf). O espaco continua separando as palavras: `_`
+  // colava `close$IFS#12` em `close_#12`, e o gh aceita `#12` (revisao do 4fb5da84).
+  const trocado = s.replace(/(\$\{IFS\}|\$IFS(?![A-Za-z0-9_]))(?=(#?))/g, (m, ifs, cerquilha) => (cerquilha ? " \\" : " "));
   return trocado;
 }
 // D2 (gate-segmentador, Issue #689): dentro de aspas duplas a contrabarra so
@@ -272,7 +273,10 @@ function segmentosParaGate(cmd) {
   // Com aspa na linha, o `#` pode estar citado e a contrabarra continuar a linha
   // de verdade (`gh issue --body " #x" \` + quebra + `close 12`): a juncao das
   // duas linhas com `gh` como palavra barra (revisao de seguranca do commit 4fb5da84).
-  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(\r?\n)([^\n]*)/gm, (m, linha, quebra, seguinte) => {
+  // A linha de baixo vai em lookahead, nao no match: consumida, ela escapava da
+  // propria checagem quando tambem termina em contrabarra (duas linhas de
+  // comentario seguidas; revisao de seguranca do commit 16571bcd).
+  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte) => {
     if (/["']/.test(linha)) {
       const juntas = (linha + " " + seguinte).replace(/["'`\\$(){}]/g, "").split(/[\s;&|<>#]+/);
       if (juntas.some((p) => p !== "" && normalizarExecutavel(p) === "gh")) {
@@ -283,7 +287,7 @@ function segmentosParaGate(cmd) {
         );
       }
     }
-    return linha + quebra + seguinte;
+    return linha;
   });
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];

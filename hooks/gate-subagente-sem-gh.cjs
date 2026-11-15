@@ -210,7 +210,7 @@ function segmentosParaGate(cmd) {
   // D3 (rodada 14), revisao 2: o bash divide a palavra no `$IFS` tambem aqui
   // (`gh${IFS}issue${IFS}close${IFS}12`). Mesma troca do gate-fechar-issue,
   // inclusive o `_` quando colado num `#` (o comentario e decidido antes da expansao).
-  cmd = cmd.replace(/(\$\{IFS\}|\$IFS(?![A-Za-z0-9_]))(?=(#?))/g, (m, ifs, cerquilha) => (cerquilha ? "_" : " "));
+  cmd = cmd.replace(/(\$\{IFS\}|\$IFS(?![A-Za-z0-9_]))(?=(#?))/g, (m, ifs, cerquilha) => (cerquilha ? " \\" : " "));
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "";
@@ -787,15 +787,20 @@ function processarSegmento(segmento, cwd) {
   // A primeira palavra que nao e opcao decide; `-s`/`-i` (soltos ou agrupados)
   // antes dela fazem o shell ler o script do stdin mesmo com argumento
   // (`bash -s ./x <<< ...`; revisao de seguranca do commit 4fb5da84), e `--` para.
+  // Opcao com valor (`-o x`, `+O x`, `--rcfile x`, `--init-file x`) consome a
+  // palavra seguinte, e `/dev/stdin`, `/dev/fd/0`, `/proc/self/fd/0` e `-` sao o
+  // proprio stdin (revisao de seguranca do commit 4fb5da84).
   const argsAntes = pos === null ? [] : toks.slice(pos + 1);
   let rodaArquivo = false;
-  for (const t of argsAntes) {
-    if (t.v.includes("<<<") || t.v === "--") break;
-    if (/^[-+]/.test(t.v)) {
-      if (/^-[A-Za-z]*[si]/.test(t.v)) break;
+  for (let k = 0; k < argsAntes.length; k++) {
+    const v = argsAntes[k].v;
+    if (v.includes("<<<") || v === "--" || v === "-") break;
+    if (/^[-+]/.test(v)) {
+      if (/^-[A-Za-z]*[si]/.test(v)) break;
+      if (/^[-+][A-Za-z]*[oO]$/.test(v) || /^--(rcfile|init-file)$/.test(v)) k += 1;
       continue;
     }
-    rodaArquivo = /[/.]/.test(t.v);
+    rodaArquivo = /[/.]/.test(v) && !/^\/(dev\/stdin|dev\/fd\/0|proc\/self\/fd\/0)$/.test(v);
     break;
   }
   if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm) && !rodaArquivo) {

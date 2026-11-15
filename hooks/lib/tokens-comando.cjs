@@ -1146,7 +1146,10 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     if (posicional === "") return { interno: null, ilegivel: ghColado };
     // `-File x.ps1` e `pwsh x.ps1` rodam um ARQUIVO: interno nulo, para o gate
     // ler o script do disco como fazia na base (revisão 2: `x.ps1` relativo passava).
-    if (viuFile || /\.ps1$/i.test(atual.tok)) return { interno: null, ilegivel: ghColado };
+    // Só uma palavra sem espaço nem separador terminada em `.ps1` é caminho de
+    // arquivo; a construção ilegível do texto continua barrando (revisão de
+    // segurança do commit 4fb5da84).
+    if (viuFile || /^[^\s;&|]+\.ps1$/i.test(atual.tok)) return { interno: null, ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
     return { interno: desempacota(posicional), ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
   }
 
