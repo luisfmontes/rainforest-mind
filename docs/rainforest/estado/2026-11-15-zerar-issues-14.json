@@ -27,7 +27,8 @@
     "em": "2026-11-15",
     "integradas": [
       1,
-      2
+      2,
+      5
     ]
   },
   "revisar": {
@@ -46,6 +47,20 @@
       "porque": "Mesma família da D1 e o defeito nasceu nesta branch: conserta aqui, sem Issue",
       "estagio": "executar",
       "em": "2026-11-15T18:19:04.248Z"
+    },
+    {
+      "pergunta": "crase-15 (20 niveis de $(...) sem gh) esperava 2 pelo teto de chamadas que a D4d removeu",
+      "escolha": "Expectativa vira 0",
+      "porque": "D4d libera sem gh; o teto existia por tempo e 10000 niveis rodam em menos de 0,6 s",
+      "estagio": "executar",
+      "em": "2026-11-15T18:55:47.214Z"
+    },
+    {
+      "pergunta": "Achado MEDIUM da revisao de seguranca do commit 3f3f2e11: orcamento estourado liberava gh disfarcado",
+      "escolha": "Estourado, barra qualquer gh como palavra no comando achatado",
+      "porque": "gh issue -R o/r close e gh issue {close,} saiam 0; falha fechada so pesa em comando de mais de 2 MB varridos",
+      "estagio": "executar",
+      "em": "2026-11-15T18:55:47.341Z"
     }
   ]
 }

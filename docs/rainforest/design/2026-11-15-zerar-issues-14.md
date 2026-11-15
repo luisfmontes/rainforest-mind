@@ -50,7 +50,9 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
     substituição.
   - (d) O teto do `segmentosParaGate` passa a ser a soma de caracteres varridos (orçamento fixo,
     determinístico), e não o número de chamadas. Estourado o orçamento, o gate barra como
-    ilegível quando o comando tem `gh` de escrita, e libera quando não tem.
+    ilegível quando sobra um `gh` como palavra no comando achatado (sem aspas, contrabarra, `$`,
+    parênteses e chaves), e libera quando não sobra. Emenda da revisão de segurança do commit da
+    tarefa 3: procurar só o `gh` de escrita deixava passar `gh issue -R o/r close 12`.
 
   Porquê: cada um é uma forma medida de esconder o `gh` (itens 1 a 3) ou de o gate levar ~83 s
   (item 4). Critério: os seis comandos dos itens 1 a 3 da #692 saem 2. `echo "${x:-a}"`,
