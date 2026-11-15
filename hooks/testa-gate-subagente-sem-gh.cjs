@@ -408,6 +408,7 @@ const casosRevisao = [
   ["pwsh m.ps1", 2, "(r14 rev 2) pwsh <.ps1 relativo>"],
   ["pwsh -nop -ec Z2ggaXNzdWUgY2xvc2UgMTI=", 2, "(r14 rev 2) pwsh -ec (apelido de -EncodedCommand)"],
   ['bash ./deploy.sh <<< "$answer"', 0, "(r14 rev 2) here-string como dado de script de arquivo"],
+  ["bash -s ./x <<< $'gh issue close 12'", 2, "(r14 rev seg 4fb5da84) bash -s le o script do stdin"],
   [`bash -c 'grep -c "^$" f.txt'`, 0, "(r14 rev 2) $ seguido de aspa dentro de aspas e texto"],
   ["gh${IFS}issue${IFS}close${IFS}12", 2, "(r14 rev 2) $IFS no gate de subagente"],
   ["pwsh -EncodedCommand ZwBoAA==", 2, "(revisão) pwsh -EncodedCommand (ilegível)"],

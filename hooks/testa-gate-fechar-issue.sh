@@ -4810,6 +4810,10 @@ caso_ferr r14v3-2 2 PowerShell '<# nota #> gh issue close 12'
 caso_ferr r14v3-3 2 Bash $'echo hi #x\\\ngh issue close 12'
 caso_ferr r14v3-4 0 Bash $'bash -c "ls | grep \'x$\'"'
 caso_ferr r14v3-5 0 Bash $'eval "grep \'x$\' f"'
+# `#` talvez citado com contrabarra no fim: a juncao com gh barra (revisao de
+# seguranca do commit 4fb5da84); sem gh, passa.
+caso_ferr r14v3-6 2 Bash $'gh issue --body " #x" \\\nclose 12'
+caso_ferr r14v3-7 0 Bash $'echo "a #b" \\\necho ok'
 # Com qualquer `${` antes, o comentario e duvidoso e citar gh barra: custo aceito
 # da falha fechada (a contagem de chaves e enganavel por aninhamento).
 caso_ferr r14v2-com-12 2 Bash $'echo ${x} ok\nls # gh pr merge 7'

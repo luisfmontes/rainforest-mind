@@ -269,7 +269,22 @@ function segmentosParaGate(cmd) {
   // `gh ...` roda o gh; revisao 2 da zerar-issues-14, preexistente). Sem saber se o
   // `#` esta entre aspas, a contrabarra sai mesmo assim: o pior caso e ler a linha
   // de baixo como comando separado, que e falha fechada.
-  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(\r?\n)/gm, (m, linha, quebra) => linha + quebra);
+  // Com aspa na linha, o `#` pode estar citado e a contrabarra continuar a linha
+  // de verdade (`gh issue --body " #x" \` + quebra + `close 12`): a juncao das
+  // duas linhas com `gh` como palavra barra (revisao de seguranca do commit 4fb5da84).
+  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(\r?\n)([^\n]*)/gm, (m, linha, quebra, seguinte) => {
+    if (/["']/.test(linha)) {
+      const juntas = (linha + " " + seguinte).replace(/["'`\\$(){}]/g, "").split(/[\s;&|<>#]+/);
+      if (juntas.some((p) => p !== "" && normalizarExecutavel(p) === "gh")) {
+        bloqueia(
+          "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+          "Razão: há um 'gh' numa linha que termina em contrabarra depois de um '#' que pode estar entre aspas; o gate não sabe se a linha continua.\n\n" +
+          "Escreva o comando 'gh' numa linha só, sem '#' e sem contrabarra no fim.\n"
+        );
+      }
+    }
+    return linha + quebra + seguinte;
+  });
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "";

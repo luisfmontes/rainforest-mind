@@ -784,9 +784,20 @@ function processarSegmento(segmento, cwd) {
   // Revisao 2: shell que roda um ARQUIVO (`bash ./deploy.sh <<< "$x"`) le o
   // here-string como dado, nao como script. Palavra com `/` ou `.` antes do `<<<`,
   // que nao seja opcao, e o arquivo. `bash -o pipefail <<<` segue lido como script.
+  // A primeira palavra que nao e opcao decide; `-s`/`-i` (soltos ou agrupados)
+  // antes dela fazem o shell ler o script do stdin mesmo com argumento
+  // (`bash -s ./x <<< ...`; revisao de seguranca do commit 4fb5da84), e `--` para.
   const argsAntes = pos === null ? [] : toks.slice(pos + 1);
-  const corte = argsAntes.findIndex((t) => t.v.includes("<<<"));
-  const rodaArquivo = (corte === -1 ? argsAntes : argsAntes.slice(0, corte)).some((t) => !/^[-+]/.test(t.v) && /[/.]/.test(t.v));
+  let rodaArquivo = false;
+  for (const t of argsAntes) {
+    if (t.v.includes("<<<") || t.v === "--") break;
+    if (/^[-+]/.test(t.v)) {
+      if (/^-[A-Za-z]*[si]/.test(t.v)) break;
+      continue;
+    }
+    rodaArquivo = /[/.]/.test(t.v);
+    break;
+  }
   if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm) && !rodaArquivo) {
     for (const resto of restosDepoisDeHereString(segmento)) {
       const palavra = palavraDeHereString(resto);
