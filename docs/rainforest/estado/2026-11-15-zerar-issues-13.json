@@ -33,18 +33,18 @@
     ],
     "tarefas_ok": 4,
     "tarefas": 4,
-    "comando": "node scripts/integrar-tarefa.cjs (tarefas 1-4; passo 3 conferir-fluxo mutacoes por tarefa)",
-    "saida": "tarefa 3 aceito b3759d48; tarefa 2 aceito a57c7190; tarefa 1 aceito 34ee75a8; tarefa 4 aceito 5275407e",
+    "comando": "node scripts/integrar-tarefa.cjs (volta 2: tarefas 4,3,1,2; passo 3 conferir-fluxo mutacoes)",
+    "saida": "t4 86a70349; t3 5f5ba504; t1 bdcf4e50; t2 ae447a66 — todas aceitas",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado-reabrir.sh, (t) #714 t1"
+        "fixture": "testa-estado-reabrir.sh, (u) #714 u1"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-busca.sh, secao 9, catalogo (v) e (v2)"
+        "fixture": "testa-conferir-busca.sh, secao 9, catalogo (v), (v2), (v4)"
       },
       {
         "tarefa": 3,
