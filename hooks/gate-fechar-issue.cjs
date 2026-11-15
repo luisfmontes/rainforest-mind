@@ -419,7 +419,8 @@ function segmentosParaGate(cmd) {
       // vezes (`(( $((1)) # 2 ))`, `))` citado). Custo aceito, como o do `${`:
       // `$(( n + 1 )) # nota sobre gh` barra (revisoes de seguranca de 6fed0986 e 58bd9ab5).
       const antesDoHash = cmd.slice(0, i);
-      const dentroDeChaves = antesDoHash.includes("${") || antesDoHash.includes("((");
+      // `$[` (aritmetica antiga) e `[[` tambem leem o `#` como texto (revisao do 34b57328).
+      const dentroDeChaves = ["${", "((", "$[", "[["].some((abre) => antesDoHash.includes(abre));
       // Espaco escapado antes do `#`: contrabarra no Bash, crase no PowerShell
       // (revisao de seguranca do commit 18ecb4bf).
       const escapeDoShell = FERRAMENTA === "PowerShell" ? "`" : "\\";

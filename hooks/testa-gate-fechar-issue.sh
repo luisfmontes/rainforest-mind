@@ -4824,6 +4824,8 @@ caso_ferr r14v4-14 0 Bash $'gh pr view 5 # status \\\nls'
 # duvidoso: citar gh nele barra (custo aceito, como o do `${`), sem gh passa.
 caso_ferr r14v5-1 2 Bash 'n=$(( n + 1 )) # chamadas ao gh'
 caso_ferr r14v5-6 0 Bash 'n=$(( n + 1 )) # contador'
+caso_ferr r14v5-7 2 Bash 'echo $[ 1 # 2 ]; gh issue close 12'
+caso_ferr r14v5-8 2 Bash '[[ 1 # 2 ]]; gh issue close 12'
 caso_ferr r14v5-2 2 Bash 'echo "))"; (( 1 # 2 )); gh issue close 12'
 caso_ferr r14v5-5 2 Bash '(( $((1)) # 2 )); gh issue close 12'
 caso_ferr r14v5-3 0 Bash "iex \"Get-ChildItem | Where-Object Name -match 'x\$'\""
