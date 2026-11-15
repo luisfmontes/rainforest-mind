@@ -51,6 +51,8 @@ desfecho: estender
   recusada como "sem resultado".
 - `pulado:` é o segundo campo e o último da linha. `- repo | pulado: sem rede | offline`
   é recusa: o `pulado:` não leva campo depois dele.
+- O item cabe numa linha só. Uma linha indentada sem hífen logo depois dele é recusada como
+  linha de continuação (#709), e o `arquivo:linha` que ela traz não seria conferido.
 
 ## Canal `repo`
 

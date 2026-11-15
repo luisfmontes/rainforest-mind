@@ -430,6 +430,22 @@ caso "catalogo (u): reaproveito soma de src/x.js:3,src/x.js:3 passa" 0 'ok:' CHK
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma (src/x.js:3)' 'desfecho: adotar'; } > "$P"
 caso "catalogo (u): reaproveito soma (src/x.js:3) passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
+# catalogo (v) #709: linha de continuação dentro de busca: é recusada, não descartada. O item tem
+# referência válida (src/x.js:3 no lugar de scripts/estado.cjs:750, que a fixture não tem) e
+# `nada.js:99` vem na linha indentada seguinte, que o laço antigo largava em silêncio.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3 e
+  nada.js:99' 'desfecho: estender'; } > "$P"
+caso "catalogo (v): linha de continuação dentro de busca: é recusada (#709)" 2 'continuação' CHK plano --slug t --plano "$P"
+
+# catalogo (v2) #709: a variante `nada equivalente, ver` seguida de `nada.js:99` também sai 2.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | nada equivalente, ver
+  nada.js:99' 'desfecho: construir'; } > "$P"
+caso "catalogo (v2): nada equivalente, ver seguido de nada.js:99 é recusado (continuação)" 2 'continuação' CHK plano --slug t --plano "$P"
+
+# catalogo (v3) #709: o mesmo item numa linha só passa; a recusa é só da continuação.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`src/x.js`' '- catalogo | listar --raiz src | reaproveito soma de src/x.js:3' 'desfecho: estender'; } > "$P"
+caso "catalogo (v3): mesmo item numa linha só passa (exit=0)" 0 'ok:' CHK plano --slug t --plano "$P"
+
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
 [ "${#vermelhas[@]}" -eq 0 ]

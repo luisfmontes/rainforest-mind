@@ -293,6 +293,11 @@ function cmdPlano() {
       continue;
     }
 
+    // #709: linha de continuação (indentada, sem hífen) não é item; recusa em vez de descartar.
+    for (const continuacao of busca.continuacoes) {
+      recusas.push(`${quem}; bloco \`busca:\` com linha de continuação: "${continuacao}". Cada item cabe numa linha só. Formato: ${FORMATO_LINHA}.`);
+    }
+
     let temCatalogo = false;
     let temRepo = false;
     let repoPulado = false;

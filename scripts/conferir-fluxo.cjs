@@ -610,13 +610,17 @@ function extrairBusca(corpo, cerca) {
     }
   }
   const inicio = corpo.findIndex((linha, k) => !cerca[k] && /^busca:/.test(linha));
-  if (inicio === -1) return { presente: false, linhas: [], desfecho };
+  if (inicio === -1) return { presente: false, linhas: [], desfecho, continuacoes: [] };
   const linhas = [];
+  const continuacoes = [];
   for (let k = inicio + 1; k < corpo.length; k++) {
+    // #709: linha indentada, não vazia e sem hífen é continuação de item. Antes o laço
+    // parava nela e o `arquivo:linha` que caía ali nunca era conferido.
+    if (!cerca[k] && /^[ \t]+\S/.test(corpo[k]) && !/^\s*-\s/.test(corpo[k])) { continuacoes.push(k); continue; }
     if (cerca[k] || !/^\s*-\s/.test(corpo[k])) break;
     linhas.push(corpo[k].replace(/^\s*-\s+/, ''));
   }
-  return { presente: true, linhas, desfecho };
+  return { presente: true, linhas, desfecho, continuacoes: continuacoes.map((i) => corpo[i].trim()) };
 }
 
 /**
