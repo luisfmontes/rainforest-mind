@@ -844,8 +844,9 @@ function arquivosDeCodigoDesde(head, slug, estado, alvo = 'HEAD') {
  * Na branch do fluxo o HEAD contém o `verificar.head`, e a medida é a de sempre ('HEAD').
  * Numa branch nova da padrão (depois do squash do PR), o HEAD não contém o verificado:
  * a medida passa a ser a ponta do PR mergeado, lida do `gh pr view` e só com `state`
- * MERGED. Devolve 'HEAD', o SHA da ponta, `{ recusa }` quando não há PR mergeado para
- * medir (a recusa manda rodar na branch do fluxo ou passar o `pr`), ou `{ ambiente }`
+ * MERGED. Sem `pr` numérico, ou com o PR não mergeado, a medida volta a ser a de sempre
+ * ('HEAD', como na base; é o caso da branch do fluxo rebaseada depois do `verificar`), e
+ * sem o `gh` não se chama nada. Devolve 'HEAD', o SHA da ponta, ou `{ ambiente }`
  * quando o `gh` não respondeu (o chamador sai 69, não 2).
  */
 function alvoDoFechar(estado, extra, head) {
@@ -853,19 +854,10 @@ function alvoDoFechar(estado, extra, head) {
   // Só `1` diz "não é ancestral". Erro do git segue como antes: `arquivosDeCodigoDesde`
   // já avisa e não tranca.
   if (ancestral.status !== 1) return 'HEAD';
-  const curto = String(head).slice(0, 12);
   const pr = extra && extra.pr !== undefined ? extra.pr : (estado.fechar && estado.fechar.pr);
   const prNum = pr === undefined || pr === null || pr === '' ? null : String(pr);
-  const recusar = (motivo) => ({
-    recusa: [
-      `RECUSADO: 'fechar' ok sem como medir o código verificado (${curto}). O HEAD não contém esse commit, e este não é a branch do fluxo.`,
-      motivo,
-      "Rode o 'marcar' na branch do fluxo, ou passe o número do PR mergeado no --json:",
-      '  node scripts/estado.cjs marcar --slug <slug> --estagio fechar --status ok --json \'{"acao":"merge","pr":<n>}\'',
-    ].join('\n'),
-  });
-  if (prNum === null) return recusar("Não há 'pr' no --json nem em 'fechar'.");
-  if (!/^\d+$/.test(prNum)) return recusar(`O 'pr' (${prNum}) não é número de PR.`);
+  // Sem PR numérico não há o que medir na ponta: o `gh` não é chamado.
+  if (prNum === null || !/^\d+$/.test(prNum)) return 'HEAD';
   // `executar` (não `caminhoExecutavel`): no Windows só o `resolverExecutavel` respeita a
   // ordem do PATH e acha `gh.cmd`; e o `pr` já é só dígitos, então o `shell` do `.cmd`
   // não carrega dado.
@@ -876,7 +868,7 @@ function alvoDoFechar(estado, extra, head) {
   let j = null;
   try { j = JSON.parse(g.stdout || ''); } catch (e) { j = null; }
   if (!j || typeof j !== 'object') return { ambiente: `gh pr view ${prNum} devolveu JSON ilegível.` };
-  if (j.state !== 'MERGED') return recusar(`O PR #${prNum} está em ${j.state}, não em MERGED.`);
+  if (j.state !== 'MERGED') return 'HEAD';
   const oid = String(j.headRefOid || '');
   if (!/^[0-9a-f]{40,64}$/i.test(oid)) return { ambiente: `gh pr view ${prNum} não trouxe um headRefOid válido.` };
   const temCommit = () => spawnSync(caminhoExecutavel('git'), ['cat-file', '-e', `${oid}^{commit}`], { cwd: RAIZ, encoding: 'utf8' }).status === 0;
@@ -3390,18 +3382,19 @@ function main() {
         if (estagio === 'fechar') {
           const alvoFechar = alvoDoFechar(estado, extra, refCodigo.head);
           if (typeof alvoFechar === 'object') {
-            if (alvoFechar.ambiente) {
-              console.error(`nao-verificavel: ${alvoFechar.ambiente}`);
-              process.exit(69);
-            }
-            console.error(alvoFechar.recusa);
-            process.exit(2);
+            console.error(`nao-verificavel: ${alvoFechar.ambiente}`);
+            process.exit(69);
           }
           alvo = alvoFechar;
         }
         const recusa = recusaCodigoDepois(slug, estado, refCodigo.head, refCodigo.quem, estagio, alvo);
         if (recusa) {
-          console.error(recusa);
+          // #714 (D1, emenda da revisão 1): a recusa contra o HEAD também sai numa branch nova
+          // sem PR mergeado; a linha diz como medir pela ponta do PR.
+          const dica = estagio === 'fechar' && alvo === 'HEAD'
+            ? '\nSe o PR deste fluxo já foi mergeado, passe o número dele: --json \'{"acao":"merge","pr":<n>}\' (a comparação passa a ser contra a ponta do PR).'
+            : '';
+          console.error(recusa + dica);
           process.exit(2);
         }
       }
