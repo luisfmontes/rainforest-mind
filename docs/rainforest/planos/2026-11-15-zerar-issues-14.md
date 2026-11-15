@@ -89,8 +89,33 @@ Isso é provado pelas seções novas de `bash hooks/testa-gate-fechar-issue.sh`,
 ### 4. Versão 2.16.0 e registro [tipo: docs]
 atende: D6, D7
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
-depende de: 1, 2, 3
+depende de: 1, 2, 3, 5
 paralela: nao
 mutacao: n/a
   motivo: número de versão e texto de registro; não há comportamento a inverter. A coerência se confere pela bateria de versão e pela leitura contra o design.
 pronto quando: os manifestos e o selo dizem 2.16.0, e `bash scripts/testa-versao.sh` sai com 0 falhas. A entrada `## 2.16.0 — 2026-11-15` do CHANGELOG descreve D1 a D5 e o modelo de ameaça da D6, e não promete expandir variável além do `$IFS`.
+
+### 5. `bash -c` com opções agrupadas ou citadas: falha fechada [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-bash-c-opcoes.sh`
+depende de: 1
+paralela: sim
+busca:
+- catalogo | listar --raiz hooks/lib | estendo a função palavraDoScript de hooks/lib/tokens-comando.cjs:907 e o laço de flags da função desempacotarWrapperDeString de hooks/lib/tokens-comando.cjs:977
+desfecho: estender
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: const ehFlagEsperada = tokLower === flagEsperada || /^-[a-z]*c[a-z]*$/i.test(current.tok);
+  para: const ehFlagEsperada = tokLower === flagEsperada || /^-[a-z]*c$/i.test(current.tok);
+  bateria: `bash hooks/testa-bash-c-opcoes.sh`
+  fixture: testa-bash-c-opcoes.sh, caso "-co errexit"
+prova: `node -e "const cp=require('child_process');const r=cp.spawnSync(process.execPath,['hooks/gate-fechar-issue.cjs'],{input:JSON.stringify({tool_name:'Bash',tool_input:{command:'bash -co errexit \'gh issue close 12\''},cwd:process.cwd()}),encoding:'utf8'});process.exit(r.status===2?0:1)"`
+Implementação:
+- No laço de flags de `desempacotarWrapperDeString`, um grupo curto com `c` em qualquer posição (`-co`, `-oc`, `-xco`) é a flag esperada, e a linha fica exatamente como o `de:` acima. As letras `o`/`O` do grupo consomem, cada uma, uma palavra antes do script.
+- Em `palavraDoScript`, todo grupo curto (`-xo`, `+oO`) consome uma palavra por letra `o`/`O`. Uma palavra citada ou escapada cujo valor, sem as aspas, começa com `-` ou `+`, ainda na zona de opções, deixa o resultado `ilegivel: true`.
+- Rede de segurança: se o texto depois da palavra do script contém `gh` como palavra, o resultado é `ilegivel: true`.
+pronto quando: com o payload real de PreToolUse (Bash) em `node hooks/gate-fechar-issue.cjs`:
+- saem 2: `bash -co errexit 'gh issue close 12'`, `bash -oc errexit 'gh issue close 12'`, `bash -c '-o' errexit 'gh issue close 12'`, `bash -c "-x" 'gh issue close 12'`, `bash -c -xo errexit 'gh issue close 12'`, `bash -c 'echo' 'gh issue close 12'` e `bash -c -o errexit 'gh issue close 12'`;
+- saem 0: `bash -co errexit 'echo hi'`, `bash -c -xo errexit 'echo hi' x`, `bash -c 'echo hi' x` e `bash -xc 'echo hi'`.
+
+Isso é provado pela bateria nova `bash hooks/testa-bash-c-opcoes.sh`, com o placar `0 falha(s)`.

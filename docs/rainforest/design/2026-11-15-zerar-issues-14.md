@@ -23,6 +23,13 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   comandos da #699 e `bash -c -- 'gh pr merge 5'` saem 2. `bash -c 'echo hi' x`, `bash -c --
   'echo hi'` e `bash -c 'echo hi' x -I"C:\x"` saem 0. `eval "echo"' \"; gh issue close 12'`
   continua 2.
+  Emenda (revisão de segurança do commit da tarefa 1, 2026-11-15): um grupo curto com `c` em
+  qualquer posição (`-co`, `-oc`) é o `-c`, e cada `o`/`O` de um grupo consome uma palavra antes
+  do script. Palavra citada que, sem as aspas, começa com `-` ou `+` na zona de opções deixa a
+  leitura ilegível (falha fechada). Rede de segurança: `gh` como palavra depois da palavra do script
+  também deixa ilegível. Critério: `bash -co errexit 'gh issue close 12'`, `bash -oc errexit 'gh issue close 12'`,
+  `bash -c '-o' errexit 'gh issue close 12'` e `bash -c -xo errexit 'gh issue close 12'` saem 2;
+  `bash -co errexit 'echo hi'` sai 0.
 - **D2 — `exec -a <nome>` consome o valor, `builtin` é prefixo que repassa, e `cmd` aceita `//c`
   e `//k` além de `/c` e `/k`** (#703, #694) — porquê: as três formas pulam o desempacotador hoje
   por um detalhe de tabela, e o bash e o MSYS as executam. Critério: `exec -a x bash -c 'gh issue
