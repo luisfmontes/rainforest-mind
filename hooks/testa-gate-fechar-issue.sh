@@ -4755,6 +4755,80 @@ orc_estoura "gh issue {close,} 12" 2 'gh issue {close,} 12'
 orc_estoura "/usr/bin/gh issue close 12" 2 '/usr/bin/gh issue close 12'
 orc_estoura "sem gh tambem barra" 2 'ghost high a-gh'
 
+# Casos (rodada 14, revisao 2 da tarefa 3; achados 1, 3, 6 e 12 da critica r14-v1).
+# Achado 1: aspa solta no corpo de heredoc ou em comentario nao esconde o $IFS da linha seguinte.
+echo
+echo '== (r14v2-ifs) aspa solta antes do gh${IFS} sai 2 =='
+caso_ferr r14v2-ifs-1 2 Bash $'git commit -F - <<\'EOF\'\nDon\'t do it\nEOF\ngh${IFS}issue${IFS}close${IFS}12'
+caso_ferr r14v2-ifs-2 2 Bash $'echo hi # don\'t\ngh${IFS}issue${IFS}close${IFS}12'
+caso_ferr r14v2-ifs-3 2 Bash $'echo "$(printf \'%s\' "x\'y")" ; gh${IFS}issue${IFS}close${IFS}12'
+
+# Achado 3 (D4b) e achado 12: no here-string com $'...', aspa escapada e \n, \t e \r viram o caractere real.
+echo
+echo '== (r14v2-hs) here-string com $'"'"'...'"'"' e escapes do ANSI-C =='
+caso_ferr r14v2-hs-1 2 Bash $'bash <<< $\'echo \\\'hi\\\'; gh issue close 12\''
+caso_ferr r14v2-hs-2 2 Bash $'bash <<< $\'echo hi\\ngh issue close 12\''
+caso_ferr r14v2-hs-3 2 Bash $'bash <<< $\'gh\\tissue\\tclose\\t12\''
+
+# Achado 3 (D5): o resto depois do delimitador comeca depois dele. Legitimo, sai 0.
+echo
+echo '== (r14v2-d5) gh depois de heredoc com && sai 0 =='
+caso_ferr r14v2-d5-1 0 Bash $'cat > novo.md <<\'EOF\' && gh pr create --title t --body-file novo.md\nx termo\nEOF'
+
+# Achado 3: comandos legitimos que nao podem virar 2 com a troca de $IFS.
+echo
+echo '== (r14v2-zero) comandos legitimos saem 0 =='
+caso_ferr r14v2-zero-1 0 Bash 'echo "$IFS"'
+# Comentario: aspa dentro de `# ...` nao abre trecho citado (revisao 1).
+caso_ferr r14v2-com-1 2 Bash $'echo hi # don\'t\ngh issue close 12'
+caso_ferr r14v2-com-2 0 Bash $'echo "a#b" # it\'s\necho ok'
+caso_ferr r14v2-com-3 2 Bash 'echo $# x; gh issue close 12'
+# `#` que o gate toma por comentario sem ser (espaco escapado): gh no texto barra.
+caso_ferr r14v2-com-4 2 Bash $'echo a\\ #; gh issue close 12'
+caso_ferr r14v2-com-5 0 Bash $'echo hi # nota sem nada'
+# PowerShell: a regra de comentario do Bash nao vale (`<# ... #>` e bloco).
+caso_ferr r14v2-com-6 2 PowerShell '<# x #> ; gh issue close 12'
+# Revisao de seguranca do commit 3b895b33: comentario no PowerShell (linha e bloco),
+# e o texto do comentario achatado sem $, parenteses e chaves.
+caso_ferr r14v2-com-7 2 PowerShell $'echo hi # don\'t\ngh issue close 12'
+caso_ferr r14v2-com-8 2 PowerShell $'<# don\'t #> ; gh issue close 12'
+caso_ferr r14v2-com-9 0 PowerShell '<# bloco #> Write-Host oi'
+caso_ferr r14v2-com-10 2 Bash $'echo a\\ #; g$()h issue close 12'
+# `${` aberto numa linha e fechado na seguinte: o `#` dentro dele nao e comentario.
+caso_ferr r14v2-com-11 2 Bash $'echo ${x:-\na #b}; gh issue close 12'
+# Comentario certo pode citar gh (W2).
+caso_ferr r14v2-com-12 0 Bash $'echo ${x} ok\nls # gh pr merge 7'
+
+echo
+echo '== (r14v2) "$(cat <<A sem fechamento repetido em 400 KB sai 2 em menos de 5 s =='
+node -e 'const fs=require("fs");let s="echo ";const u="\"$(cat <<\x27A\x27\n)\" ";while(s.length<400*1024)s+=u;fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:s}}))' "$SBP_WIN" "$SBP/orc-sticky.json"
+STK_T0=$(date +%s%3N)
+timeout 60 node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-sticky.json" 2>"$SBP/err-orc-sticky"
+EXIT_STK=$?
+STK_MS=$(( $(date +%s%3N) - STK_T0 ))
+[ $EXIT_STK -eq 2 ] && [ $STK_MS -lt 5000 ] && test_ok "exit 2 em ${STK_MS} ms" || test_fail "exit $EXIT_STK em ${STK_MS} ms (esperado 2 em menos de 5000 ms)"
+
+# Achado 6: o orcamento cobra o trecho varrido por "$(, nao o resto do comando a cada um.
+cat > "$SBP/gera-orc-linear.cjs" <<'JS'
+const fs = require("fs");
+const [cwd, out1, out2] = process.argv.slice(2);
+const s1 = "bash <<'EOF'\n" + Array(300).fill('echo "$(date +%s) $(hostname)" > /tmp/x').join("\n") + "\nEOF";
+const s2 = Array(500).fill('echo "$(echo a)"').join("; ");
+fs.writeFileSync(out1, JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command: s1 } }));
+fs.writeFileSync(out2, JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command: s2 } }));
+JS
+node "$SBP/gera-orc-linear.cjs" "$SBP_WIN" "$SBP/orc-heredoc.json" "$SBP/orc-aninhado.json"
+echo
+echo '== (r14v2-orc) 300 linhas de "$(...)" num heredoc sai 0 =='
+node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-heredoc.json" 2>"$SBP/err-orc-heredoc"
+EXIT_ORC_HEREDOC=$?
+[ $EXIT_ORC_HEREDOC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_ORC_HEREDOC: $(head -c 300 "$SBP/err-orc-heredoc"))"
+echo
+echo '== (r14v2-orc) 500 "$(echo a)" separados por ; saem 0 =='
+node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-aninhado.json" 2>"$SBP/err-orc-aninhado"
+EXIT_ORC_ANINHADO=$?
+[ $EXIT_ORC_ANINHADO -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_ORC_ANINHADO: $(head -c 300 "$SBP/err-orc-aninhado"))"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

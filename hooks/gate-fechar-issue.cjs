@@ -225,53 +225,14 @@ function gastarVarredura(n) {
   );
 }
 
-// D3 (rodada 14, #694): o bash divide a palavra no $IFS, e o gate lia `gh$IFS`
-// como uma palavra so. Fora de aspas simples, `$IFS` e `${IFS}` valem um espaco
-// na copia que o gate analisa. Dentro de aspas simples e de $'...' o bash nao
-// expande, e a contrabarra escapa o seguinte. `$IFSx` e outra variavel, nao troca.
+// D3 (rodada 14, #694; emenda da revisao 1 da rodada 14): o bash divide a palavra
+// no $IFS, e o gate lia `gh$IFS` como uma palavra so. `$IFS` e `${IFS}` viram um
+// espaco no comando inteiro, sem rastrear aspas: rastrear aspa aqui nao conhece
+// heredoc nem comentario, e uma aspa solta no corpo de um heredoc escondia o
+// `gh${IFS}` da linha seguinte. Falha fechada: a troca so vale na copia que o gate
+// analisa. `$IFSx` e outra variavel e nao troca.
 function trocarIfsPorEspaco(s) {
-  let trocado = "";
-  let aspa = null;
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (c === "\\" && aspa !== "'" && i + 1 < s.length) {
-      trocado += c + s[i + 1];
-      i += 1;
-      continue;
-    }
-    if (aspa === "'" || aspa === "$'") {
-      if (c === "'") aspa = null;
-      trocado += c;
-      continue;
-    }
-    if (c === '"') {
-      aspa = aspa === null ? '"' : null;
-      trocado += c;
-      continue;
-    }
-    if (c === "'" && aspa === null) {
-      aspa = "'";
-      trocado += c;
-      continue;
-    }
-    if (c === "$" && s[i + 1] === "'" && aspa === null) {
-      aspa = "$'";
-      trocado += "$'";
-      i += 1;
-      continue;
-    }
-    if (c === "$" && s.startsWith("{IFS}", i + 1)) {
-      trocado += " ";
-      i += 5;
-      continue;
-    }
-    if (c === "$" && s.startsWith("IFS", i + 1) && !/[A-Za-z0-9_]/.test(s[i + 4] || "")) {
-      trocado += " ";
-      i += 3;
-      continue;
-    }
-    trocado += c;
-  }
+  const trocado = s.replace(/\$\{IFS\}|\$IFS(?![A-Za-z0-9_])/g, " ");
   return trocado;
 }
 // D2 (gate-segmentador, Issue #689): dentro de aspas duplas a contrabarra so
@@ -284,7 +245,7 @@ function escapaDentroDaAspa(aspa, proximo) {
 // exato (o bash fecha o heredoc na primeira linha igual ao delimitador) e o
 // corpo de heredoc citado e literal. Essa forma e opaca para o laco de fora e
 // fica fora do D3.
-const HEREDOC_CANONICO = /^\$\(cat <<'([A-Za-z_][A-Za-z0-9_]*)'\n[\s\S]*?\n\1\n\)/;
+const HEREDOC_CANONICO = /\$\(cat <<'([A-Za-z_][A-Za-z0-9_]*)'\n[\s\S]*?\n\1\n\)/y;
 // D3 (gate-segmentador, Issue #689): interior de "$(...)" cujo fim a contagem
 // de parenteses nao acha com seguranca (aspa, crase, comentario, heredoc,
 // contrabarra, case).
@@ -355,6 +316,45 @@ function segmentosParaGate(cmd) {
       continue;
     }
 
+    // Comentario (revisao 1 da zerar-issues-14): no Bash, fora de aspas, `#` no
+    // comeco de palavra vai ate o fim da linha, e aspa dentro dele nao abre nada.
+    // Sem isto, `echo hi # don't` + quebra + `gh issue close 12` lia o resto como
+    // citado. Comentario CERTO (`#` no comeco, depois de espaco nao escapado, `;`,
+    // `&` ou `|`, fora de `${`) pode citar `gh` e passa (W2: `ls # gh pr merge 7`).
+    // Comentario DUVIDOSO (`$(true)#`, `a\ #`, `${x:-a #b}`), em que o bash pode nao
+    // ver comentario nenhum: `gh` como palavra no texto barra (falha fechada;
+    // revisao de seguranca do commit b0bf62d2). O texto e achatado sem aspas,
+    // contrabarra, crase, `$`, parenteses e chaves (`g$()h`). No PowerShell vale
+    // o mesmo, e `<#` abre bloco ate `#>`.
+    const abreBlocoPs = FERRAMENTA === "PowerShell" && c === "<" && cmd[i + 1] === "#";
+    if (aspa === null && (abreBlocoPs || (c === "#" && (i === 0 || /[\s;&|()]/.test(cmd[i - 1]))))) {
+      // `${` aberto em QUALQUER ponto antes, nao so na linha: `${x:-` + quebra +
+      // `a #b}; gh ...` fecha a chave na linha de baixo e o gh roda.
+      const antes = cmd.slice(0, i);
+      const dentroDeChaves = antes.lastIndexOf("${") > antes.lastIndexOf("}");
+      const espacoEscapado = FERRAMENTA !== "PowerShell" && i > 0 && escapadaPorContrabarra(cmd, i - 1);
+      const comentarioCerto = abreBlocoPs || ((i === 0 || /[\s;&|]/.test(cmd[i - 1])) && !espacoEscapado && !dentroDeChaves);
+      let fimComentario;
+      if (abreBlocoPs) {
+        const fechaBloco = cmd.indexOf("#>", i + 2);
+        fimComentario = fechaBloco === -1 ? cmd.length : fechaBloco + 2;
+      } else {
+        const fimLinha = cmd.indexOf("\n", i);
+        fimComentario = fimLinha === -1 ? cmd.length : fimLinha;
+      }
+      const palavrasDoComentario = cmd.slice(i, fimComentario).replace(/["'`\\$(){}]/g, "").split(/[\s;&|<>#]+/);
+      if (!comentarioCerto && palavrasDoComentario.some((p) => p !== "" && normalizarExecutavel(p) === "gh")) {
+        bloqueia(
+          "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+          "Razão: há um 'gh' depois de um '#' que o gate não sabe se é comentário.\n\n" +
+          "Tire o 'gh' do comentário, ou rode o comando 'gh' sem '#' na mesma linha.\n"
+        );
+      }
+      atual += cmd.slice(i, fimComentario);
+      i = fimComentario - 1;
+      continue;
+    }
+
     if (aspa) {
       if (FERRAMENTA !== "PowerShell" && c === "\\" && i + 1 < cmd.length && escapaDentroDaAspa(aspa, cmd[i + 1])) {
         atual += c + cmd[i + 1];
@@ -378,8 +378,12 @@ function segmentosParaGate(cmd) {
       if (aspa === '"' && c === "$" && cmd[i + 1] === "(") {
         // D6 (gate-segmentador): forma canonica do heredoc citado vai inteira
         // para `atual` e o interior e recursado; o corpo nao entra no laco.
-        gastarVarredura(cmd.length - i);
-        const canonico = HEREDOC_CANONICO.exec(cmd.slice(i));
+        // A regex varre ate achar o delimitador: so roda com o prefixo, e cobra
+        // o resto do comando ANTES (sem fechamento, ela iria ate o fim a cada `"$(`).
+        const prefixoCanonico = cmd.startsWith("$(cat <<'", i);
+        if (prefixoCanonico) gastarVarredura(cmd.length - i);
+        HEREDOC_CANONICO.lastIndex = i;
+        const canonico = prefixoCanonico ? HEREDOC_CANONICO.exec(cmd) : null;
         // A primeira linha igual ao delimitador tem de ser a que vem antes do
         // `)`: um DELIM anterior fecha o heredoc no bash, e o resto executa
         // (revisao 1 do gate-segmentador).
@@ -421,6 +425,7 @@ function segmentosParaGate(cmd) {
           interno += cmd[j];
           j += 1;
         }
+        gastarVarredura(j - i);
         // D3 (gate-segmentador): o fim do $(...) sai da contagem de parenteses,
         // que nao entende aspas; com interior complexo o laco de fora pode
         // reler o resto com o estado de aspas errado. Com gh de escrita do $(
@@ -530,7 +535,14 @@ function segmentosParaGate(cmd) {
           const tipoAspa = cmd[k + 1];
           k += 2;
           while (k < cmd.length && cmd[k] !== tipoAspa) {
-            if (cmd[k] === "\\" && k + 1 < cmd.length && (tipoAspa === "'" || ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1]))) { conteudo += cmd[k + 1]; k += 2; continue; }
+            if (cmd[k] === "\\" && k + 1 < cmd.length && (tipoAspa === "'" || ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1]))) {
+              // Rodada 14, D4b: no `$'...'` o ANSI-C converte \n, \t e \r no caractere
+              // real. Os outros escapes seguem como estavam (hex e octal sao D6).
+              const controle = tipoAspa === "'" ? { n: "\n", t: "\t", r: "\r" }[cmd[k + 1]] : undefined;
+              conteudo += controle !== undefined ? controle : cmd[k + 1];
+              k += 2;
+              continue;
+            }
             conteudo += cmd[k]; k++;
           }
           if (k < cmd.length) k++; // fecha a aspa
