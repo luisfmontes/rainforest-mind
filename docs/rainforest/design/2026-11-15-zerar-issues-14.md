@@ -147,6 +147,10 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   `source <(echo 'gh issue close 12')` são script lido por pipe ou substituição.
 - Resíduo aceito (revisão 3): linha de 100 KB de `# ` leva 2,6 s no regex das duas leituras
   (0,3 s na base); ninguém digita isso.
+- Aceito (revisão 3 e revisões de segurança de 6fed0986 e 58bd9ab5): qualquer `((` antes do
+  `#` deixa o comentário duvidoso, e `$(( n + 1 )) # chamadas ao gh` sai 2 (sem `gh` no
+  comentário, sai 0). Contar `((` contra `))` sem rastrear aspas foi enganado duas vezes
+  (`(( $((1)) # 2 ))`, `"))"` citado). É o mesmo custo aceito do `${`.
 - Aceito (revisão 3): `cat > doc.md <<'EOF'` + `# Title \` + `gh issue close 12` + `EOF` sai 2. A
   base já barra `gh issue close` em linha de corpo de heredoc (sem o `# … \` também sai 2) e só
   passava esse caso porque juntava as linhas e escondia o `gh`.

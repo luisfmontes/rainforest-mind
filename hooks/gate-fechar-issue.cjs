@@ -414,15 +414,12 @@ function segmentosParaGate(cmd) {
       // (revisao de seguranca do commit 6207a501). Falha fechada.
       // O mesmo vale para `((` (aritmetica): `(( 1 # 2 )); gh ...` roda o gh, e o
       // bash nao le comentario dentro dele (revisao 2).
-      // So o `((` ainda aberto: `$(( n + 1 )) # nota` e `for ((...))` ja
-      // fecharam antes do `#` (revisao 3). Duvidoso se a contagem de `((` passa a
-      // de `))` (aninhado: `(( $((1)) # 2 ))`) OU se o ultimo `((` vem depois do
-      // ultimo `))` (um `"))"` citado antes nao zera a conta). Falha fechada.
+      // Qualquer `((` antes do `#` deixa o comentario duvidoso, mesmo ja fechado:
+      // contar `((` contra `))` sem rastrear aspas e aninhamento foi enganado duas
+      // vezes (`(( $((1)) # 2 ))`, `))` citado). Custo aceito, como o do `${`:
+      // `$(( n + 1 )) # nota sobre gh` barra (revisoes de seguranca de 6fed0986 e 58bd9ab5).
       const antesDoHash = cmd.slice(0, i);
-      const abreAritm = (antesDoHash.match(/\(\(/g) || []).length;
-      const fechaAritm = (antesDoHash.match(/\)\)/g) || []).length;
-      const dentroDeChaves = antesDoHash.includes("${") || abreAritm > fechaAritm ||
-        antesDoHash.lastIndexOf("((") > antesDoHash.lastIndexOf("))");
+      const dentroDeChaves = antesDoHash.includes("${") || antesDoHash.includes("((");
       // Espaco escapado antes do `#`: contrabarra no Bash, crase no PowerShell
       // (revisao de seguranca do commit 18ecb4bf).
       const escapeDoShell = FERRAMENTA === "PowerShell" ? "`" : "\\";

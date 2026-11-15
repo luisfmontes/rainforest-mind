@@ -4819,9 +4819,11 @@ caso_ferr r14v4-13 0 Bash $'gh issue comment 5 --body "ver #3" \\\n  --repo o/r'
 caso_ferr r14v4-14 0 Bash $'gh pr view 5 # status \\\nls'
 # Rastreio de aspas enganado (aspa solta no corpo do heredoc): a leitura extra
 # junta as linhas de baixo como o bash junta (revisao do commit 39c15107).
-# Revisao 3: `((` ja fechado nao torna o comentario duvidoso, `$'` citado no
-# texto do eval/iex e ancora de regex, e continuacao longa nao tem teto de linhas.
-caso_ferr r14v5-1 0 Bash 'n=$(( n + 1 )) # chamadas ao gh'
+# Revisao 3: `$'` citado no texto do eval/iex e ancora de regex, e continuacao
+# longa nao tem teto de linhas. Qualquer `((` antes do `#` deixa o comentario
+# duvidoso: citar gh nele barra (custo aceito, como o do `${`), sem gh passa.
+caso_ferr r14v5-1 2 Bash 'n=$(( n + 1 )) # chamadas ao gh'
+caso_ferr r14v5-6 0 Bash 'n=$(( n + 1 )) # contador'
 caso_ferr r14v5-2 2 Bash 'echo "))"; (( 1 # 2 )); gh issue close 12'
 caso_ferr r14v5-5 2 Bash '(( $((1)) # 2 )); gh issue close 12'
 caso_ferr r14v5-3 0 Bash "iex \"Get-ChildItem | Where-Object Name -match 'x\$'\""

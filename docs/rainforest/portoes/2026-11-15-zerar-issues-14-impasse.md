@@ -19,7 +19,9 @@ menores, criados pelos próprios consertos de segurança. Não houve divergênci
 
 ## Consertos já feitos para a 4ª rodada (não integrados ao estado)
 - `eval`/`iex`: o `$'` só conta fora de aspas, pela mesma função do `bash -c`.
-- O comentário depois de `((` só fica duvidoso se o último `((` ainda estiver aberto.
+- O comentário depois de `((` continua duvidoso, mesmo com o `((` já fechado. A tentativa de
+  contar `((` contra `))` foi enganada duas vezes, então o falso positivo baixo virou custo
+  aceito no design.
 - Sai o teto de 64 linhas. O orçamento linear de varredura (D4d) cobre o comando gigante.
 - Design: título da D3 corrigido. Os resíduos e o caso do heredoc foram registrados em
   "Fora de escopo".
