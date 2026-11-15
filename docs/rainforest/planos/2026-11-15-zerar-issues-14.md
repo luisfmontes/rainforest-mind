@@ -19,14 +19,14 @@ busca:
 desfecho: estender
 mutacao:
   arquivo: `hooks/lib/tokens-comando.cjs`
-  de: const interno = desempacota(palavraDoScript(current.resto));
+  de: const interno = desempacota(zona.palavra);
   para: const interno = desempacota(current.resto);
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   timeout: `1200000`
   fixture: testa-gate-fechar-issue.sh, seção "(#699/#703/#708) bash -c com argumento posicional, --, exec -a, builtin e cmd //c"
 prova: `node -e "const t=require('./hooks/lib/tokens-comando.cjs');const r=t.desempacotarWrapperDeString('bash -c \"gh issue close 12\" x');process.exit(r.interno==='gh issue close 12'?0:1)"`
 Implementação:
-- Em `desempacotarWrapperDeString`, no ramo dos wrappers de `WRAPPERS_DE_COMANDO`, depois de achar a flag `-c`, o `resto` passa por uma função nova, `palavraDoScript(resto)`. Ela pula um `--` isolado e devolve só a primeira palavra do shell: trechos citados e nus colados, até o primeiro espaço fora de aspas, com as aspas como estavam, para o `desempacota` tirá-las. A linha que desempacota fica exatamente como o `de:` acima.
+- Em `desempacotarWrapperDeString`, no ramo dos wrappers de `WRAPPERS_DE_COMANDO`, depois de achar a flag `-c`, o `resto` passa por uma função nova, `palavraDoScript(resto)`. Ela pula um `--` isolado e devolve só a primeira palavra do shell: trechos citados e nus colados, até o primeiro espaço fora de aspas, com as aspas como estavam, para o `desempacota` tirá-las. A linha que desempacota fica exatamente como o `de:` acima (emendado depois da tarefa 5, que passou a palavra por `zona.palavra`).
 - `FLAGS_COM_VALOR` ganha `exec: -a`, e `WRAPPERS_QUE_REPASSAM` ganha `builtin`.
 - No ramo `cmd`, aceite `//c` e `//k` além de `/c` e `/k`.
 - No `gate-fechar-issue.cjs`, `mistaComGh` (linha 1664) passa a olhar só os tokens da palavra do script (`palavraDoScript`), e não `depois` inteiro.

@@ -29,6 +29,7 @@
       1,
       2,
       3,
+      4,
       5
     ]
   },
@@ -69,6 +70,13 @@
       "porque": "Cada heuristica de procura abriu um disfarce novo; o custo e so o comando de mais de 2 MB varridos",
       "estagio": "executar",
       "em": "2026-11-15T19:09:24.485Z"
+    },
+    {
+      "pergunta": "O de: da mutacao da tarefa 1 nao casa: a tarefa 5 reescreveu a linha",
+      "escolha": "Mutacao da tarefa 1 passa a ser desempacota(zona.palavra) -> desempacota(current.resto)",
+      "porque": "Reverte o mesmo comportamento da D1 (script = resto inteiro) na linha atual",
+      "estagio": "executar",
+      "em": "2026-11-15T19:13:30.323Z"
     }
   ]
 }
