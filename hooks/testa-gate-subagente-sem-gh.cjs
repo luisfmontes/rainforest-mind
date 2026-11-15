@@ -417,6 +417,7 @@ const casosRevisao = [
   ["bash //dev/stdin <<< $'gh issue close 12'", 2, "(r14 rev seg d9edb887) //dev/stdin"],
   ["bash /dev/./stdin <<< $'gh issue close 12'", 2, "(r14 rev seg d9edb887) /dev/./stdin"],
   ["bash ../../dev/fd/0 <<< $'gh issue close 12'", 2, "(r14 rev seg d9edb887) ../../dev/fd/0"],
+  ["bash /de?/stdin <<< $'gh issue close 12'", 2, "(r14 rev seg df379adb) glob monta o caminho do stdin"],
   ['bash -o pipefail ./x.sh <<< "$a"', 0, "(r14 rev seg 16571bcd) -o consome o valor e o script e arquivo"],
   ["pwsh -EncodedCommand ZwBoAA==", 2, "(revisão) pwsh -EncodedCommand (ilegível)"],
   ['cmd /c "gh issue close 12"', 2, "(revisão) cmd /c com gh issue close"],

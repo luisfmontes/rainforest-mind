@@ -1151,7 +1151,11 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // segurança do commit 4fb5da84). E só caractere de caminho: parêntese,
     // colchete, vírgula, `#` ou aspa no meio é sintaxe do PowerShell, não nome
     // de arquivo (revisão de segurança do commit d9edb887).
-    if (viuFile || /^(["']?)[\w.\\\/:~-]+\.ps1\1$/i.test(atual.tok)) return { interno: null, ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
+    // No `powershell.exe` o posicional é -Command: o atalho de arquivo só vale se
+    // o caminho for o texto inteiro (`powershell x.ps1 ';' gh ...` roda os dois).
+    // No `pwsh` o posicional é -File e o resto são argumentos do script.
+    const ehCaminhoPs1 = /^(["']?)[\w.\\\/:~-]+\.ps1\1$/i.test(atual.tok);
+    if (viuFile || (ehCaminhoPs1 && (exe === "pwsh" || atual.resto.trim() === ""))) return { interno: null, ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
     return { interno: desempacota(posicional), ilegivel: ghColado || contemConstrucaoIlegivel(posicional) };
   }
 

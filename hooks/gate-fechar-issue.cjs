@@ -282,7 +282,10 @@ function segmentosParaGate(cmd) {
   // varias linhas (inclusive vazias), entao a juncao segue enquanto a linha de
   // baixo terminar em contrabarra, e as duas formas (com e sem espaco) sao
   // checadas (revisao de seguranca do commit d9edb887).
-  cmd = cmd.replace(/^((?:[^\n]*[\s;&|])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte, offset, texto) => {
+  // O `#` conta depois de qualquer inicio de palavra do bash, parentese e chave
+  // inclusive (`(#x\` + quebra + `gh ...`); tratar a mais como comentario e falha
+  // fechada, porque a juncao abaixo e checada (revisao do commit df379adb).
+  cmd = cmd.replace(/^((?:[^\n]*[\s;&|(){}<>`])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte, offset, texto) => {
     let pos = offset + m.length + quebra.length;
     let continuacao = "";
     for (let n = 0; ; n++) {

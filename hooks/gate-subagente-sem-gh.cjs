@@ -805,7 +805,8 @@ function processarSegmento(segmento, cwd) {
     // variavel ou substituicao nao se resolve aqui; nos dois o here-string e lido
     // como script (revisao de seguranca do commit d9edb887).
     const caminho = v.replace(/["']/g, "").replace(/\/+/g, "/");
-    rodaArquivo = /[/.]/.test(caminho) && !/(^|\/)(dev|proc)(\/|$)/.test(caminho) && !/[$`]/.test(caminho);
+    // Glob, til, chave e contrabarra tambem montam o caminho (`/de?/stdin`).
+    rodaArquivo = /[/.]/.test(caminho) && !/(^|\/)(dev|proc)(\/|$)/.test(caminho) && !/[$`\\*?[\]{}~]/.test(caminho);
     break;
   }
   if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm) && !rodaArquivo) {
