@@ -41,6 +41,9 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   `gh$IFS` como uma palavra só. Critério: `gh$IFS issue close 12`,
   `gh${IFS}issue${IFS}close${IFS}12` e `echo "$(echo ')'; gh${IFS}issue close 12)"` saem 2.
   `echo "$IFS"` e `IFS=: read a b <<< "x:y"` saem 0.
+  Emenda (revisão 1): a troca vale no comando inteiro, sem rastrear aspas (falha fechada). Rastrear
+  aspas sem conhecer heredoc e comentário deixava um `Don't` no corpo de um heredoc esconder o
+  `gh${IFS}issue${IFS}close${IFS}12` da linha seguinte.
 - **D4 — Os quatro resíduos da #692.**
   - (a) A contagem de parênteses do `"$(...)"` (P4) pula a expansão `${...}` inteira, com as
     chaves balanceadas, e não conta o `)` que está dentro dela.
@@ -58,6 +61,20 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   (item 4). Critério: os seis comandos dos itens 1 a 3 da #692 saem 2. `echo "${x:-a}"`,
   `cat <<< $'texto'` e, no PowerShell, `` Write-Host "a`tb" `` saem 0. 3000 `$(true)` planos saem
   0, e o aninhamento de 16 níveis com 400 KB sai 2 em menos de 5 s. Estourado, sai 2 com ou sem `gh`.
+- **Emendas da revisão 1 (D1, D2, D4).**
+  - (D1) A rede de segurança olha palavra por palavra: barra quando `normalizarExecutavel(palavra)`
+    é `gh`, e não quando `gh` aparece dentro de um caminho (`--repo gh/foo`, `/home/gh/y`). Palavra
+    `$'...'` ou `$"..."` como script de wrapper ou de `eval` é ilegível nos dois gates. O gate de
+    subagente lê o here-string que alimenta um shell (`bash <<< palavra`) como lê o `bash -c`.
+  - (D2) O `cmd` aceita o comando colado à flag (`//cgh ...`, `/c"gh ..."`). O `pwsh`/`powershell`
+    acha o `-Command`/`-c`/`-EncodedCommand` depois de outros parâmetros (`-NoProfile`,
+    `-ExecutionPolicy Bypass`). O `fish` entra como wrapper de `-c`.
+  - (D4b) No `$'...'` do here-string, `\n`, `\t` e `\r` viram o caractere. Escape hexadecimal e
+    octal ficam fora (codificação, D6).
+  - (D4d) Cada `"$(` cobra do orçamento só o trecho que o laço varreu até o `)` que fecha, e o
+    heredoc canônico casa sem copiar o resto do comando. O custo fica linear no tamanho: 600 `"$(`
+    em 12 KB estouravam o orçamento.
+  Porquê: a revisão 1 reproduziu cada forma com o payload real.
 - **D5 — O resto do comando depois de um heredoc começa depois do delimitador.** O
   `cmd.slice(heredoc.fim - 1)` vira uma função de `hooks/lib/heredoc.cjs`
   (`restoDepoisDoHeredoc`), usada nas duas cópias do segmentador: `gate-subagente-sem-gh.cjs`
@@ -85,6 +102,10 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
 - Teto por relógio no segmentador: deixa o gate não determinístico (sugestão da própria #692).
 
 ## Fora de escopo
+- Resíduo aceito (revisão 1, preexistente): `{gh,issue,close,12}` e `{gh,pr,merge,5}`, com a expansão de
+  chaves montando o executável, passam na base e no HEAD. A rede W2 não conhece essa forma.
+- Resíduo aceito (revisão 1, fora do modelo da D6): `gh${IFS:0:1}issue...` (expansão de
+  substring) e `$'gh\x20issue...'` (codificação hexadecimal).
 - O #707 (`gh api`, `gh release`, `gh gist` no gate de publicação) vai na rodada 15.
 
 ## Varredura

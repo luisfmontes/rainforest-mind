@@ -21,7 +21,7 @@
     "em": "2026-11-15"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-15",
     "em": "2026-11-15",
     "integradas": [
@@ -59,10 +59,30 @@
         "resultado": "vermelho",
         "fixture": "testa-bash-c-opcoes.sh, caso -co errexit"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-15"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "4f1ee23c5fe3c5c481adbd541204373f11c83b29",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "afb921701faa5a9ac",
+        "veredito": "reprovado",
+        "em": "2026-11-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-afb921701faa5a9ac.jsonl"
+      }
+    ],
+    "em": "2026-11-15",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
@@ -105,6 +125,13 @@
       "porque": "Reverte o mesmo comportamento da D1 (script = resto inteiro) na linha atual",
       "estagio": "executar",
       "em": "2026-11-15T19:13:30.323Z"
+    },
+    {
+      "pergunta": "Revisao 1 reprovou com 12 achados; o que corrigir e o que vira residuo",
+      "escolha": "Corrigir 1-9 e 12 (volta 2: tarefa 3 no gate-fechar-issue, tarefa 5 em tokens-comando e gate de subagente); residuos aceitos: 10 (chaves montando o gh, preexistente) e 11 (fora do modelo)",
+      "porque": "Os corrigidos estao no modelo da D6 ou no arquivo da entrega e tem conserto local; os residuos ou sao preexistentes de outra camada (W2) ou estao fora do modelo",
+      "estagio": "executar",
+      "em": "2026-11-15T19:36:15.194Z"
     }
   ]
 }

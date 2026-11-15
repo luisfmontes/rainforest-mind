@@ -97,7 +97,7 @@ pronto quando: os manifestos e o selo dizem 2.16.0, e `bash scripts/testa-versao
 
 ### 5. `bash -c` com opções agrupadas ou citadas: falha fechada [tipo: implementar]
 atende: D1
-arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-bash-c-opcoes.sh`
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-bash-c-opcoes.sh`, `hooks/gate-subagente-sem-gh.cjs`, `hooks/testa-gate-subagente-sem-gh.cjs`
 depende de: 1
 paralela: sim
 busca:
