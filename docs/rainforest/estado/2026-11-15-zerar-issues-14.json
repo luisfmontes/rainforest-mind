@@ -31,8 +31,8 @@
       4,
       5
     ],
-    "comando": "node scripts/integrar-tarefa.cjs (volta 2: tarefas 3 e 5) e commits de consertos das revisoes de seguranca",
-    "saida": "t5 2f9ea5e2 aceita; t3 e507e57c aceita (retomada); c66b56ee e 6207a501 consertos de seguranca",
+    "comando": "bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-bash-c-opcoes.sh",
+    "saida": "HEAD b591353c: testa-gate-fechar-issue 618 ok, 0 falha(s), EXIT=0; subagente 131 ok 0 falhou; bash-c-opcoes 34 ok",
     "mutacao": [
       {
         "tarefa": 1,
@@ -60,7 +60,7 @@
         "fixture": "testa-bash-c-opcoes.sh, caso -co errexit"
       }
     ],
-    "reaberturas": 2,
+    "reaberturas": 3,
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-11-15"
@@ -69,7 +69,7 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "93c3b11251d3263be95133d2e4a156269158db9c",
+      "head": "b591353c413d0a9ab533b32c605c810d138c6791",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-11-15-zerar-issues-14.json"
       ]
@@ -77,14 +77,14 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a25476bcd521350c4",
+        "agente_id": "ae1a840834fa74724",
         "veredito": "reprovado",
         "em": "2026-11-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a25476bcd521350c4.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-ae1a840834fa74724.jsonl"
       }
     ],
     "em": "2026-11-15",
-    "tentativas": 2,
+    "tentativas": 3,
     "voltas": [
       {
         "volta": 1,
@@ -95,6 +95,18 @@
             "veredito": "reprovado",
             "em": "2026-11-15",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-afb921701faa5a9ac.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a25476bcd521350c4",
+            "veredito": "reprovado",
+            "em": "2026-11-15",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a25476bcd521350c4.jsonl"
           }
         ]
       }

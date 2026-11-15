@@ -35,8 +35,8 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   por um detalhe de tabela, e o bash e o MSYS as executam. Critério: `exec -a x bash -c 'gh issue
   close 12'`, `builtin eval 'gh issue close 12'` e `cmd //c bash -c "echo"' \"; gh issue close 12'`
   saem 2. `builtin echo x` sai 0.
-- **D3 — `$IFS` e `${IFS}` fora de aspas simples valem espaço para o gate.** Antes de
-  segmentar, o `gate-fechar-issue` troca cada ocorrência fora de aspas simples por um espaço,
+- **D3 — `$IFS` e `${IFS}` valem espaço para o gate, no comando inteiro (ver a emenda).** Antes de
+  segmentar, o `gate-fechar-issue` troca cada ocorrência por um espaço,
   só na cópia que ele analisa (#694) — porquê: o bash divide a palavra no `$IFS`, e o gate lia
   `gh$IFS` como uma palavra só. Critério: `gh$IFS issue close 12`,
   `gh${IFS}issue${IFS}close${IFS}12` e `echo "$(echo ')'; gh${IFS}issue close 12)"` saem 2.
@@ -134,6 +134,19 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
 - Resíduo aceito (volta 2, fora do modelo da D6): `powershell "& ('g'+'h') issue close 12"` monta
   o executável por expressão do PowerShell, que precisa ser avaliada. É a mesma classe da
   substituição que precisa executar.
+- Resíduo aceito (revisão 3, preexistente): o colapso de continuação dos dois gates não
+  conhece o `\'` dentro de `$'...'` (`echo $'a\'b'` + quebra + `\` + quebra + `gh issue close 12`
+  passa na base e no HEAD). A crase tira `\` + quebra antes de ler, uma terceira leitura que
+  a regra das duas leituras não cobre (`` echo a `echo b #c \ `` + quebra + `echo don't` + quebra +
+  `` gh issue close 12` ``). O gate de subagente não desce em crase nem pula o `--` do `eval`.
+  Os três passam na base e no HEAD; o `gate-fechar-issue` barra os do gate de subagente.
+- Resíduo aceito (revisão 3, fora do modelo da D6): `echo 'gh issue close 12' | bash` e
+  `source <(echo 'gh issue close 12')` são script lido por pipe ou substituição.
+- Resíduo aceito (revisão 3): linha de 100 KB de `# ` leva 2,6 s no regex das duas leituras
+  (0,3 s na base); ninguém digita isso.
+- Aceito (revisão 3): `cat > doc.md <<'EOF'` + `# Title \` + `gh issue close 12` + `EOF` sai 2. A
+  base já barra `gh issue close` em linha de corpo de heredoc (sem o `# … \` também sai 2) e só
+  passava esse caso porque juntava as linhas e escondia o `gh`.
 - O #707 (`gh api`, `gh release`, `gh gist` no gate de publicação) vai na rodada 15.
 
 ## Varredura

@@ -310,11 +310,9 @@ function segmentosParaGate(cmd) {
   cmd = cmd.replace(/^((?:[^\n]*[\s;&|(){}<>`])?#[^\n]*?)\\+(?=(\r?\n)([^\n]*))/gm, (m, linha, quebra, seguinte, offset, texto) => {
     let pos = offset + m.length + quebra.length;
     let continuacao = "";
-    for (let n = 0; ; n++) {
-      if (n > 64) bloqueia(
-        "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
-        "Razão: continuação de linha longa demais depois de um '#'; o gate não lê.\n"
-      );
+    // Sem teto de linhas: o orcamento de varredura (D4d) cobra cada linha lida
+    // e barra o comando gigante (revisao 3: o teto de 64 barrava comando legitimo).
+    for (;;) {
       const fim = texto.indexOf("\n", pos);
       const prox = texto.slice(pos, fim < 0 ? undefined : fim).replace(/\r$/, "");
       gastarVarredura(prox.length + 1);
@@ -416,7 +414,12 @@ function segmentosParaGate(cmd) {
       // (revisao de seguranca do commit 6207a501). Falha fechada.
       // O mesmo vale para `((` (aritmetica): `(( 1 # 2 )); gh ...` roda o gh, e o
       // bash nao le comentario dentro dele (revisao 2).
-      const dentroDeChaves = cmd.slice(0, i).includes("${") || cmd.slice(0, i).includes("((");
+      // So o `((` ainda aberto: `$(( n + 1 )) # nota` e `for ((...))` ja
+      // fecharam antes do `#` (revisao 3). Ultimo `((` depois do ultimo `))`, e nao
+      // contagem, para um `"))"` citado antes nao zerar a conta.
+      const antesDoHash = cmd.slice(0, i);
+      const dentroDeChaves = antesDoHash.includes("${") ||
+        antesDoHash.lastIndexOf("((") > antesDoHash.lastIndexOf("))");
       // Espaco escapado antes do `#`: contrabarra no Bash, crase no PowerShell
       // (revisao de seguranca do commit 18ecb4bf).
       const escapeDoShell = FERRAMENTA === "PowerShell" ? "`" : "\\";

@@ -1107,8 +1107,11 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // texto que o bash expande com regras que o gate não lê (`\n`, `\t`, `\x41`),
     // então o script é ilegível. Mesma regra que vale para o script do `bash -c`.
     // Revisão de segurança do commit 6b306b39: o `$'` em QUALQUER ponto do texto
-    // (`eval echo hi\; $'gh' issue close 12`), não só no começo.
-    return { interno, ilegivel: contemConstrucaoIlegivel(interno) || /\$["']/.test(interno) };
+    // (`eval echo hi\; $'gh' issue close 12`), não só no começo. Só fora de aspas,
+    // como no `bash -c` (`contemConstrucaoIlegivel` já usa
+    // `temAspaDeCifraoForaDeAspas`): em `eval "grep 'x$' f"` o `$'` é âncora de
+    // regex citada, não aspa ANSI-C (revisão 3 da zerar-issues-14).
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
   }
 
   const p2 = extrairPrimeiroToken(p1.resto);
