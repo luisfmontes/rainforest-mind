@@ -21,9 +21,8 @@
     "em": "2026-11-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-15",
-    "em_voo": [],
     "em": "2026-11-15",
     "integradas": [
       1,
@@ -31,6 +30,35 @@
       3,
       4,
       5
+    ],
+    "comando": "node scripts/integrar-tarefa.cjs (tarefas 1 a 5; passo 3 conferir-fluxo mutacoes)",
+    "saida": "t1 db99558c, t2 5b959725, t3 95f8ec34 (+ 5f17eecd orcamento sempre fechado), t4 d4d7c04d, t5 64565fcc aceitas",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao (#699/#703/#708) bash -c com argumento posicional"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-subagente-sem-gh.cjs, (#706) segmentosParaGate nao cola o ultimo caractere do delimitador"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao (#694) $IFS divide a palavra"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "numero de versao e texto de registro, sem comportamento a inverter"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-bash-c-opcoes.sh, caso -co errexit"
+      }
     ]
   },
   "revisar": {
