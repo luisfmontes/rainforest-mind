@@ -904,20 +904,51 @@ const OPCOES_COM_VALOR_APOS_C = new Set(["-o", "+o", "-O", "+O", "--rcfile", "--
  * o bash a monta: trechos citados e nus colados ate o primeiro espaco fora de
  * aspas (contrabarra escapa o caractere seguinte, como no bash).
  */
-function palavraDoScript(resto) {
+/**
+ * Quantas palavras a opcao curta `tok` consome depois dela (zerar-issues-14,
+ * tarefa 5): `-o`, `+o`, `-O` e `+O` consomem uma; um grupo curto (`-xo`, `-co`,
+ * `+oO`) consome uma por letra `o`/`O`. Qualquer outra opcao consome zero.
+ */
+function valoresDaOpcao(tok) {
+  if (OPCOES_COM_VALOR_APOS_C.has(tok)) return 1;
+  if (/^[-+][a-zA-Z]+$/.test(tok)) return (tok.match(/[oO]/g) || []).length;
+  return 0;
+}
+
+/**
+ * Palavra citada ou escapada cujo valor, sem aspas e sem contrabarra, comeca com
+ * `-` ou `+`: na zona de opcoes o bash a le como opcao, e o gate nao le (ilegivel).
+ */
+function ehOpcaoDisfarcada(p) {
+  return (p.citado || /[\\"']/.test(p.tok)) && /^[-+]/.test(p.tok.replace(/["'\\]/g, ""));
+}
+
+function palavraDoScript(resto, valoresPendentes = 0) {
   let s = resto.replace(/^\s+/, "");
   let viuFimDasOpcoes = false;
+  let pendentes = valoresPendentes;
   for (;;) {
     const p = viuFimDasOpcoes ? null : extrairPrimeiroToken(s);
-    if (!p || p.citado || !/^[-+]/.test(p.tok)) break;
+    if (pendentes > 0) {
+      // Valor de opcao (`-co errexit`): consome a palavra sem ler se ela e opcao.
+      if (!p) break;
+      if (ehOpcaoDisfarcada(p)) return { palavra: "", resto: "", ilegivel: true };
+      pendentes -= 1;
+      s = p.resto;
+      continue;
+    }
+    if (!p) break;
+    if (ehOpcaoDisfarcada(p)) return { palavra: "", resto: "", ilegivel: true };
+    if (p.citado || !/^[-+]/.test(p.tok)) break;
     if (p.tok === "--") { viuFimDasOpcoes = true; s = p.resto; continue; }
-    const valor = OPCOES_COM_VALOR_APOS_C.has(p.tok) ? extrairPrimeiroToken(p.resto) : null;
-    s = valor ? valor.resto : p.resto;
+    pendentes = valoresDaOpcao(p.tok);
+    s = p.resto;
   }
   s = s.replace(/^\s+/, "");
   let palavra = "";
   let aspa = null;
-  for (let i = 0; i < s.length; i += 1) {
+  let i = 0;
+  for (; i < s.length; i += 1) {
     const c = s[i];
     if (aspa) {
       if (aspa === '"' && c === "\\" && i + 1 < s.length) { palavra += c + s[i + 1]; i += 1; continue; }
@@ -932,10 +963,11 @@ function palavraDoScript(resto) {
   }
   // Aspas mistas SEM contrabarra: o valor que o bash passa ao -c (aspas tiradas),
   // re-citado em aspas duplas para o desempacotador devolver exatamente esse valor.
+  const depois = s.slice(i);
   if (palavraEMista(palavra) && !palavra.includes("\\")) {
-    return `"${valorDeAspasMistas(palavra).replace(/(["$`])/g, "\\$1")}"`;
+    return { palavra: `"${valorDeAspasMistas(palavra).replace(/(["$`])/g, "\\$1")}"`, resto: depois, ilegivel: false };
   }
-  return palavra;
+  return { palavra, resto: depois, ilegivel: false };
 }
 
 /**
@@ -1071,13 +1103,18 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
   let current = p2;
   while (current) {
     const tokLower = current.tok.toLowerCase();
-    const ehFlagEsperada = tokLower === flagEsperada || /^-[a-z]*c$/i.test(current.tok);
+    const ehFlagEsperada = tokLower === flagEsperada || /^-[a-z]*c[a-z]*$/i.test(current.tok);
     if (ehFlagEsperada) {
       // #699 (D1): o script e so a palavra depois do -c (ver palavraDoScript).
       // `escopo: "palavra"` diz ao gate que o resto do segmento (`$0`, `$1`...)
       // nao entra na checagem de aspas mistas: so a palavra do script entra.
-      if (palavraIlegivel(palavraDoScript(current.resto))) return { interno: null, ilegivel: true, escopo: "palavra" };
-      const interno = desempacota(palavraDoScript(current.resto));
+      // Rede de seguranca (zerar-issues-14, tarefa 5): `gh` como palavra depois
+      // do script, nas palavras sem aspas, e ilegivel, qualquer que seja o script.
+      const zona = palavraDoScript(current.resto, valoresDaOpcao(current.tok));
+      if (zona.ilegivel || palavraIlegivel(zona.palavra) || /(^|[^\w-])gh([^\w-]|$)/.test(zona.resto.replace(/["']/g, ""))) {
+        return { interno: null, ilegivel: true, escopo: "palavra" };
+      }
+      const interno = desempacota(zona.palavra);
       return { interno, ilegivel: contemConstrucaoIlegivel(interno), escopo: "palavra" };
     }
     // Se começa com - ou + mas não é a flag esperada, pula (e o valor dela,
