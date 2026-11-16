@@ -18,6 +18,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   - `gh gist create --public`, incluindo os arquivos e a descrição.
 
   Um gist sem `--public` é secreto e passa.
+- **Essas três famílias são lidas como o `gh` recebe o comando.** No `gh api`, flags agrupadas (`-ifbody=`) se desagrupam, e uma flag que pede valor consome o token seguinte, mesmo que comece com `-`. Assim, `-p -XGET` não vira método. No Bash, a contrabarra fora de aspas escapa o caractere seguinte, então `a\pi`, `\-f` e `\--public` são lidos como `api`, `-f` e `--public`. Um token com `$'...'` ou `$"..."` deixa o comando ilegível, e ele barra se tiver termo. `gh issue`, `gh pr` e todo comando de PowerShell continuam lidos como antes.
 - **Arquivo de corpo com BOM e com `~`.** Um `--body-file` gravado em UTF-16 pelo PowerShell agora é lido, e `~/x.md` é procurado no HOME.
 - **Continua passando:**
   - o corpo vindo de stdin;

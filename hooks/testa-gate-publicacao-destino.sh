@@ -1066,6 +1066,13 @@ confere702 "707 rel\$'e'ase barra" 2 "$PRIV" Bash "$R702P" "gh rel\$'e'ase creat
 confere702 "707 ilegivel sem termo passa" 0 "$PUB" Bash "$R702P" "gh a\$'p'i repos/dono/x/issues -f body=ok"
 # Aspa escapada fora de aspas nao abre aspa (corte de palavra do bash).
 confere702 "707 aspa escapada nao esconde o --public" 2 "$PRIV" Bash "$R702P" "gh gist create \\' --public a.md \\'"
+# issue/pr e PowerShell seguem a leitura da base: caminho com contrabarra se le.
+confere702 "707 PowerShell issue --body-file .\\corpo.md barra" 2 "$PUB" PowerShell "$R702" 'gh issue create --title t --body-file .\corpo.md'
+confere702 "707 PowerShell pr comment -F .\\corpo.md barra" 2 "$PUB" PowerShell "$R702" 'gh pr comment 5 -F .\corpo.md'
+confere702 "707 Bash issue --body-file \".\\corpo.md\" barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file ".\corpo.md"'
+confere702 "707 Bash issue --body-file '.\\corpo.md' barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body-file '.\\corpo.md'"
+confere702 "707 Bash pr comment -F \".\\corpo.md\" barra" 2 "$PUB" Bash "$R702" 'gh pr comment 5 -F ".\corpo.md"'
+confere702 "707 Bash issue --body-file .\\corpo.md sem aspas barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file .\corpo.md'
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo

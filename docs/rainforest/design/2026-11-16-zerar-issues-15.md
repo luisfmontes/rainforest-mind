@@ -44,6 +44,8 @@ Resíduos aceitos. A Issue autoriza aceitar o stdin e o valor resolvido na hora.
 - **Here-string do PowerShell com fechamento indentado** e o caso da crase em aspa simples que não discrimina as leituras.
 - **Falso positivo de `echo gh issue create --title <termo>`** (falha fechada, só com termo).
 - **`gh gist edit` e `gh release upload`.**
+- **Disfarces de token que a base também não lê (D6: base 0, preexistentes):** `$"..."` (sem `raw` no tokenizador) e caminho de arquivo em `$'...'` nas famílias novas; contrabarra e `$'...'` que escondem `issue`/`pr` ou a flag deles (`iss\ue`, `--$'body'`), porque `issue`/`pr` seguem a leitura da base; e `gh` escondido no nome do executável (`g$'h'`). Na leitura das famílias novas, a contrabarra segue a regra do bash só no Bash; no PowerShell ela é literal.
+- **Custo aceito: `$'...'` ilegível.** Fora de `issue`/`pr`, um `gh` com `$'...'` em algum token barra se o comando ou um arquivo citado nele tiver termo, mesmo que seja leitura (falha fechada).
 - **A `apiEhEscrita` do `gate-subagente-sem-gh` (preexistente na base).** Ela lê cada token como flag, inclusive o valor de outra flag (`-p -XGET`, `-f -X=GET`), e não desagrupa `-ifbody=`. Este gate não depende disso: o `textosDoGhApi` lê os argumentos numa passada só, como o pflag, e aplica a régua sobre os pares (emenda da D1). O gate de subagente segue como estava; levar a mesma leitura até ele é outra mudança, com outra bateria.
 - **Custo aceito: `repos/{owner}/{repo}` com termo num repositório privado barra.** O leitor de cwd (`hooks/lib/cwd-efetivo.cjs`) quebra o segmento nas chaves, como grupo `{ ...; }`, e marca o cwd incerto. Falha fechada; `:owner/:repo` resolve pelo cwd e sai 0 no privado.
 

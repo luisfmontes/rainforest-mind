@@ -1008,17 +1008,30 @@ function visibilidadeDoAlvo(ownerRepo) {
  * Família, verbo, textos e `--repo` de um segmento, ou null se o segmento não é
  * `gh issue|pr <verbo de texto>`.
  */
-function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
+function textosDoSegmentoGh(segmento, cmdOriginal, cwd, ferramenta) {
   const { tokensComAspas } = require("./lib/tokens-comando.cjs");
-  const { normalizarExecutavel } = require("./lib/heredoc.cjs");
-  // O token chega como o `gh` o recebe (revisões de segurança do 4759f2cb e
-  // do b541c1ba): o tokenizador corta com a regra de escape do bash (fora de
-  // aspa simples, a contrabarra escapa o caractere seguinte, aspa inclusive:
-  // `\-f`, `\'`, `rel\ease`), e a contrabarra que sobra dentro de aspa dupla
-  // também sai (`"mut\ation"`): tirá-la só aproxima da escrita.
+  let toksBase;
+  try { toksBase = tokensComAspas(segmento).map((t) => t.v); } catch { return null; }
+  const rBase = lerSegmentoGh(toksBase, null, cmdOriginal, cwd);
+  // `gh issue`/`gh pr` e todo PowerShell seguem a leitura da base, intocada:
+  // a régua de escape do bash, abaixo, vale só para as famílias novas da #707
+  // (no PowerShell a contrabarra é literal, e caminho `.\corpo.md` não pode
+  // perdê-la; revisão da rodada 15).
+  if (ferramenta === "PowerShell") return rBase;
+  if (rBase && (rBase.familia === "issue" || rBase.familia === "pr")) return rBase;
+  // Famílias novas: o token chega como o `gh` o recebe (revisões de segurança
+  // do 4759f2cb e do b541c1ba). Fora de aspa simples a contrabarra escapa o
+  // caractere seguinte, aspa inclusive (`\-f`, `\'`, `rel\ease`, `a\pi`).
   let brutos;
-  try { brutos = tokensComAspas(segmento, { contrabarra: true }); } catch { return null; }
-  const toks = brutos.map((t) => t.v.split("\\").join(""));
+  try { brutos = tokensComAspas(segmento, { contrabarra: true }); } catch { return rBase; }
+  const rBash = lerSegmentoGh(brutos.map((t) => t.v), brutos, cmdOriginal, cwd);
+  // Disfarce que vira `issue`/`pr` na leitura do bash (`iss\ue`) segue como na base.
+  if (rBash && (rBash.familia === "issue" || rBash.familia === "pr")) return rBase;
+  return rBash || rBase;
+}
+
+function lerSegmentoGh(toks, brutos, cmdOriginal, cwd) {
+  const { normalizarExecutavel } = require("./lib/heredoc.cjs");
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
   if (iGh === -1) return null;
 
@@ -1037,7 +1050,7 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   // `$'\x2dp'`) não se decodifica aqui: o segmento é ilegível, com família e
   // destino desconhecidos, e barra se o comando ou um arquivo citado nele (o
   // corpo de um gist, de um --notes-file) tiver termo (falha fechada).
-  if (brutos.some((t) => /\$['"]/.test(t.raw || ""))) {
+  if (brutos && brutos.some((t) => /\$['"]/.test(t.raw || ""))) {
     const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];
     for (const tok of toks.slice(iGh + 1)) {
       const valor = tok.includes("=") && tok.startsWith("-") ? tok.slice(tok.indexOf("=") + 1).replace(/^@/, "") : tok.replace(/^[^=]*=@/, "");
@@ -1304,7 +1317,7 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
     let r = null;
     let achados = [];
     for (const local of locais) {
-      const ri = textosDoSegmentoGh(segmento, cmd, local.cwd);
+      const ri = textosDoSegmentoGh(segmento, cmd, local.cwd, ev.tool_name);
       if (!ri) break; // não é `gh` de texto, em cwd nenhum
       if (!r) r = ri;
       for (const { origem, texto } of ri.textos) {
