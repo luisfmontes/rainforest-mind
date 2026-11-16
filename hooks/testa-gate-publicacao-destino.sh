@@ -1050,6 +1050,14 @@ confere702 "707 api -H consome o token antes do endpoint" 0 "$PUB" Bash "$R702P"
 # Valor de campo com contrabarra nao vira metodo depois de tirar a contrabarra.
 par707 "api campo \\-X=GET nao e metodo" "$R702P" "gh api repos/dono/x/issues -f '\\-X=GET' -f body=termo702"
 confere702 "707 api graphql -F query=@arquivo barra (destino desconhecido)" 2 "$PRIV" Bash "$R702P" "gh api graphql -F query=@corpo.md"
+# Contrabarra fora de aspas some antes do gh ver o token; $'...' se decodifica.
+par707 "api \\-f fora de aspas" "$R702P" 'gh api repos/dono/x/issues \-f body=termo702'
+par707 "a\\pi esconde a familia" "$R702P" 'gh a\pi repos/dono/x/issues -f body=termo702'
+par707 "rel\\ease esconde a familia" "$R702P" 'gh rel\ease create v1 -n termo702'
+confere702 "707 graphql mut\\ation barra" 2 "$PRIV" Bash "$R702P" 'gh api graphql -f query=mut\ation{termo702}'
+confere702 "707 gist \\--public barra" 2 "$PRIV" Bash "$R702P" 'gh gist create \--public a.md'
+confere702 "707 gist \$'--public' barra" 2 "$PRIV" Bash "$R702P" "gh gist create \$'--public' a.md"
+confere702 "707 gist \$'\\x2dp' barra" 2 "$PRIV" Bash "$R702P" "gh gist create \$'\\x2dp' a.md"
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo

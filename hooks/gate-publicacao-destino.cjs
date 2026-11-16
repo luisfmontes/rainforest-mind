@@ -1009,10 +1009,20 @@ function visibilidadeDoAlvo(ownerRepo) {
  * `gh issue|pr <verbo de texto>`.
  */
 function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
-  const { tokensComAspas } = require("./lib/tokens-comando.cjs");
+  const { tokensComAspas, semContrabarra } = require("./lib/tokens-comando.cjs");
   const { normalizarExecutavel } = require("./lib/heredoc.cjs");
+  // O token chega como o `gh` o recebe (revisão de segurança do 4759f2cb):
+  // `$'...'` se decodifica, e fora dele a contrabarra some, como o bash faz
+  // fora de aspas (`a\pi`, `\-f`, `\--public`, `mut\ation`). Dentro de aspa
+  // simples ela é literal, e tirá-la só aproxima da escrita (falha fechada).
+  // Variável (`$f`) fica como está: é valor da hora.
+  const comoOGhRecebe = (t) => {
+    if (/\$['"]/.test(t.raw || "")) return semContrabarra(t.v);
+    if (t.v.startsWith("$")) return t.v;
+    return t.v.split("\\").join("");
+  };
   let toks;
-  try { toks = tokensComAspas(segmento).map((t) => t.v); } catch { return null; }
+  try { toks = tokensComAspas(segmento).map(comoOGhRecebe); } catch { return null; }
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
   if (iGh === -1) return null;
 
