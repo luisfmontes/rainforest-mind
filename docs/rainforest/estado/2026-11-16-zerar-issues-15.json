@@ -24,8 +24,8 @@
       3,
       4
     ],
-    "comando": "bash hooks/testa-gate-publicacao-destino.sh; node scratchpad/mut15.cjs",
-    "saida": "HEAD 19968de4: testa-gate-publicacao-destino == resultado: 260 ok, 0 falha(s) ==, EXIT=0. Mutacoes (medidas em c01f5c09, linhas de/para identicas no HEAD): tarefa 1 exit=1 234 ok 18 falha(s); tarefa 2 exit=1 239 ok 13 falha(s); tarefa 3 exit=1 250 ok 2 falha(s); restaurado=true. Baterias vizinhas no 8cb061ed: publicacao-write 5 ok, testa-versao 5 ok, conferir-versao 38 ok, release-da-versao 14 ok.",
+    "comando": "bash hooks/testa-gate-publicacao-destino.sh; node scratchpad/mut15.cjs; node scratchpad/r15-harness.cjs casos-ip.cjs",
+    "saida": "HEAD 4bf8ad56: testa-gate-publicacao-destino == resultado: 296 ok, 0 falha(s) ==, EXIT=0. Mutacoes no 4bf8ad56: tarefa 1 exit=1 264 ok 32 falha(s); tarefa 2 exit=1 282 ok 14 falha(s); tarefa 3 exit=1 294 ok 2 falha(s); restaurado=true. Harness base 55da5f9d x HEAD: 100 formas de gh issue/pr (Bash e PowerShell, publico e privado) iguais a base, regressoes=0. Vizinhas: publicacao-write 5 ok 0 falha(s); testa-versao ok: 5 falhou: 0.",
     "mutacao": [
       {
         "tarefa": 1,
