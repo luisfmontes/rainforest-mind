@@ -25,9 +25,17 @@ Rodada em modo autônomo: cada decisão é a recomendada, e as marcadas *(suposi
 - **Alargar a regex da rede do `gh` perdido** (`-R` colado, `.`/`@` no nome da flag): é a peça que já teve retrocesso exponencial e custo quadrático; fica como resíduo.
 - **Barrar `gh api graphql` sempre:** consulta de leitura com nome de cliente seria falso positivo diário.
 
-## Fora de escopo (resíduos aceitos)
+## Varredura
 
-A Issue autoriza aceitar o stdin e o valor resolvido na hora. Os demais abaixo são aceitos por mim e vão listados em "Decidido sem você" no PR e no comentário de fechamento.
+docs/rainforest/varredura/2026-11-16-zerar-issues-15.txt. Só a #707 está aberta no tema. O fluxo que a revelou é o `gate-publicacao-gh` (#702, PR #715). As decisões dele seguem valendo: o comando inteiro conta só contra a lista de termos, o pior destino decide e o marcador `dados-de-exemplo` não isenta. As Issues fechadas do `gate-publicacao-destino` (#419, #494, #410, #409, #322, #237) tratam de falso positivo de detector e de visibilidade, e os detectores não mudam aqui.
+
+## Em aberto
+
+(nenhum)
+
+## Fora de escopo
+
+Resíduos aceitos. A Issue autoriza aceitar o stdin e o valor resolvido na hora. Os demais abaixo são aceitos por mim e vão listados em "Decidido sem você" no PR e no comentário de fechamento.
 - **Stdin e valor resolvido na hora:** `--body-file -`, `-F k=@-`, `--input -`, `--notes-file -`, gist `-`, `$f`, `$(...)`, crase.
 - **Arquivo escrito pelo próprio comando** por redirecionamento ou `Set-Content` (não existe quando o hook roda).
 - **Dado sensível que não é termo e não está em corpo legível** (JID em `printf ... | gh ... -F -`, em `<<<`).

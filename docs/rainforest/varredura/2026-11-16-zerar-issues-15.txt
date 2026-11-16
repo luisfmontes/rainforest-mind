@@ -1,0 +1,100 @@
+Data: 2026-11-16
+Termos: gh api, gh release, gh gist, gate-publicacao
+
+$ gh issue list --state all --search "gh api" --limit 200 --json number,title,state
+[{"number":707,"state":"OPEN","title":"gate-publicacao não confere gh api, gh release e gh gist"},{"number":694,"state":"CLOSED","title":"gate-fechar-issue: builtin eval e $IFS escondem gh de escrita"},{"number":692,"state":"CLOSED","title":"gate-fechar-issue: ${...} em \"$(...)\", here-string com $'...' e crase do PowerShell escondem gh issue close"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":587,"state":"CLOSED","title":"esperar-ci le queda de rede como CI vermelho (exit 5 em vez de 69)"},{"number":591,"state":"CLOSED","title":"Segue #576: esperar-ci sai 5 em repositório cujo único workflow não dispara em PR"},{"number":496,"state":"CLOSED","title":"gate-fechar-issue descarta o --repo de gh pr merge e lê a descrição do PR no repo da sessão"},{"number":576,"state":"CLOSED","title":"esperar-ci: repositório sem CI sai 5 (como CI vermelho) e trava o merge"},{"number":466,"state":"CLOSED","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"},{"number":414,"state":"CLOSED","title":"gate-fechar-issue barra comando sem gh que carrega env com set -a e ponto"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":175,"state":"CLOSED","title":"limpar-branches --remoto ignora a classe mergeada-por-squash e afirma que nao havia remoto para apagar"}]
+
+
+$ gh issue list --state all --search "gh release" --limit 200 --json number,title,state
+[{"number":707,"state":"OPEN","title":"gate-publicacao não confere gh api, gh release e gh gist"}]
+
+
+$ gh issue list --state all --search "gh gist" --limit 200 --json number,title,state
+[{"number":707,"state":"OPEN","title":"gate-publicacao não confere gh api, gh release e gh gist"}]
+
+
+$ gh issue list --state all --search "gate-publicacao" --limit 200 --json number,title,state
+[{"number":707,"state":"OPEN","title":"gate-publicacao não confere gh api, gh release e gh gist"},{"number":702,"state":"CLOSED","title":"gate-publicacao não confere o corpo de gh issue/pr em repositório público"},{"number":706,"state":"CLOSED","title":"segmentosParaGate cola no último token o último caractere do delimitador de heredoc"},{"number":494,"state":"CLOSED","title":"gate-publicacao barra header Authorization com variavel (Bearer ${token}) como credencial"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":411,"state":"CLOSED","title":"setup --desligar gate-publicacao --escopo projeto não vale dentro de worktree do mesmo repo"},{"number":410,"state":"CLOSED","title":"gate de publicação: f-string Python com variável (Bearer {API_KEY}) é lida como credencial"},{"number":409,"state":"CLOSED","title":"gate de publicação: pseudo-versão Go em go.mod/go.sum é lida como telefone"},{"number":341,"state":"CLOSED","title":"varrer-baterias: testa-gate-publicacao-destino.sh roda outras duas baterias .sh em dobro"},{"number":265,"state":"CLOSED","title":"gate-publicacao: .rainforest-gate-off nao e herdado pelo worktree, e nao esta no .gitignore"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":322,"state":"CLOSED","title":"gate-publicacao-destino recusa o trailer Co-Authored-By e barra Edit de linha que já contém o e-mail"},{"number":293,"state":"CLOSED","title":"gate-verificador-staged ignora o marcador dados-de-exemplo e o toggle anunciado no cabecalho nao existe"},{"number":612,"state":"CLOSED","title":"gate-teto-despachos: padrão fixo de 40 trava plano com 40+ tarefas por construção"},{"number":403,"state":"CLOSED","title":"Baterias de hook montam payload JSON com printf e ficam verdes sem o gate olhar"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":523,"state":"CLOSED","title":"conferir-publicacao: regra credencial recusa o proprio <redigido> que ela manda usar"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":220,"state":"CLOSED","title":"Tres dos quatro gates ainda nomeiam .rainforest-gate-off pro subagente que bloqueiam"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":185,"state":"CLOSED","title":"gate-publicacao: hash de commit vira 'telefone', e a saída de emergência não vale no mesmo comando"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":144,"state":"CLOSED","title":"O gate de publicacao le dump hexadecimal como telefone — e provar defeito de encoding exige colar bytes"},{"number":158,"state":"CLOSED","title":"testa-gate-publicacao-destino diz '4 ok' sobre 8 casos que ninguem exerceu: sem jq o payload sai vazio e o gate sai 0 em tudo"},{"number":385,"state":"CLOSED","title":"marcar plano ok passa com o arquivo declarado ausente do disco"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":269,"state":"CLOSED","title":"gate-fechar-issue dita '--saida <saida-ou-arquivo>', e --saida cola o caminho como se fosse a saida"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":430,"state":"CLOSED","title":"Fluxo pulado: escalar o aviso-fluxo para bloqueio com caminho leve declarado"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":160,"state":"CLOSED","title":"Quatro baterias leem o config.json real de quem as roda, e quem desliga um gate para si ve a suite vermelha sem pista da causa"},{"number":149,"state":"CLOSED","title":"A regra jid-whatsapp para em 15 digitos, e JID de GRUPO tem 18 — passou por baixo e o dado ficou no repo publico"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":146,"state":"CLOSED","title":"O _comum.md manda o vigia escrever direto no ERROS.md — um chamador vivo por fora da porta unica"},{"number":159,"state":"CLOSED","title":"testa-medir-injecao quebra em 'python3: command not found' numa maquina com Python instalado — o Windows so cria python"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"}]
+
+
+$ gh pr list --state all --search "gh api" --limit 200 --json number,title,state
+[{"number":687,"state":"MERGED","title":"fechar-issue aceita Pronto quando e o gate deixa passar a ajuda do gh (2.12.1)"},{"number":715,"state":"MERGED","title":"Gate de publicação confere o texto de gh issue e gh pr (2.14.1)"},{"number":548,"state":"MERGED","title":"Painel de PR: achados menores do #464 (#466, 1.67.8)"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":105,"state":"MERGED","title":"CI: so no PR, e run superado se cancela — a cota de Actions bateu 90%"}]
+
+
+$ gh pr list --state all --search "gh release" --limit 200 --json number,title,state
+[{"number":715,"state":"MERGED","title":"Gate de publicação confere o texto de gh issue e gh pr (2.14.1)"},{"number":637,"state":"MERGED","title":"Release do GitHub sai sozinha a cada versão nova (2.3.0)"},{"number":639,"state":"MERGED","title":"Actions dos workflows em Node 24 (2.3.1)"}]
+
+
+$ gh pr list --state all --search "gh gist" --limit 200 --json number,title,state
+[{"number":715,"state":"MERGED","title":"Gate de publicação confere o texto de gh issue e gh pr (2.14.1)"}]
+
+
+$ gh pr list --state all --search "gate-publicacao" --limit 200 --json number,title,state
+[{"number":716,"state":"MERGED","title":"Estado: fechar ok do gate-publicacao-gh (PR #715 mergeado)"},{"number":715,"state":"MERGED","title":"Gate de publicação confere o texto de gh issue e gh pr (2.14.1)"},{"number":718,"state":"MERGED","title":"Rodada 14: gh escondido dos gates de fechamento e de subagente (2.16.0)"},{"number":532,"state":"MERGED","title":"conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2)"},{"number":568,"state":"MERGED","title":"Lote 2026-10-19: #523 #531 #553 #559 #543 (1.69.1)"},{"number":504,"state":"MERGED","title":"Versao 1.63.0: uma pasta so de config e conta.cjs unificar"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"},{"number":630,"state":"MERGED","title":"Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0)"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":426,"state":"MERGED","title":"Zerar as Issues #409-#414, #417, #419 (1.46.0)"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":348,"state":"MERGED","title":"zerar-issues-10: #346 #344 #342 #341 #340 #339 (1.27.0)"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":114,"state":"MERGED","title":"Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever"},{"number":55,"state":"MERGED","title":"O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta"},{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":248,"state":"MERGED","title":"auditor: Régua 3 de técnicas defensivas (do claude-red)"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":236,"state":"MERGED","title":"Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ git ls-remote --heads origin | grep -F "gh api"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gh release"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gh gist"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gate-publicacao"
+(vazio)
+
+$ git log --all --grep="gh api" --oneline
+66d04d02 Rodada 15: design da #707 (gh api, release e gist no gate de publicacao)
+e69ef6f7 Painel de PR: achados menores do #464 (#466, 1.67.8) (#548)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+0464a955 gate-subagente-sem-gh: --eval= e flags agrupadas (revisao 2)
+b141118a gate-subagente-sem-gh: flag global e -XPOST colado nao escondem escrita
+02d5d99a gate-subagente-sem-gh: nega gh de escrita em subagente (tarefa 1)
+398b8451 Sete repos entram no livro, e o que promete ler o codigo manda o agente nao perguntar
+e69bb2b2 Sete repos entram no livro, e o que promete ler o codigo manda o agente nao perguntar
+
+$ git log --all --grep="gh release" --oneline
+(vazio)
+
+$ git log --all --grep="gh gist" --oneline
+(vazio)
+
+$ git log --all --grep="gate-publicacao" --oneline
+536fc249 Estado: fechar ok do gate-publicacao-gh (PR #715 mergeado) (#716)
+11d99344 Gate de publicação confere o texto de gh issue e gh pr (2.14.1) (#715)
+687a0b23 Versao 1.63.0: uma pasta so de config e conta.cjs unificar (#504)
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+795bac96 tarefa 3: libs de hooks, publicação e varrer pelo caminho
+b64263c9 .cjs chamam node pelo caminho do processo (process.execPath)
+1509f27b I5 + I6 rodada 2: controle positivo nos 10 gates e caso --max 1
+62b6c518 zerar-issues-10: tarefa 4 — remove blocos de verificação em dobro e adiciona detecção de execução
+bb30eb48 gate-publicacao: padrao sem /g fica fora do laco (#322)
+cebefa2c gate-publicacao-destino: Edit só barra achados introduzidos por valor cru, não por trecho redigido (#322)
+db49d1e9 gate-publicacao-destino: Edit só barra achados introduzidos (#322)
+8deefa9e testa-gate-publicacao-destino: vizinho sem marcador passa a ser outro
+0ee6aaae Marcador dados-de-exemplo em hooks/lib, so nas 5 primeiras linhas
+05fbc7da gate-publicacao: toggle via checkout principal e setup.cjs na mensagem
+f01e01b3 merge: traz origin/main (#271, #267, #274) antes do revisar
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+63228ff8 Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)
+4c8d38a7 Tarefa 4 (D4): gate-publicacao-destino nao nomeia a escotilha ao subagente (Issue #220)
+6a303404 Segunda rodada de revisao: dois consertos tinham efeito colateral que o texto nao dizia
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+4e5de7d8 Tarefa 2, rodada 3: o caso R21 do gate-worktree montava JSON invalido, e media outra coisa
+2448df0d Tarefa 1, rodada 3: o caso media o instrumento errado, e a isencao media o valor inteiro
+f8b217fa Tarefa 3 (R8): prosa do briefing do executor sobre pular verificacao
+5c6f9c15 Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+4a82027e Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+f91de472 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+fb28aa68 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+063bef0f Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+aa138c70 Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+63afa051 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+1b18a725 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+
+$ cat <dados>/ideias.jsonl
+{"id":"2026-09-12-gate-publicacao-nao-tem-como-confirmar-que-e-id","titulo":"gate-publicacao-destino le id publico do GitHub como telefone, e nao ha como confirmar"}
+
+
