@@ -1025,6 +1025,15 @@ confere702 "707 --notes-file UTF-16LE com BOM barra" 2 "$PUB" Bash "$R702P" 'gh 
 # Leitura nao barra.
 confere702 "707 api GET passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues'
 confere702 "707 api -X GET com campo passa" 0 "$PUB" Bash "$R702P" 'gh api -X GET search/issues -f q=termo702'
+# Revisão de segurança do 8cb061ed: placeholder misto, gist com corpo de arquivo
+# e flag curta com valor grudado.
+confere702 "707 api placeholder misto dono/:repo barra no privado" 2 "$PRIV" Bash "$R702P" 'gh api repos/dono/:repo/issues -f body=termo702'
+confere702 "707 api placeholder misto :owner/x barra no privado" 2 "$PRIV" Bash "$R702P" 'gh api repos/:owner/x/issues -f body=termo702'
+printf '{"public":true,"files":{"a.md":{"content":"termo702"}}}\n' > "$R702P/g.json"
+confere702 "707 api gists --input barra (public no arquivo)" 2 "$PRIV" Bash "$R702P" 'gh api gists --input g.json'
+confere702 "707 api gists -F @arquivo barra" 2 "$PRIV" Bash "$R702P" "gh api gists -F 'files[a.md][content]=@a.md'"
+par707 "api -f grudado" "$R702P" 'gh api repos/dono/x/issues -fbody=termo702'
+par707 "api -F @ grudado" "$R702P" 'gh api repos/dono/x/issues -Fbody=@corpo.md'
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo

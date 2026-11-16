@@ -814,7 +814,14 @@ const FLAGS_API_VALOR = new Set(["-f", "-F", "--raw-field", "--field", "--input"
  * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
  */
 function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
-  const args = toks.slice(iApi + 1);
+  // Flag curta com o valor grudado (`-fbody=x`, `-Fbody=@x`) se separa antes
+  // de tudo: a `apiEhEscrita` só reconhece a flag sozinha (revisão de
+  // segurança do commit, 2026-11-16). `-XPOST` fica como está.
+  const args = [];
+  for (const t of toks.slice(iApi + 1)) {
+    if (/^-[a-zA-Z]./.test(t) && !/^-X/.test(t) && FLAGS_API_VALOR.has(t.slice(0, 2))) args.push(t.slice(0, 2), t.slice(2));
+    else args.push(t);
+  }
   let ehEscrita = true;
   try { ehEscrita = require("./gate-subagente-sem-gh.cjs").apiEhEscrita(args); } catch {}
   if (!ehEscrita) return null;
@@ -823,6 +830,7 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   let metodo = null;
   let hostname = false;
   let gistPublico = false;
+  let corpoDeArquivo = false;
   for (let i = 0; i < args.length; i += 1) {
     const t = args[i];
     if (!t.startsWith("-") || t === "-") { if (endpoint === null && t !== "-") endpoint = t; continue; }
@@ -837,6 +845,7 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
     if (chave === "-X" || chave === "--method") { metodo = valor.toUpperCase(); continue; }
     if (chave === "--hostname") { hostname = true; continue; }
     if (chave === "--input") {
+      corpoDeArquivo = true;
       const corpo = lerCorpoDeArquivo(valor, cwd);
       if (corpo !== null) textos.push({ origem: `--input ${valor}`, texto: corpo });
       continue;
@@ -847,6 +856,7 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
       const conteudo = eq === -1 ? "" : valor.slice(eq + 1);
       if (/^public$/i.test(campo) && /^true$/i.test(conteudo)) gistPublico = true;
       if ((chave === "-F" || chave === "--field") && conteudo.startsWith("@")) {
+        corpoDeArquivo = true;
         const corpo = lerCorpoDeArquivo(conteudo.slice(1), cwd);
         if (corpo !== null) textos.push({ origem: `${chave} ${campo}=${conteudo}`, texto: corpo });
       } else {
@@ -860,11 +870,19 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   const doRepo = ep.match(/^repos\/([^/?#]+)\/([^/?#]+)/i);
   if (hostname) repoFlag = "?";
   else if (doRepo) {
-    const local = /^(?:\{owner\}|:owner)$/i.test(doRepo[1]) || /^(?:\{repo\}|:repo)$/i.test(doRepo[2]);
-    if (!local) repoFlag = normalizarRepoAlvo(`${doRepo[1]}/${doRepo[2]}`);
+    // Só os DOIS segmentos placeholder resolvem pelo cwd; um só
+    // (`repos/dono/{repo}`) não se resolve daqui: destino desconhecido.
+    const donoLocal = /^(?:\{owner\}|:owner)$/i.test(doRepo[1]);
+    const repoLocal = /^(?:\{repo\}|:repo)$/i.test(doRepo[2]);
+    if (donoLocal !== repoLocal) repoFlag = "?";
+    else if (!donoLocal) repoFlag = normalizarRepoAlvo(`${doRepo[1]}/${doRepo[2]}`);
   } else if (/^gists\/?(?:[?#].*)?$/i.test(ep) && (metodo === null || metodo === "POST")) {
-    if (!gistPublico) return null; // gist secreto: tratado como privado (D3)
-    destinoFixo = "publica";
+    // Gist secreto é tratado como privado (D3). Com corpo vindo de arquivo
+    // (`--input`, `-F campo=@arq`), o `public` pode estar lá dentro e não se
+    // lê daqui: destino desconhecido.
+    if (gistPublico) destinoFixo = "publica";
+    else if (corpoDeArquivo) repoFlag = "?";
+    else return null;
   } else {
     repoFlag = "?";
   }
