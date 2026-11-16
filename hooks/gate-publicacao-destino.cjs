@@ -754,7 +754,122 @@ function conferirCommit(ev, cwdDoEvento, agente) {
 const VERBOS_GH_TEXTO = {
   issue: new Set(["create", "comment", "edit", "close", "reopen"]),
   pr: new Set(["create", "comment", "edit", "review", "merge", "close", "reopen"]),
+  // #707 (D2, D3): notas e título de release, e gist (público só com --public).
+  release: new Set(["create", "edit"]),
+  gist: new Set(["create"]),
 };
+
+/**
+ * #707 (D2, D3): flags curtas de VALOR de `release` e `gist`. As letras mudam de
+ * sentido por família (`-p` é projeto no `pr create` e booleana no `release` e no
+ * `gist`; `-F` é corpo no `pr` e notas no `release`; `-d` é rascunho no `release`
+ * e descrição no `gist`; `-t` é título; `-f` é nome de arquivo no `gist`), então a
+ * tabela é por família e verbo. Letra fora dela é booleana e não engole o token seguinte.
+ */
+const CURTAS_POR_FAMILIA = {
+  "release create": new Set(["-R", "-t", "-n", "-F"]),
+  "release edit": new Set(["-R", "-t", "-n", "-F"]),
+  "gist create": new Set(["-d", "-f"]),
+};
+const LONGAS_POR_FAMILIA = {
+  release: new Set(["--repo", "--title", "--notes", "--notes-file", "--target", "--discussion-category", "--tag", "--notes-start-tag"]),
+  gist: new Set(["--desc", "--filename"]),
+};
+
+/**
+ * Conteúdo de um arquivo de corpo, ou null (ilegível, inexistente, stdin ou valor
+ * resolvido na hora). #707 (D4): `~` no começo expande para o HOME, como o bash faz
+ * antes do `gh`, e o BOM decide a codificação (o `> body.md` do PowerShell 5.1
+ * grava UTF-16LE com BOM, que lido como UTF-8 não casava termo nenhum).
+ */
+function lerCorpoDeArquivo(valor, cwd) {
+  if (valor == null || valor === "-" || /[$\x60]/.test(valor)) return null;
+  let caminho = valor;
+  if (/^~(?=$|[\\/])/.test(caminho)) caminho = (process.env.HOME || process.env.USERPROFILE || "") + caminho.slice(1);
+  try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(caminho); } catch {}
+  const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwd, caminho);
+  let buf;
+  try { buf = fs.readFileSync(resolvido); } catch { return null; }
+  return decodificarCorpo(buf);
+}
+
+function decodificarCorpo(buf) {
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) return buf.subarray(2).toString("utf16le");
+  if (buf.length >= 2 && buf[0] === 0xfe && buf[1] === 0xff) {
+    const corpo = Buffer.from(buf.subarray(2, 2 + ((buf.length - 2) & ~1)));
+    return corpo.swap16().toString("utf16le");
+  }
+  if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) return buf.subarray(3).toString("utf8");
+  return buf.toString("utf8");
+}
+
+/** #707 (D1): flags de `gh api` que levam valor (`gh api --help`). */
+const FLAGS_API_VALOR = new Set(["-f", "-F", "--raw-field", "--field", "--input", "-X", "--method", "-H", "--header", "--hostname", "-q", "--jq", "-t", "--template", "-p", "--preview", "--cache"]);
+
+/**
+ * #707 (D1, D3): textos e destino de `gh api` de escrita, ou null quando não
+ * escreve (decidido por `apiEhEscrita`, a mesma regra do gate de subagente) ou
+ * quando escreve num gist secreto. O destino sai do endpoint: `repos/<dono>/<repo>`
+ * é o repositório; `{owner}`/`{repo}` (ou `:owner`/`:repo`) é o do cwd, como o
+ * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
+ */
+function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
+  const args = toks.slice(iApi + 1);
+  let ehEscrita = true;
+  try { ehEscrita = require("./gate-subagente-sem-gh.cjs").apiEhEscrita(args); } catch {}
+  if (!ehEscrita) return null;
+  const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];
+  let endpoint = null;
+  let metodo = null;
+  let hostname = false;
+  let gistPublico = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const t = args[i];
+    if (!t.startsWith("-") || t === "-") { if (endpoint === null && t !== "-") endpoint = t; continue; }
+    if (/^-X./.test(t)) { metodo = t.slice(2).toUpperCase(); continue; }
+    const longa = t.startsWith("--");
+    const igual = t.indexOf("=");
+    const chave = longa ? (igual === -1 ? t : t.slice(0, igual)).toLowerCase() : t.slice(0, 2);
+    if (!FLAGS_API_VALOR.has(chave)) continue;
+    let valor = longa ? (igual === -1 ? null : t.slice(igual + 1)) : (t.length > 2 ? t.slice(2) : null);
+    if (valor === null) { valor = args[i + 1] ?? null; i += 1; }
+    if (valor === null) continue;
+    if (chave === "-X" || chave === "--method") { metodo = valor.toUpperCase(); continue; }
+    if (chave === "--hostname") { hostname = true; continue; }
+    if (chave === "--input") {
+      const corpo = lerCorpoDeArquivo(valor, cwd);
+      if (corpo !== null) textos.push({ origem: `--input ${valor}`, texto: corpo });
+      continue;
+    }
+    if (chave === "-f" || chave === "-F" || chave === "--raw-field" || chave === "--field") {
+      const eq = valor.indexOf("=");
+      const campo = eq === -1 ? valor : valor.slice(0, eq);
+      const conteudo = eq === -1 ? "" : valor.slice(eq + 1);
+      if (/^public$/i.test(campo) && /^true$/i.test(conteudo)) gistPublico = true;
+      if ((chave === "-F" || chave === "--field") && conteudo.startsWith("@")) {
+        const corpo = lerCorpoDeArquivo(conteudo.slice(1), cwd);
+        if (corpo !== null) textos.push({ origem: `${chave} ${campo}=${conteudo}`, texto: corpo });
+      } else {
+        textos.push({ origem: `${chave} ${campo}`, texto: conteudo });
+      }
+    }
+  }
+  const ep = String(endpoint || "").replace(/^https?:\/\/api\.github\.com/i, "").replace(/^\/+/, "");
+  let repoFlag = null;
+  let destinoFixo = null;
+  const doRepo = ep.match(/^repos\/([^/?#]+)\/([^/?#]+)/i);
+  if (hostname) repoFlag = "?";
+  else if (doRepo) {
+    const local = /^(?:\{owner\}|:owner)$/i.test(doRepo[1]) || /^(?:\{repo\}|:repo)$/i.test(doRepo[2]);
+    if (!local) repoFlag = normalizarRepoAlvo(`${doRepo[1]}/${doRepo[2]}`);
+  } else if (/^gists\/?(?:[?#].*)?$/i.test(ep) && (metodo === null || metodo === "POST")) {
+    if (!gistPublico) return null; // gist secreto: tratado como privado (D3)
+    destinoFixo = "publica";
+  } else {
+    repoFlag = "?";
+  }
+  return { familia: "api", verbo: metodo || "POST", textos, repoFlag, repoUrls: [], destinoFixo };
+}
 // `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`).
 const APELIDOS_GH = { new: "create" };
 
@@ -852,6 +967,20 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   // `GH_REPO=x gh ...` (ou `env GH_REPO=x gh ...`): prefixo do próprio comando.
   const repoPrefixo = toks.slice(0, iGh).filter((t) => /^GH_REPO=/.test(t))
     .map((t) => normalizarRepoAlvo(t.slice("GH_REPO=".length)) || "?");
+  // O prefixo só manda sozinho quando tudo antes do `gh` é atribuição pura
+  // (`A=b gh`, `env A=b gh`): `env -u`, `sudo` e afins podem mudar o ambiente
+  // que chega ao `gh`, e aí o prefixo vira só mais um destino possível.
+  const antesDoGh = toks.slice(0, iGh);
+  const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
+  const prefixoLimpo = antesDoGh.every(ehAtribuicao)
+    || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
+
+  // #707 (D1): `gh api` tem gramática própria (endpoint e campos), e é lido à parte.
+  const iApi = toks.findIndex((t, k) => k > iGh && !t.startsWith("-"));
+  if (iApi !== -1 && toks[iApi].toLowerCase() === "api") {
+    const ra = textosDoGhApi(toks, iApi, cmdOriginal, cwd);
+    return ra && { ...ra, repoPrefixo, prefixoLimpo };
+  }
   let repoValor = null;
   const posicionais = [];
   let i = iGh + 1;
@@ -870,8 +999,11 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const verbo = APELIDOS_GH[posicionais[1]] || posicionais[1];
   if (!VERBOS_GH_TEXTO[familia] || !VERBOS_GH_TEXTO[familia].has(verbo)) return null;
   const repoUrls = [];
+  // #707 (D2, D3): `release` e `gist` têm a própria tabela de flags.
+  const porFamilia = familia === "release" || familia === "gist";
+  let gistPublico = false;
 
-  const curtasDoVerbo = FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set();
+  const curtasDoVerbo = porFamilia ? CURTAS_POR_FAMILIA[`${familia} ${verbo}`] : (FLAGS_GH_VALOR.curtasPorVerbo[verbo] || new Set());
   // O comando inteiro conta como texto (Q2 A do Luís, 2026-11-13): valor de
   // flag, heredoc, here-string, `printf ... |`, `<<<` e `B="..."; ... "$B"`
   // estão todos escritos nele. Preço aceito: termo só num caminho do mesmo
@@ -883,16 +1015,27 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   for (; i < toks.length; i += 1) {
     const tok = toks[i];
     // `gh issue comment <URL>` publica no repositório da URL, não no do cwd (revisão 3).
-    if (!tok.startsWith("-")) { const u = repoDaUrlGh(tok); if (u) repoUrls.push(u); continue; }
+    if (!tok.startsWith("-")) {
+      // #707 (D3): o posicional do `gist create` é o arquivo publicado.
+      if (familia === "gist") {
+        const corpo = lerCorpoDeArquivo(tok, cwd);
+        if (corpo !== null) textos.push({ origem: `arquivo ${tok}`, texto: corpo });
+        continue;
+      }
+      const u = repoDaUrlGh(tok); if (u) repoUrls.push(u); continue;
+    }
     if (tok === "-") continue;
     const longa = tok.startsWith("--");
     const igual = tok.indexOf("=");
     const chave = longa ? (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase() : tok.slice(0, 2);
+    if (familia === "gist" && (chave === "--public" || chave === "-p")) { gistPublico = true; continue; }
     const colado = longa
       ? (igual === -1 ? null : tok.slice(igual + 1))
       : (tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
-    const temValor = longa ? (FLAGS_GH_VALOR.longas.has(chave) || curtasDoVerbo.has(chave))
-      : (FLAGS_GH_VALOR.curtasSempre.has(chave) || curtasDoVerbo.has(chave));
+    const temValor = porFamilia
+      ? (longa ? LONGAS_POR_FAMILIA[familia].has(chave) : curtasDoVerbo.has(chave))
+      : longa ? (FLAGS_GH_VALOR.longas.has(chave) || curtasDoVerbo.has(chave))
+        : (FLAGS_GH_VALOR.curtasSempre.has(chave) || curtasDoVerbo.has(chave));
     if (!temValor) continue; // booleana
     let valor = colado;
     if (valor === null) { valor = toks[i + 1] ?? null; i += 1; }
@@ -902,37 +1045,30 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
     const ehTitulo = chave === "--title" || (chave === "-t" && verbo !== "merge");
     const ehSubject = verbo === "merge" && (chave === "--subject" || chave === "-t");
     const ehComentario = (verbo === "close" || verbo === "reopen") && (chave === "--comment" || chave === "-c");
-    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject || ehComentario) {
+    const ehNotas = familia === "release" && (chave === "--notes" || chave === "-n");
+    const ehDescricao = familia === "gist" && (chave === "--desc" || chave === "-d");
+    if (chave === "--body" || chave === "-b" || ehTitulo || ehSubject || ehComentario || ehNotas || ehDescricao) {
       textos.push({ origem: chave, texto: valor });
       continue;
     }
-    if (chave === "--body-file" || chave === "-F") {
-      if (/[$\x60]/.test(valor) || valor === "-") continue;
-      let caminho = valor;
-      try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(valor); } catch {}
-      const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwd, caminho);
-      try {
-        textos.push({ origem: `${chave} ${valor}`, texto: fs.readFileSync(resolvido, "utf8") });
-      } catch {
-        // Ilegível ou inexistente: o comando inteiro já entrou.
-      }
+    if (chave === "--body-file" || chave === "-F" || chave === "--notes-file") {
+      // Ilegível, inexistente, stdin ou valor da hora: o comando inteiro já entrou.
+      const corpo = lerCorpoDeArquivo(valor, cwd);
+      if (corpo !== null) textos.push({ origem: `${chave} ${valor}`, texto: corpo });
     }
   }
-  // O prefixo só manda sozinho quando tudo antes do `gh` é atribuição pura
-  // (`A=b gh`, `env A=b gh`): `env -u`, `sudo` e afins podem mudar o ambiente
-  // que chega ao `gh`, e aí o prefixo vira só mais um destino possível.
-  const antesDoGh = toks.slice(0, iGh);
-  const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
-  const prefixoLimpo = antesDoGh.every(ehAtribuicao)
-    || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
-  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoUrls, repoPrefixo, prefixoLimpo };
+  // #707 (D3): gist sem `--public` é secreto, tratado como privado.
+  if (familia === "gist" && !gistPublico) return null;
+  const destinoFixo = familia === "gist" ? "publica" : null;
+  return { familia, verbo, textos, repoFlag: normalizarRepoAlvo(repoValor), repoUrls, repoPrefixo, prefixoLimpo, destinoFixo };
 }
 
 function mensagemBloqueioGh(achados, familia, verbo, ehSubagente, visibilidade) {
   let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
     `Comando: gh ${familia} ${verbo}\n` +
-    `Razão: o texto deste comando vai para um repositório ` +
-    (visibilidade === "publica" ? `público (apurado por 'gh repo view')` : `de visibilidade desconhecida (bloqueado por precaução)`) +
+    `Razão: o texto deste comando vai para ` +
+    (familia === "gist" ? `um gist público (--public)` : `um repositório ` +
+      (visibilidade === "publica" ? `público (apurado por 'gh repo view')` : `de visibilidade desconhecida (bloqueado por precaução)`)) +
     ` e contém dados sensíveis.\n\nTrechos encontrados:\n`;
   for (const a of achados) {
     msg += `\n  ${a.origem}, linha ${a.linha}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}\n`;
@@ -989,6 +1125,8 @@ function cwdsDoSegmentoGh(mapa, segmento, cwdDoEvento) {
  * senão o `GH_REPO` do ambiente da sessão; senão o cwd.
  */
 function destinosDoSegmentoGh(r, locais, mencoes) {
+  // #707 (D3): gist público não é repositório; o destino é fixo.
+  if (r.destinoFixo) return [{ fixa: r.destinoFixo }];
   const base = destinosSemUrl(r, locais, mencoes);
   // A URL posicional SOMA aos destinos, nunca os substitui: um token que o
   // gate lê como URL sem que o `gh` o leia assim não pode liberar um destino
@@ -1011,6 +1149,7 @@ const PESO_VISIBILIDADE = { privada: 0, "desconhecida-declarada": 1, desconhecid
 
 /** Visibilidade de um destino; `null` quando o cwd não é repositório (o `gh` não publicaria). */
 function visibilidadeDoDestino(d) {
+  if (d.fixa) return d.fixa;
   if (d.repo) return visibilidadeDoAlvo(d.repo);
   if (d.incerto) return "desconhecida";
   const gitTop = git(d.cwd, ["rev-parse", "--show-toplevel"]);
@@ -1098,7 +1237,8 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
       }
     }
     if (!r) continue;
-    ghTextoSegmentos += 1;
+    // #707 (D5): a rede só conhece `issue`/`pr`; as famílias novas não entram na conta.
+    if (r.familia === "issue" || r.familia === "pr") ghTextoSegmentos += 1;
     if (achados.length === 0) continue;
 
     // Falha fechada: o pior destino possível decide.
@@ -1160,12 +1300,8 @@ function conferirGhPerdido(cmdOriginal, cwdDoEvento, agente, conferirMemo) {
   // O arquivo de `--body-file`/`-F` legível também conta (revisão 3).
   for (const x of cmd.matchAll(/(?:--body-file[=\s]+|(?:^|\s)-F\s*=?\s*)(?:"([^"]+)"|'([^']+)'|([^\s"';|&()\x60]+))/gi)) {
     const arq = x[1] || x[2] || x[3];
-    if (/[$\x60]/.test(arq) || arq === "-") continue;
-    let caminho = arq;
-    try { caminho = require("./lib/cwd-efetivo.cjs").normalizarMsys(caminho); } catch {}
-    const resolvido = path.isAbsolute(caminho) ? caminho : path.resolve(cwdDoEvento, caminho);
-    let texto = null;
-    try { texto = fs.readFileSync(resolvido, "utf8"); } catch {}
+    // Til, MSYS, BOM, stdin e valor da hora: mesmo leitor da segmentação (#707, D4).
+    const texto = lerCorpoDeArquivo(arq, cwdDoEvento);
     const r = texto === null ? null : conferirMemo(texto);
     if (r && r.achados) for (const a of r.achados) achados.push({ ...a, origem: `--body-file ${arq}` });
   }

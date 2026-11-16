@@ -44,6 +44,7 @@ Resíduos aceitos. A Issue autoriza aceitar o stdin e o valor resolvido na hora.
 - **Here-string do PowerShell com fechamento indentado** e o caso da crase em aspa simples que não discrimina as leituras.
 - **Falso positivo de `echo gh issue create --title <termo>`** (falha fechada, só com termo).
 - **`gh gist edit` e `gh release upload`.**
+- **Custo aceito: `repos/{owner}/{repo}` com termo num repositório privado barra.** O leitor de cwd (`hooks/lib/cwd-efetivo.cjs`) quebra o segmento nas chaves, como grupo `{ ...; }`, e marca o cwd incerto. Falha fechada; `:owner/:repo` resolve pelo cwd e sai 0 no privado.
 
 ## Pronto quando
 
