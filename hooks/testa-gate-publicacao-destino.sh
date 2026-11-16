@@ -1034,6 +1034,12 @@ confere702 "707 api gists --input barra (public no arquivo)" 2 "$PRIV" Bash "$R7
 confere702 "707 api gists -F @arquivo barra" 2 "$PRIV" Bash "$R702P" "gh api gists -F 'files[a.md][content]=@a.md'"
 par707 "api -f grudado" "$R702P" 'gh api repos/dono/x/issues -fbody=termo702'
 par707 "api -F @ grudado" "$R702P" 'gh api repos/dono/x/issues -Fbody=@corpo.md'
+# pflag desagrupa: -i booleana antes da flag de valor, e -f=valor perde o =.
+par707 "api -i agrupado com -f" "$R702P" 'gh api repos/dono/x/issues -ifbody=termo702'
+par707 "api -f=valor" "$R702P" 'gh api repos/dono/x/issues -f=body=termo702'
+par707 "api -iXPOST agrupado" "$R702P" 'gh api -iXPOST repos/dono/x/issues -f title=termo702'
+confere702 "707 api grupo com letra desconhecida barra (falha fechada)" 2 "$PRIV" Bash "$R702P" 'gh api repos/dono/x/issues -zfbody=termo702'
+confere702 "707 api -i sozinho de leitura passa" 0 "$PUB" Bash "$R702P" 'gh api -i repos/dono/x/issues'
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo

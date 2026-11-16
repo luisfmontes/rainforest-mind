@@ -805,6 +805,8 @@ function decodificarCorpo(buf) {
 
 /** #707 (D1): flags de `gh api` que levam valor (`gh api --help`). */
 const FLAGS_API_VALOR = new Set(["-f", "-F", "--raw-field", "--field", "--input", "-X", "--method", "-H", "--header", "--hostname", "-q", "--jq", "-t", "--template", "-p", "--preview", "--cache"]);
+// Únicas letras booleanas do `gh api` (`gh api --help`): `-i` (--include) e `-h`.
+const FLAGS_API_BOOLEANAS = new Set(["-i", "-h"]);
 
 /**
  * #707 (D1, D3): textos e destino de `gh api` de escrita, ou null quando não
@@ -814,16 +816,30 @@ const FLAGS_API_VALOR = new Set(["-f", "-F", "--raw-field", "--field", "--input"
  * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
  */
 function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
-  // Flag curta com o valor grudado (`-fbody=x`, `-Fbody=@x`) se separa antes
-  // de tudo: a `apiEhEscrita` só reconhece a flag sozinha (revisão de
-  // segurança do commit, 2026-11-16). `-XPOST` fica como está.
+  // Flags curtas se desagrupam como o pflag do `gh` faz: `-ifbody=x` é `-i`
+  // e `-f body=x`; `-f=body=x` perde o `=` da frente. A `apiEhEscrita` só
+  // reconhece a flag sozinha (revisões de segurança de 2026-11-16). Letra
+  // desconhecida no grupo: não se sabe o que o `gh` leria, então conta como
+  // escrita para destino desconhecido (falha fechada).
   const args = [];
+  let grupoIlegivel = false;
   for (const t of toks.slice(iApi + 1)) {
-    if (/^-[a-zA-Z]./.test(t) && !/^-X/.test(t) && FLAGS_API_VALOR.has(t.slice(0, 2))) args.push(t.slice(0, 2), t.slice(2));
-    else args.push(t);
+    if (!/^-[^-]./.test(t)) { args.push(t); continue; }
+    for (let k = 1; k < t.length; k += 1) {
+      const flag = `-${t[k]}`;
+      if (FLAGS_API_VALOR.has(flag)) {
+        const resto = t.slice(k + 1).replace(/^=/, "");
+        args.push(flag);
+        if (resto !== "") args.push(resto);
+        break;
+      }
+      if (!FLAGS_API_BOOLEANAS.has(flag)) { grupoIlegivel = true; args.push(t); break; }
+      args.push(flag);
+    }
   }
   let ehEscrita = true;
   try { ehEscrita = require("./gate-subagente-sem-gh.cjs").apiEhEscrita(args); } catch {}
+  if (grupoIlegivel) ehEscrita = true;
   if (!ehEscrita) return null;
   const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];
   let endpoint = null;
@@ -886,6 +902,7 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   } else {
     repoFlag = "?";
   }
+  if (grupoIlegivel) { repoFlag = "?"; destinoFixo = null; }
   return { familia: "api", verbo: metodo || "POST", textos, repoFlag, repoUrls: [], destinoFixo };
 }
 // `gh issue new` e `gh pr new` são apelidos de `create` (`gh issue create --help`).
