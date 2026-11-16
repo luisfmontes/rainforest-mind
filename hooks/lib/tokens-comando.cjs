@@ -787,6 +787,47 @@ function contemConstrucaoIlegivel(str) {
   return /\$\(|`|\$[A-Za-z_{0-9@*#?$!-]/.test(str) || temAspaDeCifraoForaDeAspas(str);
 }
 
+/**
+ * Remoção de aspas como o bash faz antes de entregar as palavras ao `eval`:
+ * contrabarra fora de aspas escapa o caractere seguinte (e some com a quebra
+ * de linha), aspa simples é literal, e dentro de aspa dupla a contrabarra só
+ * escapa `$`, crase, `"`, `\` e quebra de linha. O `eval` relê o resultado,
+ * então `\$\'gh\'` vira `$'gh'` (revisão 4 da zerar-issues-14).
+ */
+function desasparComoBash(s) {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === "\\") {
+      if (s[i + 1] === "\n") { i++; continue; }
+      if (i + 1 < s.length) out += s[++i];
+      continue;
+    }
+    if (c === "'") {
+      const fim = s.indexOf("'", i + 1);
+      if (fim < 0) { out += s.slice(i + 1); break; }
+      out += s.slice(i + 1, fim);
+      i = fim;
+      continue;
+    }
+    if (c === '"') {
+      let j = i + 1;
+      for (; j < s.length && s[j] !== '"'; j++) {
+        if (s[j] === "\\" && j + 1 < s.length && '$`"\\\n'.includes(s[j + 1])) {
+          if (s[j + 1] !== "\n") out += s[j + 1];
+          j++;
+          continue;
+        }
+        out += s[j];
+      }
+      i = j;
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
 /** `$'` ou `$"` que abre aspa (fora de aspas e sem contrabarra antes). */
 function temAspaDeCifraoForaDeAspas(s) {
   let aspa = null;
@@ -1111,7 +1152,12 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // como no `bash -c` (`contemConstrucaoIlegivel` já usa
     // `temAspaDeCifraoForaDeAspas`): em `eval "grep 'x$' f"` o `$'` é âncora de
     // regex citada, não aspa ANSI-C (revisão 3 da zerar-issues-14).
-    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+    // O `eval` relê o texto DEPOIS da remoção de aspas: em palavra mista
+    // (`eval '$'"'gh' issue comment 5"`) o `$'` só aparece juntando as partes,
+    // e o `interno` cru não o mostra fora de aspas (revisão 4). Confere também
+    // o texto desaspado, palavra por palavra, que é o que o `eval` executa.
+    const desaspado = desasparComoBash(p1.resto);
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) || contemConstrucaoIlegivel(desaspado) };
   }
 
   const p2 = extrairPrimeiroToken(p1.resto);

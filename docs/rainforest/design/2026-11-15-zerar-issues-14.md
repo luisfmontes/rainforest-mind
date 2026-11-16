@@ -140,9 +140,10 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   a regra das duas leituras não cobre (`` echo a `echo b #c \ `` + quebra + `echo don't` + quebra +
   `` gh issue close 12` ``). O gate de subagente não desce em crase nem pula o `--` do `eval`.
   Os três passam na base e no HEAD; o `gate-fechar-issue` barra os do gate de subagente.
-- Resíduo aceito (revisão de segurança do 6fed0986, preexistente): no gate de subagente,
-  `eval "$'gh'" issue close 12` e `eval '' "$'gh' issue close 12"` passam na base e no HEAD
-  (o `gate-fechar-issue` barra os dois).
+- Fechado na revisão 4: no gate de subagente, o `eval` confere também o texto depois da remoção
+  de aspas que o bash faz antes de entregar as palavras a ele (`desasparComoBash`). Com isso, palavra mista
+  (`eval '$'"'gh' issue comment 5"`), `\$\'` escapado e `eval "$'gh'" issue close 12`, que
+  passavam na base ou no 6fed0986, saem 2. O fuzz de 130 formas da revisão 4 dá 0 regressões.
 - Resíduo aceito (revisão 3, fora do modelo da D6): `echo 'gh issue close 12' | bash` e
   `source <(echo 'gh issue close 12')` são script lido por pipe ou substituição.
 - Resíduo aceito (revisão 3): linha de 100 KB de `# ` leva 2,6 s no regex das duas leituras
@@ -151,6 +152,13 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   `#` deixa o comentário duvidoso, e `$(( n + 1 )) # chamadas ao gh` sai 2 (sem `gh` no
   comentário, sai 0). Contar `((` contra `))` sem rastrear aspas foi enganado duas vezes
   (`(( $((1)) # 2 ))`, `"))"` citado). É o mesmo custo aceito do `${`.
+- Aceito (revisão 4): o mesmo vale para `$[` e `[[` em qualquer ponto antes do `#`, inclusive
+  dentro de aspas e no PowerShell. `[[ -f x ]] && echo ok # roda gh depois` e
+  `echo "a [[ b" # ls gh` saem 2; sem `gh` no comentário, saem 0.
+- Aceito (revisão 4): o custo da leitura dupla não é linear quando toda linha tem `#` e termina
+  em `\`. Com `echo hi #c \` seguido de 350 ou mais linhas `echo "linha #x" \`, o orçamento
+  da D4d estoura e o comando sai 2 (falha fechada; 250 linhas saem 0). Sem `#` em cada linha,
+  20.000 linhas saem 0 em 0,3 s.
 - Aceito (revisão 3): `cat > doc.md <<'EOF'` + `# Title \` + `gh issue close 12` + `EOF` sai 2. A
   base já barra `gh issue close` em linha de corpo de heredoc (sem o `# … \` também sai 2) e só
   passava esse caso porque juntava as linhas e escondia o `gh`.
