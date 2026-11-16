@@ -16,7 +16,39 @@
     "em": "2026-11-16"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-11-16",
+    "integradas": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "comando": "bash hooks/testa-gate-publicacao-destino.sh; node scratchpad/mut15.cjs",
+    "saida": "HEAD 19968de4: testa-gate-publicacao-destino == resultado: 260 ok, 0 falha(s) ==, EXIT=0. Mutacoes (medidas em c01f5c09, linhas de/para identicas no HEAD): tarefa 1 exit=1 234 ok 18 falha(s); tarefa 2 exit=1 239 ok 13 falha(s); tarefa 3 exit=1 250 ok 2 falha(s); restaurado=true. Baterias vizinhas no 8cb061ed: publicacao-write 5 ok, testa-versao 5 ok, conferir-versao 38 ok, release-da-versao 14 ok.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, secao (#707) gh api, gh release e gh gist, casos 707 api"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, secao (#707) gh api, gh release e gh gist, casos 707 release"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, secao (#707) gh api, gh release e gh gist, casos UTF-16LE com BOM"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "numero de versao e texto de registro, sem comportamento a inverter"
+      }
+    ],
+    "em": "2026-11-16"
   },
   "revisar": {
     "status": "pendente"
