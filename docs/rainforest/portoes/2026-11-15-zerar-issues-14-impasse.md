@@ -28,3 +28,18 @@ menores, criados pelos próprios consertos de segurança. Não houve divergênci
 
 ## Decisão pedida ao usuário
 Liberar uma 4ª rodada de revisão com esses consertos. É o recomendado.
+- Resposta, em 2026-11-16: "recomendado". A 4ª rodada foi liberada.
+
+## Revisão 4 (HEAD 870cb69b)
+- Ela reprovou por **uma regressão**, causada pelo conserto do `eval` no 6fed0986. Uma palavra
+  mista de aspas (`eval '$'"'gh' issue comment 5"`) passava no gate de subagente, e a base barrava.
+  O gate de fechamento barrava a mesma forma.
+- Conserto no ab00f990: o `eval` confere o texto depois da remoção de aspas do bash.
+  - O fuzz de 130 formas do revisor deu 0 regressões.
+  - As sondas de falso positivo dele dão base igual ao HEAD no gate de subagente.
+- Dois achados baixos viraram custo aceito no design:
+  - `[[` e `$[` antes de um `#`;
+  - a leitura dupla com mais de 350 linhas `#…\`.
+
+## Decisão pedida ao usuário (2)
+Liberar uma 5ª rodada com o conserto do ab00f990. É o recomendado.
