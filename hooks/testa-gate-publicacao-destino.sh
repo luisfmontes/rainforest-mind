@@ -1040,6 +1040,13 @@ par707 "api -f=valor" "$R702P" 'gh api repos/dono/x/issues -f=body=termo702'
 par707 "api -iXPOST agrupado" "$R702P" 'gh api -iXPOST repos/dono/x/issues -f title=termo702'
 confere702 "707 api grupo com letra desconhecida barra (falha fechada)" 2 "$PRIV" Bash "$R702P" 'gh api repos/dono/x/issues -zfbody=termo702'
 confere702 "707 api -i sozinho de leitura passa" 0 "$PUB" Bash "$R702P" 'gh api -i repos/dono/x/issues'
+# pflag: flag de valor sem valor colado consome o proximo token, mesmo com -.
+par707 "api -p consome -XGET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 -p -XGET'
+par707 "api -p consome -iXGET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 -p -iXGET'
+par707 "api -q consome -XGET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 -q -XGET'
+par707 "api --jq consome --method=GET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 --jq --method=GET'
+par707 "api campo -X=GET nao e metodo" "$R702P" 'gh api repos/dono/x/issues -f -X=GET -f body=termo702'
+confere702 "707 api -H consome o token antes do endpoint" 0 "$PUB" Bash "$R702P" 'gh api -H accept:x repos/dono/x/issues'
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo

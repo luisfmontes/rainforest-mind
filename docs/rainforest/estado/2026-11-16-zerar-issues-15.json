@@ -51,7 +51,12 @@
     "em": "2026-11-16"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "91a401a175409b1402ac4bb6216bc4c8d67cf6e2",
+      "caminhos_sujos": []
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"

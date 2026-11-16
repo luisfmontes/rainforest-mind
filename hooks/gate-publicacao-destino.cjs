@@ -807,6 +807,8 @@ function decodificarCorpo(buf) {
 const FLAGS_API_VALOR = new Set(["-f", "-F", "--raw-field", "--field", "--input", "-X", "--method", "-H", "--header", "--hostname", "-q", "--jq", "-t", "--template", "-p", "--preview", "--cache"]);
 // Únicas letras booleanas do `gh api` (`gh api --help`): `-i` (--include) e `-h`.
 const FLAGS_API_BOOLEANAS = new Set(["-i", "-h"]);
+const FLAGS_API_LONGAS_BOOLEANAS = new Set(["--include", "--paginate", "--silent", "--slurp", "--verbose", "--help"]);
+const FLAGS_API_CAMPO = new Set(["-f", "-F", "--raw-field", "--field", "--input"]);
 
 /**
  * #707 (D1, D3): textos e destino de `gh api` de escrita, ou null quando não
@@ -816,48 +818,61 @@ const FLAGS_API_BOOLEANAS = new Set(["-i", "-h"]);
  * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
  */
 function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
-  // Flags curtas se desagrupam como o pflag do `gh` faz: `-ifbody=x` é `-i`
-  // e `-f body=x`; `-f=body=x` perde o `=` da frente. A `apiEhEscrita` só
-  // reconhece a flag sozinha (revisões de segurança de 2026-11-16). Letra
-  // desconhecida no grupo: não se sabe o que o `gh` leria, então conta como
-  // escrita para destino desconhecido (falha fechada).
-  const args = [];
+  // Uma passada só, como o pflag do `gh` lê (revisões de segurança de
+  // 2026-11-16): flag curta se desagrupa (`-ifbody=x` é `-i` e `-f body=x`;
+  // `-f=body=x` perde o `=`), e flag que pede valor sem valor colado consome
+  // o PRÓXIMO token literalmente, mesmo começando com `-` (`-p -XGET` é a
+  // prévia "-XGET", não o método). Flag desconhecida: não se sabe o que o
+  // `gh` leria, então conta como escrita para destino desconhecido.
+  const brutos = toks.slice(iApi + 1);
+  const pares = [];
+  const posicionais = [];
   let grupoIlegivel = false;
-  for (const t of toks.slice(iApi + 1)) {
-    if (!/^-[^-]./.test(t)) { args.push(t); continue; }
+  for (let i = 0; i < brutos.length; i += 1) {
+    const t = brutos[i];
+    if (t === "--") { posicionais.push(...brutos.slice(i + 1)); break; }
+    if (t.startsWith("--")) {
+      const igual = t.indexOf("=");
+      const flag = (igual === -1 ? t : t.slice(0, igual)).toLowerCase();
+      if (FLAGS_API_VALOR.has(flag)) {
+        if (igual !== -1) pares.push([flag, t.slice(igual + 1)]);
+        else if (i + 1 < brutos.length) { pares.push([flag, brutos[i + 1]]); i += 1; }
+      } else if (!FLAGS_API_LONGAS_BOOLEANAS.has(flag)) grupoIlegivel = true;
+      continue;
+    }
+    if (!/^-./.test(t)) { posicionais.push(t); continue; }
     for (let k = 1; k < t.length; k += 1) {
       const flag = `-${t[k]}`;
       if (FLAGS_API_VALOR.has(flag)) {
-        const resto = t.slice(k + 1).replace(/^=/, "");
-        args.push(flag);
-        if (resto !== "") args.push(resto);
+        const resto = t.slice(k + 1);
+        if (resto.startsWith("=")) pares.push([flag, resto.slice(1)]);
+        else if (resto !== "") pares.push([flag, resto]);
+        else if (i + 1 < brutos.length) { pares.push([flag, brutos[i + 1]]); i += 1; }
         break;
       }
-      if (!FLAGS_API_BOOLEANAS.has(flag)) { grupoIlegivel = true; args.push(t); break; }
-      args.push(flag);
+      if (!FLAGS_API_BOOLEANAS.has(flag)) { grupoIlegivel = true; break; }
     }
   }
+  // A `apiEhEscrita` recebe a forma canônica: endpoint, método e campos, cada
+  // valor num token próprio que nunca começa com `-` (senão ela o leria como
+  // flag: `-f -X=GET` é o campo "-X" de valor "GET", não o método).
+  const seguro = (v) => (String(v).startsWith("-") ? `_${v}` : String(v));
+  const canon = posicionais.length ? [seguro(posicionais[0])] : [];
+  for (const [flag, valor] of pares) {
+    if (flag === "-X" || flag === "--method") canon.push("-X", seguro(valor));
+    else if (FLAGS_API_CAMPO.has(flag)) canon.push(flag, seguro(valor));
+  }
   let ehEscrita = true;
-  try { ehEscrita = require("./gate-subagente-sem-gh.cjs").apiEhEscrita(args); } catch {}
+  try { ehEscrita = require("./gate-subagente-sem-gh.cjs").apiEhEscrita(canon); } catch {}
   if (grupoIlegivel) ehEscrita = true;
   if (!ehEscrita) return null;
   const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];
-  let endpoint = null;
+  const endpoint = posicionais[0] ?? null;
   let metodo = null;
   let hostname = false;
   let gistPublico = false;
   let corpoDeArquivo = false;
-  for (let i = 0; i < args.length; i += 1) {
-    const t = args[i];
-    if (!t.startsWith("-") || t === "-") { if (endpoint === null && t !== "-") endpoint = t; continue; }
-    if (/^-X./.test(t)) { metodo = t.slice(2).toUpperCase(); continue; }
-    const longa = t.startsWith("--");
-    const igual = t.indexOf("=");
-    const chave = longa ? (igual === -1 ? t : t.slice(0, igual)).toLowerCase() : t.slice(0, 2);
-    if (!FLAGS_API_VALOR.has(chave)) continue;
-    let valor = longa ? (igual === -1 ? null : t.slice(igual + 1)) : (t.length > 2 ? t.slice(2) : null);
-    if (valor === null) { valor = args[i + 1] ?? null; i += 1; }
-    if (valor === null) continue;
+  for (const [chave, valor] of pares) {
     if (chave === "-X" || chave === "--method") { metodo = valor.toUpperCase(); continue; }
     if (chave === "--hostname") { hostname = true; continue; }
     if (chave === "--input") {
