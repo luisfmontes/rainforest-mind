@@ -13,7 +13,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 ## 2.16.1 — 2026-11-16
 
 - **O gate de publicação confere `gh api`, `gh release` e `gh gist`.** Com um termo da sua lista privada no texto, estas escritas são barradas quando o destino é público:
-  - `gh api` de escrita (`-f`, `--raw-field`, `-F`, `--field`, `-F campo=@arquivo` e `--input arquivo`), com o destino tirado do endpoint `repos/<dono>/<repo>`. Uma query de `graphql` conta como escrita com `mutation` ou com o corpo vindo de arquivo (`--input`, `-F query=@arquivo`). Quando o destino não sai do endpoint (`graphql`, `user`, `orgs`, `--hostname`, `{owner}`), ele é desconhecido, e um termo barra mesmo em repositório privado;
+  - `gh api` de escrita (`-f`, `--raw-field`, `-F`, `--field`, `-F campo=@arquivo` e `--input arquivo`), com o destino tirado do endpoint `repos/<dono>/<repo>`. Uma query de `graphql` conta como escrita com `mutation` ou com o corpo vindo de arquivo (`--input`, `-F query=@arquivo`). Quando o destino não sai do endpoint (`graphql`, `user`, `orgs`, `--hostname`), ele é desconhecido, e um termo barra mesmo em repositório privado. Use `:owner/:repo` em vez de `{owner}/{repo}`: as chaves sem aspas partem o comando na leitura do gate, e o campo depois delas não é visto;
   - `gh release create` e `gh release edit` com `--notes`, `-n`, `--notes-file`, `-F`, `--title` ou `-t`;
   - `gh gist create --public`, incluindo os arquivos e a descrição.
 

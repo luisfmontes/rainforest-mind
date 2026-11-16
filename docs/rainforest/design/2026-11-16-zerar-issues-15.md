@@ -47,7 +47,8 @@ Resíduos aceitos. A Issue autoriza aceitar o stdin e o valor resolvido na hora.
 - **Disfarces de token que a base também não lê (D6: base 0, preexistentes):** `$"..."` (sem `raw` no tokenizador) e caminho de arquivo em `$'...'` nas famílias novas; contrabarra e `$'...'` que escondem `issue`/`pr` ou a flag deles (`iss\ue`, `--$'body'`), porque `issue`/`pr` seguem a leitura da base; e `gh` escondido no nome do executável (`g$'h'`). Na leitura das famílias novas, a contrabarra segue a regra do bash só no Bash; no PowerShell ela é literal.
 - **Custo aceito: `$'...'` ilegível.** Fora de `issue`/`pr`, um `gh` com `$'...'` em algum token barra se o comando ou um arquivo citado nele tiver termo, mesmo que seja leitura (falha fechada).
 - **A `apiEhEscrita` do `gate-subagente-sem-gh` (preexistente na base).** Ela lê cada token como flag, inclusive o valor de outra flag (`-p -XGET`, `-f -X=GET`), e não desagrupa `-ifbody=`. Este gate não depende disso: o `textosDoGhApi` lê os argumentos numa passada só, como o pflag, e aplica a régua sobre os pares (emenda da D1). O gate de subagente segue como estava; levar a mesma leitura até ele é outra mudança, com outra bateria.
-- **Custo aceito: `repos/{owner}/{repo}` com termo num repositório privado barra.** O leitor de cwd (`hooks/lib/cwd-efetivo.cjs`) quebra o segmento nas chaves, como grupo `{ ...; }`, e marca o cwd incerto. Falha fechada; `:owner/:repo` resolve pelo cwd e sai 0 no privado.
+- **`repos/{owner}/{repo}` sem aspas (preexistente na leitura de segmento, base 0).** O leitor de cwd (`hooks/lib/cwd-efetivo.cjs`) quebra o segmento nas chaves, como grupo `{ ...; }`. Com `-X` antes do endpoint, o segmento `gh api -X PATCH repos/` já é escrita de destino incerto e barra, mesmo no privado (falha fechada). Sem `-X` antes, o campo depois das chaves cai em outro segmento e a forma passa (base 0, HEAD 0; revisão 3). `:owner/:repo` resolve pelo cwd. Ensinar o leitor de segmento a não partir `{owner}` dentro de uma palavra é mudança no `cwd-efetivo`, que serve a todos os gates.
+- **`gh gist create -p=false`** barra como público (a forma longa `--public=false` já é secreta). Falso positivo raro, só com termo (revisão 3).
 
 ## Pronto quando
 
@@ -55,7 +56,7 @@ Payload real de `PreToolUse` na seção `(#707)` de `bash hooks/testa-gate-publi
 
 | Família | Formas |
 |---|---|
-| `gh api` | `repos/dono/X/issues/3/comments -f body=termo707`; `--raw-field body=termo707`; `-F body=termo707`; `--field body=termo707`; `-F body=@corpo.md`; `--input corpo.json`; `-X PATCH repos/:owner/:repo/issues/3 -f body=termo707` (destino pelo cwd; com `{owner}/{repo}` barra também no privado, custo aceito em "Fora de escopo") |
+| `gh api` | `repos/dono/X/issues/3/comments -f body=termo707`; `--raw-field body=termo707`; `-F body=termo707`; `--field body=termo707`; `-F body=@corpo.md`; `--input corpo.json`; `-X PATCH repos/:owner/:repo/issues/3 -f body=termo707` (destino pelo cwd; `{owner}/{repo}` sem aspas em "Fora de escopo") |
 | `gh release create` | `--notes termo707`; `-n termo707`; `--notes-file notas.md`; `-F notas.md`; `--title termo707`; `-t termo707`; `-p -n termo707` (booleana não engole) |
 | `gh release edit` | `--notes termo707`; `-F notas.md`; `--title termo707` |
 
