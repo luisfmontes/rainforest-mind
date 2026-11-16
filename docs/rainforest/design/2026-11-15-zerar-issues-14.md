@@ -157,6 +157,11 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   com contrabarra passa a guardar o texto original (`raw`), como a palavra mista com aspa simples já
   guardava. Ainda saem 0 no HEAD e 2 na base formas com aspa dupla sem fechar (`eval "gh\" issue close 12`),
   que o bash não executa (erro de sintaxe).
+- Fechado na revisão de segurança do 9d82b5f9: com o `raw`, o token do executável chegava ao
+  desempacotador como `"ba"s\h`, que não se normaliza para `bash`, e o `gate-fechar-issue` deixava
+  passar `"ba"s\h -c "gh issue close 12"` (`'ba's\h` já vazava desde a #699). O primeiro token sai
+  sempre pelo valor. Resíduo preexistente: o gate de subagente, que tokeniza sem a opção `contrabarra`,
+  não abre `"ba"s\h -c` (sai 0 na base e no HEAD).
 - Resíduo aceito (revisão 5, preexistente): o gate de subagente não confere evento `PowerShell`;
   `gh issue comment` digitado no PowerShell de um subagente sai 0 na base e no HEAD. O
   `gate-fechar-issue` cobre o PowerShell para o fechamento.

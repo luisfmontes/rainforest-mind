@@ -4655,6 +4655,12 @@ caso_gate f699-19 2 'cmd /c "gh issue close 12"'
 caso_gate f699-20 2 $'bash -c "echo"\'x; gh issue close 12\''
 caso_gate f699-21 2 $'bash -c "gh issue close 12"\' x\''
 caso_gate f699-22 2 $'bash -c \'gh issue close 12\'" x"'
+# Executavel em palavra mista (revisao de seguranca do 9d82b5f9): o token do
+# executavel sai pelo valor, nunca pelo texto original (`"ba"s\h` e `bash`).
+caso_gate f699-26 2 $'"ba"s\\h -c "gh issue close 12"'
+caso_gate f699-27 2 $'\'ba\'s\\h -c "gh pr merge 5"'
+caso_gate f699-28 2 $'timeout 5 "ba"s\\h -c "gh issue close 12"'
+caso_gate f699-29 2 $'"e"\'val\' "gh issue close 12"'
 caso_gate f699-23 0 $'bash -c \'echo hi\' x'
 caso_gate f699-24 0 $'bash -c -- \'echo hi\''
 caso_gate f699-25 0 $'bash -c \'echo hi\' x -I"C:\\x"'

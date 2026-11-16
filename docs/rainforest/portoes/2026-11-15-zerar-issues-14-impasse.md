@@ -58,3 +58,6 @@ Liberar uma 5ª rodada com os consertos do ab00f990 e do f3976b50. É o recomend
 - Conserto: a palavra mista com contrabarra guarda o texto original (`raw`). A mutação deixa 6 casos
   vermelhos. O fuzz de 100 formas da classe dá 0 regressões com `gh` rodando.
 - Rodada 6 liberada pela autorização de 2026-11-16 ("vai no automatico").
+- Revisão de segurança do 9d82b5f9: o `raw` no token do executável fazia `"ba"s\h -c "gh issue close 12"`
+  passar no gate de fechamento (a 870cb69b barrava). O primeiro token sai pelo valor; a mutação faz 3 formas voltarem a 0.
+  A revisão 6 em andamento foi parada antes do veredito e é redespachada no HEAD novo.
