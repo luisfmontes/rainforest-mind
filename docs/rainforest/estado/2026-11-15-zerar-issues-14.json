@@ -182,7 +182,10 @@
     "head": "420216bab36ad8966f25d731e3993e24f77549e4"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "pr": 718,
+    "em": "2026-11-16"
   },
   "decididos": [
     {
