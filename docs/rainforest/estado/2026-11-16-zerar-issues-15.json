@@ -51,18 +51,18 @@
     "em": "2026-11-16"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "623191a716d7878d8d885e2040d17c5af1d555c1",
+      "head": "629163b470bacdab77f3853a0cb90031da879b59",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aaff03122ff87e5fb",
+        "agente_id": "a90027e4a58ee9743",
         "veredito": "ok",
         "em": "2026-11-16",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-aaff03122ff87e5fb.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a90027e4a58ee9743.jsonl"
       }
     ],
     "voltas": [
@@ -77,19 +77,35 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-afa01756aa744b076.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aaff03122ff87e5fb",
+            "veredito": "ok",
+            "em": "2026-11-16",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-aaff03122ff87e5fb.jsonl"
+          }
+        ]
       }
     ],
     "base": "55da5f9d",
-    "head": "623191a7",
+    "head": "629163b4",
     "revisor": "rainforest-mind:revisor",
     "veredito": "ok",
-    "achados": 2,
-    "detalhe": "rodada 2 (HEAD 6c4e6247, entrega inteira) e 3 (delta ate 623191a7): [media] texto do CHANGELOG/design sobre {owner} so vale com -X antes do endpoint (base 0, HEAD 0); [baixa] gist -p=false barra (falso positivo raro). Nenhum reprova pela D6.",
+    "achados": 0,
+    "detalhe": "rodada 4: delta 623191a7..629163b4 so de texto (hooks/ e scripts/ sem diff); texto do CHANGELOG e do design conferido no harness. Codigo aprovado nas rodadas 2 e 3.",
     "em": "2026-11-16"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-16"
+    "status": "ok",
+    "em": "2026-11-16",
+    "comando": "bash hooks/testa-gate-publicacao-destino.sh; bash scripts/testa-versao.sh; grep 2.16.1 nos manifestos, selo e CHANGELOG",
+    "saida": "HEAD 2f60b5f0: == resultado: 306 ok, 0 falha(s) == EXIT=0 (secao 707: api 56 ok 0 falha, release 31 ok 0 falha, gist 11 ok; graphql mutation barra exit 2, graphql query passa exit 0, --body-file UTF-16LE com BOM barra exit 2, --body-file ~/x.md barra exit 2, --notes-file UTF-16LE barra exit 2, api GET passa exit 0, release view passa exit 0). testa-versao ok: 5 falhou: 0. .claude-plugin e .codex-plugin version 2.16.1; README linha 7 2.16.1 e linha 189 cita gh api, gh release create/edit e gh gist create --public; CHANGELOG ## 2.16.1 — 2026-11-16.",
+    "sensor_externo": "bash hooks/testa-gate-publicacao-destino.sh",
+    "head": "629163b470bacdab77f3853a0cb90031da879b59"
   },
   "fechar": {
     "status": "pendente",
