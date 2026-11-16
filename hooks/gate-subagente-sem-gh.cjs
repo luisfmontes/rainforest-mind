@@ -38,7 +38,7 @@ const {
   WRAPPERS_QUE_REPASSAM, WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
   OPERADORES_DE_DOIS, colapsaContinuacaoDeLinhaNoTopo, semContrabarra,
 } = require("./lib/tokens-comando.cjs");
-const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
+const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica, restoDepoisDoHeredoc } = require("./lib/heredoc.cjs");
 const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
 
 /**
@@ -207,6 +207,10 @@ let TEXTOS_DE_HEREDOC = [];
  * segue o mesmo precedente de manter a própria segmentação.
  */
 function segmentosParaGate(cmd) {
+  // D3 (rodada 14), revisao 2: o bash divide a palavra no `$IFS` tambem aqui
+  // (`gh${IFS}issue${IFS}close${IFS}12`). Mesma troca do gate-fechar-issue,
+  // inclusive o `_` quando colado num `#` (o comentario e decidido antes da expansao).
+  cmd = cmd.replace(/(\$\{IFS\}|\$IFS(?![A-Za-z0-9_]))(?=(#?))/g, (m, ifs, cerquilha) => (cerquilha ? " \\" : " "));
   cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "";
@@ -332,7 +336,7 @@ function segmentosParaGate(cmd) {
         const inicioCorpo = fimDaLinhaLogica(cmd, i);
         if (inicioCorpo !== -1 && inicioCorpo < heredoc.fim) {
           const fechado = inicioCorpo + 1 + heredoc.corpo.length < heredoc.fim;
-          const depois = fechado ? cmd.slice(heredoc.fim - 1) : '';
+          const depois = fechado ? restoDepoisDoHeredoc(cmd, heredoc.fim) : '';
           cmd = cmd.slice(0, inicioCorpo) + depois;
         }
         i = j - 1;
@@ -701,6 +705,54 @@ function arquivoDeScriptExecutado(caminhoBruto, cwd) {
  * efetivo ONDE ESTE SEGMENTO roda (D4) — usado só para resolver caminho
  * relativo de arquivo executado.
  */
+// Shells que leem o script da entrada padrão: `bash <<< 'x'` roda `x`.
+const SHELLS_DE_HERE_STRING = new Set(["bash", "sh", "zsh", "ksh", "dash", "fish"]);
+
+/**
+ * Texto depois de CADA `<<<` que está FORA de aspas no segmento. O bash usa o
+ * último here-string, e conferir só o primeiro deixava `bash <<< 'echo' <<< $'gh ...'`
+ * passar (revisão de segurança do commit 6b306b39): todos são conferidos.
+ */
+function restosDepoisDeHereString(segmento) {
+  const restos = [];
+  let aspa = null;
+  let ansi = false;
+  for (let i = 0; i < segmento.length; i++) {
+    const c = segmento[i];
+    if (aspa) {
+      if ((aspa === '"' || ansi) && c === "\\") { i++; continue; }
+      if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "\\") { i++; continue; }
+    if (c === "<" && segmento.startsWith("<<<", i)) { restos.push(segmento.slice(i + 3)); i += 2; continue; }
+    if (c === "'" || c === '"') { ansi = segmento[i - 1] === "$"; aspa = c; }
+  }
+  return restos;
+}
+
+/** A palavra que o bash lê logo depois do `<<<` (com aspas, `$'...'` e contrabarra). */
+function palavraDeHereString(resto) {
+  const s = resto.replace(/^[ \t]+/, "");
+  let palavra = "";
+  let aspa = null;
+  let ansi = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (aspa) {
+      if ((aspa === '"' || ansi) && c === "\\" && i + 1 < s.length) { palavra += c + s[i + 1]; i++; continue; }
+      if (c === aspa) aspa = null;
+      palavra += c;
+      continue;
+    }
+    if (/[\s;&|()<>]/.test(c)) break;
+    if (c === "\\" && i + 1 < s.length) { palavra += c + s[i + 1]; i++; continue; }
+    if (c === "'" || c === '"') { ansi = palavra.endsWith("$"); aspa = c; }
+    palavra += c;
+  }
+  return palavra;
+}
+
 function processarSegmento(segmento, cwd) {
   const toks = tokensComAspas(segmento);
   if (toks.length === 0) return;
@@ -724,6 +776,51 @@ function processarSegmento(segmento, cwd) {
     const achado = arq === null ? null : arquivoDeScriptExecutado(arq, cwd);
     if (achado !== null) bloqueiaArquivo(achado);
     return;
+  }
+
+  // zerar-issues-14, tarefa 5 (achado 2): here-string que alimenta um shell
+  // (`bash <<< 'x'`, `bash <<<$'x'`, com ou sem espaço) é o script, lido como o
+  // `bash -c` dessa palavra. O `--` faz a palavra ser o script, nunca uma opção.
+  // Revisao 2: shell que roda um ARQUIVO (`bash ./deploy.sh <<< "$x"`) le o
+  // here-string como dado, nao como script. Palavra com `/` ou `.` antes do `<<<`,
+  // que nao seja opcao, e o arquivo. `bash -o pipefail <<<` segue lido como script.
+  // A primeira palavra que nao e opcao decide; `-s`/`-i` (soltos ou agrupados)
+  // antes dela fazem o shell ler o script do stdin mesmo com argumento
+  // (`bash -s ./x <<< ...`; revisao de seguranca do commit 4fb5da84), e `--` para.
+  // Opcao com valor (`-o x`, `+O x`, `--rcfile x`, `--init-file x`) consome a
+  // palavra seguinte, e `/dev/stdin`, `/dev/fd/0`, `/proc/self/fd/0` e `-` sao o
+  // proprio stdin (revisao de seguranca do commit 4fb5da84).
+  const argsAntes = pos === null ? [] : toks.slice(pos + 1);
+  let rodaArquivo = false;
+  for (let k = 0; k < argsAntes.length; k++) {
+    const v = argsAntes[k].v;
+    if (v.includes("<<<") || v === "--" || v === "-") break;
+    if (/^[-+]/.test(v)) {
+      if (/^-[A-Za-z]*[si]/.test(v)) break;
+      if (/^[-+][A-Za-z]*[oO]$/.test(v) || /^--(rcfile|init-file)$/.test(v)) k += 1;
+      continue;
+    }
+    // Falha fechada: caminho que passa por `dev` ou `proc` (`//dev/stdin`,
+    // `/dev/./stdin`, `../../dev/fd/0`) pode ser o stdin, e caminho montado por
+    // variavel ou substituicao nao se resolve aqui; nos dois o here-string e lido
+    // como script (revisao de seguranca do commit d9edb887).
+    const caminho = v.replace(/["']/g, "").replace(/\/+/g, "/");
+    // Glob, til, chave e contrabarra tambem montam o caminho (`/de?/stdin`).
+    rodaArquivo = /[/.]/.test(caminho) && !/(^|\/)(dev|proc)(\/|$)/.test(caminho) && !/[$`\\*?[\]{}~]/.test(caminho);
+    break;
+  }
+  if (pos !== null && SHELLS_DE_HERE_STRING.has(exeNorm) && !rodaArquivo) {
+    for (const resto of restosDepoisDeHereString(segmento)) {
+      const palavra = palavraDeHereString(resto);
+      if (palavra === "") continue;
+      // O nome real do shell: o `fish` tem regra própria no desempacotador
+      // (revisão de segurança do commit c66b56ee).
+      const hs = desempacotarWrapperDeString(`${exeNorm} -c -- ${palavra}`);
+      if (hs.ilegivel) bloqueiaIlegivel(segmento);
+      if (hs.interno !== null) {
+        for (const sub of segmentosParaGate(hs.interno)) processarSegmento(sub, cwd);
+      }
+    }
   }
 
   const { interno, ilegivel } = pos === null

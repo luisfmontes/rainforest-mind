@@ -134,6 +134,42 @@ caso('bash -c "$x" (ilegível) em subagente', r.status, 2);
 r = rodar('eval "$x"');
 caso('eval "$x" (ilegível) em subagente', r.status, 2);
 
+// zerar-issues-14, tarefa 5 (achado 2): here-string que alimenta um shell é o
+// script, e `$'...'` como script de eval ou de here-string é ilegível.
+r = rodar(`bash <<<$'gh issue close 12'`);
+caso("(achado 2) bash <<<$'gh issue close 12' em subagente", r.status, 2);
+
+r = rodar(`bash <<< $'gh issue close 12'`);
+caso("(achado 2) bash <<< $'gh issue close 12' (com espaço) em subagente", r.status, 2);
+
+r = rodar(`eval $'echo hi\\ngh issue close 12'`);
+caso("(achado 2) eval $'echo hi\\ngh issue close 12' (\\n literal) em subagente", r.status, 2);
+
+r = rodar(`eval $'gh\\tissue close 12'`);
+caso("(achado 2) eval $'gh\\tissue close 12' em subagente", r.status, 2);
+
+r = rodar(`bash <<< 'gh issue close 12'`);
+caso("(achado 2) bash <<< 'gh issue close 12' em subagente", r.status, 2);
+
+r = rodar(`cat <<< $'texto'`);
+caso("(achado 2) cat <<< $'texto' (não é shell) em subagente", r.status, 0);
+
+r = rodar(`bash <<<"echo hi"`);
+caso('(achado 2) bash <<<"echo hi" em subagente', r.status, 0);
+
+// Revisao de seguranca do commit 6b306b39: o bash usa o ULTIMO here-string, e o
+// `$'` no meio do texto do eval tambem e ilegivel.
+r = rodar(`bash <<< 'echo' <<< $'gh issue close 12'`);
+caso("(rev 6b306b39) dois here-strings, o segundo com gh, em subagente", r.status, 2);
+
+r = rodar(`eval "echo hi;" $'gh issue close 12'`);
+caso("(rev 6b306b39) eval com $' no meio do texto em subagente", r.status, 2);
+
+// Revisao de seguranca do commit c66b56ee: o here-string do fish passa pela regra
+// do fish (contrabarra e chaves sao ilegiveis), nao pela do bash.
+r = rodar(`fish <<< 'g{h,} issue close 12'`);
+caso("(rev c66b56ee) fish <<< com chaves em subagente", r.status, 2);
+
 r = rodar("cat > /tmp/x.sh <<'EOF'\ngh issue close 12\nEOF");
 caso("cat > /tmp/x.sh <<'EOF' com gh issue close 12 no corpo em subagente", r.status, 2);
 
@@ -367,6 +403,55 @@ const casosRevisao = [
   [`powershell -NoProfile -File ${ps1Abs}`, 2, "(revisão) powershell -File <.ps1>"],
   ["./m.ps1", 2, "(revisão) ./m.ps1 (caminho direto)"],
   ['pwsh -Command "gh issue close 12"', 2, "(revisão) pwsh -Command com gh issue close"],
+  // zerar-issues-14, revisão 2: .ps1 relativo, -ec, here-string de dado, regex com $' e $IFS.
+  ["pwsh -File m.ps1", 2, "(r14 rev 2) pwsh -File <.ps1 relativo>"],
+  ["pwsh m.ps1", 2, "(r14 rev 2) pwsh <.ps1 relativo>"],
+  ["pwsh -nop -ec Z2ggaXNzdWUgY2xvc2UgMTI=", 2, "(r14 rev 2) pwsh -ec (apelido de -EncodedCommand)"],
+  ['bash ./deploy.sh <<< "$answer"', 0, "(r14 rev 2) here-string como dado de script de arquivo"],
+  ["bash -s ./x <<< $'gh issue close 12'", 2, "(r14 rev seg 4fb5da84) bash -s le o script do stdin"],
+  [`bash -c 'grep -c "^$" f.txt'`, 0, "(r14 rev 2) $ seguido de aspa dentro de aspas e texto"],
+  ["gh${IFS}issue${IFS}close${IFS}12", 2, "(r14 rev 2) $IFS no gate de subagente"],
+  ["gh issue close$IFS#12", 2, "(r14 rev seg 16571bcd) $IFS colado em # separa a palavra"],
+  ["bash --rcfile ./rc <<< $'gh issue close 12'", 2, "(r14 rev seg 16571bcd) --rcfile consome o valor"],
+  ["bash /dev/stdin <<< $'gh issue close 12'", 2, "(r14 rev seg 16571bcd) /dev/stdin e o proprio stdin"],
+  ["bash //dev/stdin <<< $'gh issue close 12'", 2, "(r14 rev seg d9edb887) //dev/stdin"],
+  ["bash /dev/./stdin <<< $'gh issue close 12'", 2, "(r14 rev seg d9edb887) /dev/./stdin"],
+  ["bash ../../dev/fd/0 <<< $'gh issue close 12'", 2, "(r14 rev seg d9edb887) ../../dev/fd/0"],
+  ["bash /de?/stdin <<< $'gh issue close 12'", 2, "(r14 rev seg df379adb) glob monta o caminho do stdin"],
+  [`eval "grep 'x$' f"`, 0, "(r14 rev 3) eval com ancora $' citada nao e aspa ANSI-C"],
+  [`eval 'grep "^$" f.txt'`, 0, "(r14 rev 3) eval com ^$\" citado"],
+  ["eval echo hi\\; $'gh' issue close 12", 2, "(r14 rev 3) eval com $' fora de aspas segue ilegivel"],
+  [`eval '$'"'gh' issue comment 5 --body hi"`, 2, "(r14 rev 4) eval com $' montado por palavra mista de aspas"],
+  [`eval '$'"'gh' pr merge 5"`, 2, "(r14 rev 4) eval palavra mista com pr merge"],
+  [`eval 'true;'"$'gh' issue comment 5 --body hi"`, 2, "(r14 rev 4) eval palavra mista com prefixo"],
+  [`eval "true; "'$'"'gh' pr create --title t --body b"`, 2, "(r14 rev 4) eval palavra mista em tres partes"],
+  [`eval \\$\\'gh\\'" issue"" ""commen""t 5 -"-b"ody"' hi'`, 2, "(r14 rev 4) eval com \\$\\' escapado fora de aspas"],
+  [`eval "\\$'gh' "iss"ue co"'mment 5 --body hi'`, 2, "(r14 rev 4) eval com \\$ escapado dentro de aspa dupla"],
+  [`eval 'gh issue close 12'""`, 2, "(r14 rev seg ab00f990) eval com palavra mista sem $"],
+  [`eval 'g'"h issue close 12"`, 2, "(r14 rev seg ab00f990) eval com gh partido entre aspas"],
+  [`eval "gh"' issue comment 5 --body hi'`, 2, "(r14 rev seg ab00f990) eval com comment partido entre aspas"],
+  [`eval 'echo ok; '"gh issue close 12"`, 2, "(r14 rev seg ab00f990) eval com prefixo e gh em aspa dupla"],
+  [`eval -- 'gh issue close 12'`, 2, "(r14 rev seg ab00f990) eval pula o --"],
+  [`eval 'echo "gh issue close 12"'`, 0, "(r14 rev seg ab00f990) eval com gh so citado dentro do echo"],
+  [`eval 'grep "x$"'" f"`, 0, "(r14 rev 4) eval palavra mista com ancora $\" citada"],
+  [`eval "gh"\\ issue\\ comment\\ 5\\ --body\\ hi`, 2, "(r14 rev 5) eval com aspa e contrabarra na mesma palavra"],
+  [`eval g"h"\\ pr\\ create\\ --title\\ t\\ --body\\ b`, 2, "(r14 rev 5) eval g\"h\" com espacos escapados"],
+  [`eval "gh"\\ issue\\ close\\ 12`, 2, "(r14 rev 5) eval \"gh\" com close escapado"],
+  [`bash -c "eval \\"gh issue comment 5 --body hi\\""`, 2, "(r14 rev 5) bash -c com eval e aspas escapadas"],
+  [`bash -c "eval 'g'\\"h issue comment 5 --body hi\\""`, 2, "(r14 rev 5) bash -c com eval de palavra mista"],
+  [`sh -c "eval 'g'\\"h pr create --title t --body b\\""`, 2, "(r14 rev 5) sh -c com eval de palavra mista"],
+  [`bash -c "echo \\"oi\\""`, 0, "(r14 rev 5) bash -c com aspas escapadas sem gh"],
+  [`eval "echo"\\ oi`, 0, "(r14 rev 5) eval com aspa e contrabarra sem gh"],
+  [`'/tmp/x'"'"/bash -c "gh issue close 12"`, 2, "(r14 rev seg 96d90aa4) executavel com aspa simples no valor"],
+  [`'/tmp/x"'/bash -c "gh issue close 12"`, 2, "(r14 rev seg 96d90aa4) executavel com aspa dupla no valor"],
+  [`'/tmp/a"'"'"/bash -c "gh issue close 12"`, 2, "(r14 rev seg 80c4c70a) executavel com as duas aspas no valor"],
+  [`'C:\\x'"'"'\\bash' -c "gh issue close 12"`, 2, "(r14 rev seg 80c4c70a) executavel com aspa e contrabarra no valor"],
+  [`'/tmp/x'"'"/bash -c "echo oi"`, 0, "(r14 rev seg 80c4c70a) executavel com aspa no valor sem gh"],
+  [`'/tmp/$'"'"/bash -c "gh issue close 12"`, 2, "(r14 rev seg a0e4336a) executavel com $ no diretorio e aspa no valor"],
+  ["'/tmp/`'\"'\"/bash -c \"gh issue close 12\"", 2, "(r14 rev seg a0e4336a) executavel com crase no diretorio e aspa no valor"],
+  [`"e"'val' "gh issue close 12"`, 2, "(r14 rev 6) eval em palavra mista sai pelo valor"],
+  [`'/usr/bin/'"ba"sh -c "gh issue comment 5 --body hi"`, 2, "(r14 rev 6) executavel em palavra mista com diretorio"],
+  ['bash -o pipefail ./x.sh <<< "$a"', 0, "(r14 rev seg 16571bcd) -o consome o valor e o script e arquivo"],
   ["pwsh -EncodedCommand ZwBoAA==", 2, "(revisão) pwsh -EncodedCommand (ilegível)"],
   ['cmd /c "gh issue close 12"', 2, "(revisão) cmd /c com gh issue close"],
   [`node --eval="require('child_process').execSync('gh issue close 12')"`, 2, "(revisão 2) node --eval=\"...\" (flag com = e valor citado)"],
@@ -411,6 +496,21 @@ caso("(revisão 4) perl semparen2.pl (system \"...\" sem parêntese) → 2", rod
 caso("(revisão 3) node msg.cjs (gh só em mensagem) → 0", rodarComCwd("node ./msg.cjs", sandboxRev).status, 0);
 caso("(revisão 3) bash crase.sh (crase executa) → 2", rodarComCwd("bash ./crase.sh", sandboxRev).status, 2);
 caso("(revisão) gh co 12 sem agent_id (janela principal) → 0", rodarComCwd("gh co 12", sandboxRev, { subagente: false }).status, 0);
+
+// --- #706: o último segmento não pode colar o último caractere do delimitador ---
+console.log("== gate-subagente-sem-gh (#706: delimitador do heredoc) ==");
+const { segmentosParaGate } = require(HOOK);
+const prNovo = " gh pr create --title t --body-file novo.md";
+for (const delimitador of ["EOF", "FIM", "EOF2"]) {
+  const cmd706 = `cat > novo.md <<'${delimitador}' && gh pr create --title t --body-file novo.md\nx termo\n${delimitador}`;
+  const seg706 = segmentosParaGate(cmd706);
+  caso(`(#706) segmentosParaGate não cola o último caractere do delimitador (${delimitador}) — último segmento`, seg706[seg706.length - 1], prNovo);
+}
+caso(
+  "(#706) segmentosParaGate não cola o último caractere do delimitador — gh pr create depois de heredoc com EOF fica em segmento próprio",
+  JSON.stringify(segmentosParaGate("cat <<EOF\nx\nEOF\ngh pr create --title t --body-file a.md")),
+  JSON.stringify(["cat <<EOF", "gh pr create --title t --body-file a.md"]),
+);
 
 console.log("-----------------------------------------");
 console.log(`ok: ${ok}   falhou: ${falhou}`);

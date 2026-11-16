@@ -940,9 +940,10 @@ COMANDO_CRASE_14=$'echo "$(echo \'(\' ) \'`gh issue close 12`\' "'
 EXIT_CRASE_14=$?
 [ $EXIT_CRASE_14 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_14)"
 
-# Caso (crase-15): dolar-parenteses aninhado 20 vezes estoura o teto e barra → exit 2 (D7 de gate-crase)
+# Caso (crase-15): dolar-parenteses aninhado 20 vezes sem gh → exit 0 (D4d de zerar-issues-14: o teto
+# de chamadas virou orcamento de caracteres, e sem gh de escrita o gate libera)
 echo
-echo "== (crase-15) dolar-parenteses aninhado 20 vezes estoura o teto e barra → exit 2 =="
+echo "== (crase-15) dolar-parenteses aninhado 20 vezes sem gh → exit 0 =="
 COMANDO_CRASE_15=$'echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo x)")")")")")")")")")")")")")")")")")")")"'
 (
   export PATH="$SBP/bin:$PATH"
@@ -950,7 +951,7 @@ COMANDO_CRASE_15=$'echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo "$(echo 
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-crase-15"
 EXIT_CRASE_15=$?
-[ $EXIT_CRASE_15 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_15)"
+[ $EXIT_CRASE_15 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_15)"
 
 # Caso (crase-16): commit por heredoc citado com crase de texto que nao e gh → exit 0 (D7 de gate-crase)
 echo
@@ -4625,6 +4626,278 @@ EXIT_614_7=$?
 [ $EXIT_614_7 -eq 2 ] && test_ok "614-7 Fecha caixa/outro#12 (palavra falsa): exit 2" || test_fail "614-7 Fecha caixa/outro#12 (palavra falsa): exit 2 (foi $EXIT_614_7: $(cat "$SBP/err-614-7"))"
 ERR_614_7="$(cat "$SBP/err-614-7")"
 echo "$ERR_614_7" | grep -qF "Closes caixa/outro#12" && test_ok "614-7 stderr sugere Closes caixa/outro#12" || test_fail "614-7 stderr sem 'Closes caixa/outro#12' ($ERR_614_7)"
+
+# (#699/#703/#708) bash -c com argumento posicional, --, exec -a, builtin e cmd //c.
+# Payload real de PreToolUse (Bash) pelo caso_gate. Em `bash -c` o script e so a
+# primeira palavra depois do -c (D1): $0, $1... nao rodam. Sai 2 quando essa palavra
+# leva gh de escrita; sai 0 quando o gh esta so nos argumentos ou nao existe.
+echo
+echo "== (#699/#703/#708) bash -c com argumento posicional, --, exec -a, builtin e cmd //c =="
+caso_gate f699-1 2 'bash -c "gh issue close 12" x'
+caso_gate f699-2 2 $'bash -c \'gh pr merge 5\' x'
+caso_gate f699-3 2 'sh -c "gh issue close 12" _'
+caso_gate f699-4 2 $'bash -c \'gh issue close 12\' x y'
+caso_gate f699-5 2 'bash -c "gh issue close 12" -- x'
+caso_gate f699-6 2 $'bash -c -- \'gh pr merge 5\''
+caso_gate f699-7 2 $'exec -a x bash -c \'gh issue close 12\''
+caso_gate f699-8 2 $'builtin eval \'gh issue close 12\''
+caso_gate f699-9 2 $'cmd //c bash -c "echo"\' \\"; gh issue close 12\''
+caso_gate f699-10 2 $'eval "echo"\' \\"; gh issue close 12\''
+caso_gate f699-11 2 $'cmd /c bash -c "echo"\' \\"; gh issue close 12\''
+caso_gate f699-12 2 $'bash -c "echo"\' " x "; gh issue close 12\''
+caso_gate f699-13 2 $'bash -c \'echo \'"\'"\' x \'"\'"\'; gh issue close 12\''
+caso_gate f699-14 2 $'bash -c -x \'gh issue close 12\' x'
+caso_gate f699-15 2 $'exec -la x bash -c \'gh issue close 12\''
+caso_gate f699-16 2 $'eval -- \'gh issue close 12\''
+caso_gate f699-17 2 $'bash -c \'eval -- "gh issue close 12"\''
+caso_gate f699-18 2 'cmd /q /c "gh issue close 12"'
+caso_gate f699-19 2 'cmd /c "gh issue close 12"'
+caso_gate f699-20 2 $'bash -c "echo"\'x; gh issue close 12\''
+caso_gate f699-21 2 $'bash -c "gh issue close 12"\' x\''
+caso_gate f699-22 2 $'bash -c \'gh issue close 12\'" x"'
+# Executavel em palavra mista (revisao de seguranca do 9d82b5f9): o token do
+# executavel sai pelo valor, nunca pelo texto original (`"ba"s\h` e `bash`).
+caso_gate f699-26 2 $'"ba"s\\h -c "gh issue close 12"'
+caso_gate f699-27 2 $'\'ba\'s\\h -c "gh pr merge 5"'
+caso_gate f699-28 2 $'timeout 5 "ba"s\\h -c "gh issue close 12"'
+caso_gate f699-29 2 $'"e"\'val\' "gh issue close 12"'
+# Valor do executavel com uma especie de aspa dentro (revisao de seguranca do 96d90aa4).
+caso_gate f699-30 2 $'\'/tmp/x\'"\'"/bash -c "gh issue close 12"'
+caso_gate f699-31 2 $'\'/tmp/x"\'/bash -c "gh issue close 12"'
+# As duas especies de aspa, e aspa com contrabarra (revisao de seguranca do 80c4c70a).
+caso_gate f699-32 2 $'\'/tmp/a"\'"\'"/bash -c "gh issue close 12"'
+caso_gate f699-33 2 $'\'C:\\x\'"\'"\'\\bash\' -c "gh issue close 12"'
+caso_gate f699-34 0 $'\'/tmp/x\'"\'"/bash -c "echo oi"'
+caso_gate f699-23 0 $'bash -c \'echo hi\' x'
+caso_gate f699-24 0 $'bash -c -- \'echo hi\''
+caso_gate f699-25 0 $'bash -c \'echo hi\' x -I"C:\\x"'
+caso_gate f699-26 0 'builtin echo x'
+caso_gate f699-27 0 $'bash -c -x \'echo hi\' x'
+caso_gate f699-28 0 $'bash -c "echo"\'x\''
+caso_gate f699-29 0 $'bash -c "echo hi" x -I"C:\\x"'
+caso_gate f699-30 0 $'bash -c \'gh issue view 12\' x'
+
+# Rodada 14 (D2/D3/D4/D5): casos com ferramenta explicita (Bash ou PowerShell)
+caso_ferr() { # $1 rotulo, $2 exit esperado, $3 ferramenta, $4 comando
+  local rot="$1" esp="$2" ferr="$3" cmd="$4" ex
+  echo
+  echo "== ($rot) exit $esp [$ferr]: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    PAYLOAD=$(node -e 'const [cwd,tool,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:tool,tool_input:{command:cmd}}))' "$SBP_WIN" "$ferr" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  [ $ex -eq "$esp" ] && test_ok "$rot exit $esp" || test_fail "$rot exit $esp (foi $ex: $(cat "$SBP/err-$rot"))"
+}
+
+# Caso (#694): $IFS divide a palavra no bash; o gate troca $IFS e ${IFS} por espaco no comando inteiro
+echo
+echo '== (#694) $IFS divide a palavra =='
+caso_ferr r14-ifs-1 2 Bash 'gh$IFS issue close 12'
+caso_ferr r14-ifs-2 2 Bash 'gh${IFS}issue${IFS}close${IFS}12'
+caso_ferr r14-ifs-3 2 Bash $'echo "$(echo \')\'; gh${IFS}issue close 12)"'
+caso_ferr r14-ifs-4 2 Bash 'echo "$(echo ${x:-)} ; gh issue close 12)"'
+caso_ferr r14-ifs-5 2 Bash 'echo "$(printf %s ${y/)/} && gh issue close 12)"'
+caso_ferr r14-ifs-6 2 Bash $'bash <<<$\'gh issue close 12\''
+caso_ferr r14-ifs-7 2 Bash $'bash <<< $\'gh issue close 12\''
+caso_ferr r14-ifs-8 2 Bash $'bash <<<$"gh issue close 12"'
+caso_ferr r14-ifs-9 0 Bash 'echo "$IFS"'
+caso_ferr r14-ifs-10 0 Bash 'IFS=: read a b <<< "x:y"'
+caso_ferr r14-ifs-11 0 Bash 'echo "${x:-a}"'
+caso_ferr r14-ifs-12 0 Bash $'cat <<< $\'texto\''
+caso_ferr r14-ifs-13 0 Bash 'echo $IFSX'
+
+# Caso (#692, D4c): no PowerShell a crase escapa o caractere seguinte e nao abre substituicao
+echo
+echo '== (#692) PowerShell: crase escapa o caractere seguinte =='
+caso_ferr r14-ps-1 2 PowerShell 'echo `"; gh issue close 12'
+caso_ferr r14-ps-2 0 PowerShell 'Write-Host "a`tb"'
+
+# Caso (#692, D4b): here-string com $' e $" le a palavra inteira ate a aspa que fecha
+echo
+echo '== (#692) here-string com $ e aspas: palavra inteira =='
+caso_ferr r14-hs-1 0 Bash $'bash <<<$\'echo hi\''
+
+# Caso (#692, D4a): ${...} dentro de $(...) nao conta parenteses
+echo
+echo '== (#692) ${...} dentro de $(...) =='
+caso_ferr r14-ex-1 2 Bash 'echo "$(echo ${x:-)}; gh issue close 12)"'
+caso_ferr r14-ex-2 0 Bash 'echo "$(echo ${x:-)})"'
+
+# Caso (#706, D5): o resto depois do delimitador de heredoc comeca depois dele
+echo
+echo '== (#706) resto depois do delimitador de heredoc =='
+caso_ferr r14-d5-1 2 Bash $'cat > novo.md <<\'EOF\'\nx\nEOF\ngh issue close 12'
+# gh literal no corpo do heredoc barra desde antes desta rodada (falha fechada).
+caso_ferr r14-d5-2 2 Bash $'cat > novo.md <<\'EOF\'\ngh issue close 12\nEOF\necho ok'
+
+# Caso (#692, D4d): orcamento de caracteres varridos, somado em todas as recursoes
+echo
+echo '== (#692) orcamento: 3000 $(true) planos saem 0 =='
+(
+  node -e 'const fs=require("fs");fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:"echo "+"$(true) ".repeat(3000)}}))' "$SBP_WIN" "$SBP/orc-planos.json"
+  node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-planos.json"
+) 2>"$SBP/err-orc-planos"
+EXIT_ORC_PLANOS=$?
+[ $EXIT_ORC_PLANOS -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_ORC_PLANOS: $(head -c 300 "$SBP/err-orc-planos"))"
+
+echo
+echo '== (#692) orcamento: 16 niveis de "$(echo ..)" com 400 KB e gh saem 2 em menos de 5 s =='
+node -e 'const fs=require("fs");let s="x".repeat(400*1024-16*12-40)+" gh issue close 12";for(let i=0;i<16;i++)s="echo \"$(echo "+s+")\"";fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:s}}))' "$SBP_WIN" "$SBP/orc-400k.json"
+ORC_T0=$(date +%s%3N)
+node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-400k.json" 2>"$SBP/err-orc-400k"
+EXIT_ORC_400K=$?
+ORC_MS=$(( $(date +%s%3N) - ORC_T0 ))
+[ $EXIT_ORC_400K -eq 2 ] && [ $ORC_MS -lt 5000 ] && test_ok "exit 2 em ${ORC_MS} ms" || test_fail "exit $EXIT_ORC_400K em ${ORC_MS} ms (esperado 2 em menos de 5000 ms)"
+
+# Caso (#692, D4d): orcamento estourado barra SEMPRE (falha fechada). Procurar o gh
+# no estouro deixava passar flag entre substantivo e verbo, expansao de chaves e
+# caminho antes do gh (revisoes de seguranca dos commits 3f3f2e11 e f4418818).
+orc_estoura() {
+  local nome="$1" esperado="$2" cauda="$3"
+  echo
+  echo "== (#692) orcamento estourado: $nome → exit $esperado =="
+  node -e 'const fs=require("fs");let s="x".repeat(400*1024-16*12-40)+" "+process.argv[3];for(let i=0;i<16;i++)s="echo \"$(echo "+s+")\"";fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:s}}))' "$SBP_WIN" "$SBP/orc-est.json" "$cauda"
+  node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-est.json" 2>"$SBP/err-orc-est"
+  local ex=$?
+  [ $ex -eq "$esperado" ] && test_ok "exit $esperado" || test_fail "exit $ex (esperado $esperado: $(head -c 200 "$SBP/err-orc-est"))"
+}
+orc_estoura "gh issue -R o/r close 12" 2 'gh issue -R o/r close 12'
+orc_estoura "gh issue {close,} 12" 2 'gh issue {close,} 12'
+orc_estoura "/usr/bin/gh issue close 12" 2 '/usr/bin/gh issue close 12'
+orc_estoura "sem gh tambem barra" 2 'ghost high a-gh'
+
+# Casos (rodada 14, revisao 2 da tarefa 3; achados 1, 3, 6 e 12 da critica r14-v1).
+# Achado 1: aspa solta no corpo de heredoc ou em comentario nao esconde o $IFS da linha seguinte.
+echo
+echo '== (r14v2-ifs) aspa solta antes do gh${IFS} sai 2 =='
+caso_ferr r14v2-ifs-1 2 Bash $'git commit -F - <<\'EOF\'\nDon\'t do it\nEOF\ngh${IFS}issue${IFS}close${IFS}12'
+caso_ferr r14v2-ifs-2 2 Bash $'echo hi # don\'t\ngh${IFS}issue${IFS}close${IFS}12'
+caso_ferr r14v2-ifs-3 2 Bash $'echo "$(printf \'%s\' "x\'y")" ; gh${IFS}issue${IFS}close${IFS}12'
+
+# Achado 3 (D4b) e achado 12: no here-string com $'...', aspa escapada e \n, \t e \r viram o caractere real.
+echo
+echo '== (r14v2-hs) here-string com $'"'"'...'"'"' e escapes do ANSI-C =='
+caso_ferr r14v2-hs-1 2 Bash $'bash <<< $\'echo \\\'hi\\\'; gh issue close 12\''
+caso_ferr r14v2-hs-2 2 Bash $'bash <<< $\'echo hi\\ngh issue close 12\''
+caso_ferr r14v2-hs-3 2 Bash $'bash <<< $\'gh\\tissue\\tclose\\t12\''
+
+# Achado 3 (D5): o resto depois do delimitador comeca depois dele. Legitimo, sai 0.
+echo
+echo '== (r14v2-d5) gh depois de heredoc com && sai 0 =='
+caso_ferr r14v2-d5-1 0 Bash $'cat > novo.md <<\'EOF\' && gh pr create --title t --body-file novo.md\nx termo\nEOF'
+
+# Achado 3: comandos legitimos que nao podem virar 2 com a troca de $IFS.
+echo
+echo '== (r14v2-zero) comandos legitimos saem 0 =='
+caso_ferr r14v2-zero-1 0 Bash 'echo "$IFS"'
+# Comentario: aspa dentro de `# ...` nao abre trecho citado (revisao 1).
+caso_ferr r14v2-com-1 2 Bash $'echo hi # don\'t\ngh issue close 12'
+caso_ferr r14v2-com-2 0 Bash $'echo "a#b" # it\'s\necho ok'
+caso_ferr r14v2-com-3 2 Bash 'echo $# x; gh issue close 12'
+# `#` que o gate toma por comentario sem ser (espaco escapado): gh no texto barra.
+caso_ferr r14v2-com-4 2 Bash $'echo a\\ #; gh issue close 12'
+caso_ferr r14v2-com-5 0 Bash $'echo hi # nota sem nada'
+# PowerShell: a regra de comentario do Bash nao vale (`<# ... #>` e bloco).
+caso_ferr r14v2-com-6 2 PowerShell '<# x #> ; gh issue close 12'
+# Revisao de seguranca do commit 3b895b33: comentario no PowerShell (linha e bloco),
+# e o texto do comentario achatado sem $, parenteses e chaves.
+caso_ferr r14v2-com-7 2 PowerShell $'echo hi # don\'t\ngh issue close 12'
+caso_ferr r14v2-com-8 2 PowerShell $'<# don\'t #> ; gh issue close 12'
+caso_ferr r14v2-com-9 0 PowerShell '<# bloco #> Write-Host oi'
+caso_ferr r14v2-com-10 2 Bash $'echo a\\ #; g$()h issue close 12'
+# `${` aberto numa linha e fechado na seguinte: o `#` dentro dele nao e comentario.
+caso_ferr r14v2-com-11 2 Bash $'echo ${x:-\na #b}; gh issue close 12'
+# Chave aninhada antes do `#` (revisao de seguranca do commit 6207a501).
+caso_ferr r14v2-com-13 2 Bash $'echo ${x:-${y}\na #b}; gh issue close 12'
+# $IFS colado no `#` e espaco escapado por crase no PowerShell (revisao de
+# seguranca do commit 18ecb4bf): o `#` fica no meio da palavra, nao e comentario.
+caso_ferr r14v2-com-14 2 Bash 'echo a$IFS#; gh issue close 12'
+caso_ferr r14v2-com-15 2 PowerShell 'echo a` #; gh issue close 12'
+caso_ferr r14v2-com-16 0 PowerShell 'Write-Host oi # gh issue close 12'
+# Revisao 2 da zerar-issues-14: `((` aritmetico, bloco <# #> sem `;`, contrabarra no
+# fim de linha de comentario, e `$` seguido de aspa dentro de aspas (regex).
+caso_ferr r14v3-1 2 Bash '(( 1 # 2 )); gh issue close 12'
+caso_ferr r14v3-2 2 PowerShell '<# nota #> gh issue close 12'
+caso_ferr r14v3-3 2 Bash $'echo hi #x\\\ngh issue close 12'
+caso_ferr r14v3-4 0 Bash $'bash -c "ls | grep \'x$\'"'
+caso_ferr r14v3-5 0 Bash $'eval "grep \'x$\' f"'
+# `#` talvez citado com contrabarra no fim: a juncao com gh barra (revisao de
+# seguranca do commit 4fb5da84); sem gh, passa.
+caso_ferr r14v3-6 2 Bash $'echo "a #b"; gh issue \\\nclose 12'
+# Falso positivo que a regra de comentario criou e a base nao tinha: `#` citado
+# no corpo de um gh legitimo com continuacao de linha (revisao do 9f85ee5b).
+caso_ferr r14v4-13 0 Bash $'gh issue comment 5 --body "ver #3" \\\n  --repo o/r'
+caso_ferr r14v4-14 0 Bash $'gh pr view 5 # status \\\nls'
+# Rastreio de aspas enganado (aspa solta no corpo do heredoc): a leitura extra
+# junta as linhas de baixo como o bash junta (revisao do commit 39c15107).
+# Revisao 3: `$'` citado no texto do eval/iex e ancora de regex, e continuacao
+# longa nao tem teto de linhas. Qualquer `((` antes do `#` deixa o comentario
+# duvidoso: citar gh nele barra (custo aceito, como o do `${`), sem gh passa.
+caso_ferr r14v5-1 2 Bash 'n=$(( n + 1 )) # chamadas ao gh'
+caso_ferr r14v5-6 0 Bash 'n=$(( n + 1 )) # contador'
+caso_ferr r14v5-7 2 Bash 'echo $[ 1 # 2 ]; gh issue close 12'
+caso_ferr r14v5-8 2 Bash '[[ 1 # 2 ]]; gh issue close 12'
+caso_ferr r14v5-2 2 Bash 'echo "))"; (( 1 # 2 )); gh issue close 12'
+caso_ferr r14v5-5 2 Bash '(( $((1)) # 2 )); gh issue close 12'
+caso_ferr r14v5-3 0 Bash "iex \"Get-ChildItem | Where-Object Name -match 'x\$'\""
+_r14v5_bs='\'
+_r14v5_nl='
+'
+_r14v5_cont="echo hi #c ${_r14v5_bs}${_r14v5_nl}"
+for _i in $(seq 100); do _r14v5_cont+="${_r14v5_bs}${_r14v5_nl}"; done
+_r14v5_cont+="echo ok"
+caso_ferr r14v5-4 0 Bash "$_r14v5_cont"
+caso_ferr r14v4-15 2 Bash $'cat <<EOF\n"\nEOF\necho x #c\\\ng\\\nh issue close 12'
+caso_ferr r14v3-7 0 Bash $'echo "a #b" \\\necho ok'
+# Revisoes de seguranca dos commits 4fb5da84 e 16571bcd: `$IFS` colado em `#`,
+# linhas de comentario seguidas terminando em contrabarra, e .ps1 com construcao.
+caso_ferr r14v4-1 2 Bash 'gh issue close$IFS#12'
+caso_ferr r14v4-2 2 Bash $'echo a #x\\\n# y\\\n# z\\\ngh issue close 12'
+caso_ferr r14v4-3 0 Bash $'echo a #x\\\n# y\\\necho ok'
+caso_ferr r14v4-5 2 Bash $'echo "a #b"; g\\\nh issue close 12'
+caso_ferr r14v4-6 2 Bash $'echo a\\ #b; g\\\nh issue close 12'
+caso_ferr r14v4-7 2 Bash $'echo a\\ #b; g\\\n\\\nh issue close 12'
+caso_ferr r14v4-8 0 Bash $'echo a # nota\\\nls -la'
+caso_ferr r14v4-9 0 Bash 'pwsh ./scripts/x.ps1'
+caso_ferr r14v4-10 2 Bash $'echo a;(#x\\\ngh issue close 12)'
+caso_ferr r14v4-11 0 Bash 'powershell x.ps1'
+caso_ferr r14v4-12 2 Bash "powershell x.ps1 ';' g''h issue close 12"
+caso_ferr r14v4-4 2 Bash 'powershell "Write-Host `$x; .\x.ps1"'
+# Com qualquer `${` antes, o comentario e duvidoso e citar gh barra: custo aceito
+# da falha fechada (a contagem de chaves e enganavel por aninhamento).
+caso_ferr r14v2-com-12 2 Bash $'echo ${x} ok\nls # gh pr merge 7'
+
+echo
+echo '== (r14v2) "$(cat <<A sem fechamento repetido em 400 KB sai 2 em menos de 5 s =='
+node -e 'const fs=require("fs");let s="echo ";const u="\"$(cat <<\x27A\x27\n)\" ";while(s.length<400*1024)s+=u;fs.writeFileSync(process.argv[2],JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:s}}))' "$SBP_WIN" "$SBP/orc-sticky.json"
+STK_T0=$(date +%s%3N)
+timeout 60 node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-sticky.json" 2>"$SBP/err-orc-sticky"
+EXIT_STK=$?
+STK_MS=$(( $(date +%s%3N) - STK_T0 ))
+[ $EXIT_STK -eq 2 ] && [ $STK_MS -lt 5000 ] && test_ok "exit 2 em ${STK_MS} ms" || test_fail "exit $EXIT_STK em ${STK_MS} ms (esperado 2 em menos de 5000 ms)"
+
+# Achado 6: o orcamento cobra o trecho varrido por "$(, nao o resto do comando a cada um.
+cat > "$SBP/gera-orc-linear.cjs" <<'JS'
+const fs = require("fs");
+const [cwd, out1, out2] = process.argv.slice(2);
+const s1 = "bash <<'EOF'\n" + Array(300).fill('echo "$(date +%s) $(hostname)" > /tmp/x').join("\n") + "\nEOF";
+const s2 = Array(500).fill('echo "$(echo a)"').join("; ");
+fs.writeFileSync(out1, JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command: s1 } }));
+fs.writeFileSync(out2, JSON.stringify({ cwd, tool_name: "Bash", tool_input: { command: s2 } }));
+JS
+node "$SBP/gera-orc-linear.cjs" "$SBP_WIN" "$SBP/orc-heredoc.json" "$SBP/orc-aninhado.json"
+echo
+echo '== (r14v2-orc) 300 linhas de "$(...)" num heredoc sai 0 =='
+node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-heredoc.json" 2>"$SBP/err-orc-heredoc"
+EXIT_ORC_HEREDOC=$?
+[ $EXIT_ORC_HEREDOC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_ORC_HEREDOC: $(head -c 300 "$SBP/err-orc-heredoc"))"
+echo
+echo '== (r14v2-orc) 500 "$(echo a)" separados por ; saem 0 =='
+node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-aninhado.json" 2>"$SBP/err-orc-aninhado"
+EXIT_ORC_ANINHADO=$?
+[ $EXIT_ORC_ANINHADO -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_ORC_ANINHADO: $(head -c 300 "$SBP/err-orc-aninhado"))"
 
 # Resultado final
 echo
