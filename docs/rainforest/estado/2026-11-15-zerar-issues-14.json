@@ -32,7 +32,7 @@
       5
     ],
     "comando": "bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-bash-c-opcoes.sh",
-    "saida": "HEAD a0e4336a: testa-gate-fechar-issue 635 ok, 0 falha(s), EXIT=0; subagente 160 ok 0 falhou; gate-worktree 916 ok EXIT=0; staging-total, cwd-efetivo, mensagem-commit, publicacao-destino, bash-c-opcoes, colapso e corpus EXIT=0 (em serie)",
+    "saida": "HEAD 420216ba: testa-gate-fechar-issue 635 ok, 0 falha(s), EXIT=0; subagente 164 ok 0 falhou; gate-worktree 916 ok EXIT=0; staging-total, cwd-efetivo, mensagem-commit, publicacao-destino, bash-c-opcoes, colapso e corpus EXIT=0 (em serie)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -63,9 +63,9 @@
     "reaberturas": 5
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "a0e4336ae2bb1016d0580455d5002d084421e7d6",
+      "head": "420216bab36ad8966f25d731e3993e24f77549e4",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-11-15-zerar-issues-14.json"
       ]
@@ -73,14 +73,13 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a215dc28165beab89",
+        "agente_id": "a6ecd635bf8d46eb7",
         "veredito": "ok",
         "em": "2026-11-16",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a215dc28165beab89.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a6ecd635bf8d46eb7.jsonl"
       }
     ],
     "em": "2026-11-16",
-    "tentativas": 5,
     "voltas": [
       {
         "volta": 1,
@@ -141,6 +140,18 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-ad5e99c2398080327.jsonl"
           }
         ]
+      },
+      {
+        "volta": 6,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a215dc28165beab89",
+            "veredito": "ok",
+            "em": "2026-11-16",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a215dc28165beab89.jsonl"
+          }
+        ]
       }
     ],
     "rodadas_extra": [
@@ -157,14 +168,18 @@
         "em": "2026-11-16"
       }
     ],
-    "achados": 3,
+    "achados": 2,
     "base": "7731a8c0",
-    "head": "82ef09e2",
-    "resumo": "2 regressoes altas no gate de subagente: textoAPartir remontava palavra mista com contrabarra (eval com gh entre aspas e espacos escapados; bash -c com eval e aspas escapadas); consertado guardando o texto original tambem com contrabarra. 1 baixa preexistente (gate de subagente nao ve PowerShell).",
-    "liberado_em": "2026-11-16"
+    "head": "420216ba",
+    "resumo": "revisao 7 ok sobre o delta a0e4336a..420216ba (revisao 6 aprovou a entrega inteira): 164 comandos sem regressao, mutacao pega, creep ok; preexistentes baixos: $ ou crase no nome final do executavel, falso positivo de sh exotico com echo gh"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scratchpad/verif14.cjs (41 criterios explicitos das tarefas 1, 3 e 5 com payload real em hooks/gate-fechar-issue.cjs); bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-bash-c-opcoes.sh; bash scripts/testa-versao.sh",
+    "saida": "HEAD 420216ba: verificar 41 ok, 0 falha(s), EXIT=0; testa-gate-fechar-issue 635 ok, 0 falha(s) (3000 $(true) planos exit 0; 16 niveis 400 KB exit 2 em 384 ms); subagente ok 164 falhou 0 (casos #706 EOF/FIM/EOF2 ok); bash-c-opcoes 34 ok, 0 falha(s); testa-versao ok 5 falhou 0; plugin.json e codex 2.16.0; CHANGELOG ## 2.16.0 — 2026-11-15; gate-worktree 916 ok; staging-total, cwd-efetivo, mensagem-commit, publicacao-destino, colapso, corpus EXIT=0. baterias-do-diff exit 3 (lib compartilhada): varredura completa fica para o CI do PR.",
+    "sensor_externo": "bash hooks/testa-gate-fechar-issue.sh",
+    "em": "2026-11-16",
+    "head": "420216bab36ad8966f25d731e3993e24f77549e4"
   },
   "fechar": {
     "status": "pendente"
