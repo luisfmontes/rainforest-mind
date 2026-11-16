@@ -55,7 +55,7 @@ Payload real de `PreToolUse` na seção `(#707)` de `bash hooks/testa-gate-publi
 
 | Família | Formas |
 |---|---|
-| `gh api` | `repos/dono/X/issues/3/comments -f body=termo707`; `--raw-field body=termo707`; `-F body=termo707`; `--field body=termo707`; `-F body=@corpo.md`; `--input corpo.json`; `-X PATCH repos/{owner}/{repo}/issues/3 -f body=termo707` (destino pelo cwd) |
+| `gh api` | `repos/dono/X/issues/3/comments -f body=termo707`; `--raw-field body=termo707`; `-F body=termo707`; `--field body=termo707`; `-F body=@corpo.md`; `--input corpo.json`; `-X PATCH repos/:owner/:repo/issues/3 -f body=termo707` (destino pelo cwd; com `{owner}/{repo}` barra também no privado, custo aceito em "Fora de escopo") |
 | `gh release create` | `--notes termo707`; `-n termo707`; `--notes-file notas.md`; `-F notas.md`; `--title termo707`; `-t termo707`; `-p -n termo707` (booleana não engole) |
 | `gh release edit` | `--notes termo707`; `-F notas.md`; `--title termo707` |
 

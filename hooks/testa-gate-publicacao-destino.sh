@@ -1012,7 +1012,6 @@ confere702 "707 gist --public com arquivo barra" 2 "$PRIV" Bash "$R702P" 'gh gis
 confere702 "707 gist -p -d barra" 2 "$PRIV" Bash "$R702P" 'gh gist create -p -d termo702 b.md'
 confere702 "707 gist secreto passa" 0 "$PUB" Bash "$R702P" 'gh gist create a.md'
 confere702 "707 gist -d sem --public passa" 0 "$PUB" Bash "$R702P" 'gh gist create -d termo702 b.md'
-if printf '%s' "$S702" | grep -q "Comando: gh gist create"; then :; fi
 confere702 "707 api gists public=true barra" 2 "$PRIV" Bash "$R702P" "gh api gists -f public=true -f 'files[a.md][content]=termo702'"
 confere702 "707 api gists sem public passa" 0 "$PUB" Bash "$R702P" "gh api gists -f 'files[a.md][content]=termo702'"
 # graphql: so mutation escreve; destino desconhecido barra com termo.
@@ -1073,6 +1072,15 @@ confere702 "707 Bash issue --body-file \".\\corpo.md\" barra" 2 "$PUB" Bash "$R7
 confere702 "707 Bash issue --body-file '.\\corpo.md' barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body-file '.\\corpo.md'"
 confere702 "707 Bash pr comment -F \".\\corpo.md\" barra" 2 "$PUB" Bash "$R702" 'gh pr comment 5 -F ".\corpo.md"'
 confere702 "707 Bash issue --body-file .\\corpo.md sem aspas barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file .\corpo.md'
+# Revisao 2: PowerShell nas familias novas le o caminho com contrabarra.
+confere702 "707 PowerShell release --notes-file .\\notas.md barra" 2 "$PUB" PowerShell "$R702P" 'gh release create v1 --notes-file .\notas.md'
+confere702 "707 PowerShell api -F body=@.\\corpo.md barra" 2 "$PUB" PowerShell "$R702P" 'gh api repos/dono/x/issues/3/comments -F body=@.\corpo.md'
+# Revisao 2: --public=false e secreto; flag curta agrupada se le letra a letra.
+confere702 "707 gist --public=false passa" 0 "$PUB" Bash "$R702P" 'gh gist create --public=false a.md'
+confere702 "707 gist -wp barra" 2 "$PRIV" Bash "$R702P" 'gh gist create -wp a.md'
+par707 "release -dF agrupado" "$R702P" 'gh release create v1 -dF notas.md'
+par707 "release -pF agrupado" "$R702P" 'gh release create v1 -pF notas.md'
+par707 "release -pn agrupado" "$R702P" 'gh release create v1 -pn termo702'
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo

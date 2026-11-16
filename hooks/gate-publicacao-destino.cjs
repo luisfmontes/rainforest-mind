@@ -1116,11 +1116,29 @@ function lerSegmentoGh(toks, brutos, cmdOriginal, cwd) {
     if (tok === "-") continue;
     const longa = tok.startsWith("--");
     const igual = tok.indexOf("=");
-    const chave = longa ? (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase() : tok.slice(0, 2);
-    if (familia === "gist" && (chave === "--public" || chave === "-p")) { gistPublico = true; continue; }
-    const colado = longa
+    let chave = longa ? (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase() : tok.slice(0, 2);
+    let colado = longa
       ? (igual === -1 ? null : tok.slice(igual + 1))
       : (tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
+    // `--public=false` (ou `0`, `f`) é o gist secreto: booleana do pflag com valor.
+    if (familia === "gist" && (chave === "--public" || chave === "-p")) {
+      if (!(longa && colado !== null && /^(?:false|f|0)$/i.test(colado))) gistPublico = true;
+      continue;
+    }
+    // Flag curta agrupada em `release`/`gist` (`-wp`, `-dF notas.md`): o pflag
+    // lê letra a letra; booleana segue, a primeira que pede valor leva o resto
+    // (revisão 2 da rodada 15, a mesma leitura do `textosDoGhApi`).
+    if (porFamilia && !longa && tok.length > 2 && tok[2] !== "=") {
+      let k = 1;
+      chave = null;
+      for (; k < tok.length; k += 1) {
+        const f = `-${tok[k]}`;
+        if (curtasDoVerbo.has(f)) { chave = f; break; }
+        if (familia === "gist" && f === "-p") gistPublico = true;
+      }
+      if (chave === null) continue;
+      colado = tok.length > k + 1 ? tok.slice(k + 1).replace(/^=/, "") : null;
+    }
     const temValor = porFamilia
       ? (longa ? LONGAS_POR_FAMILIA[familia].has(chave) : curtasDoVerbo.has(chave))
       : longa ? (FLAGS_GH_VALOR.longas.has(chave) || curtasDoVerbo.has(chave))

@@ -53,10 +53,18 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "91a401a175409b1402ac4bb6216bc4c8d67cf6e2",
+      "head": "6c4e6247a674b9d675d765d42abdce52450fdd64",
       "caminhos_sujos": []
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "afa01756aa744b076",
+        "veredito": "ok",
+        "em": "2026-11-16",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-afa01756aa744b076.jsonl"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
