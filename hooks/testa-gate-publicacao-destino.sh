@@ -1058,6 +1058,14 @@ confere702 "707 graphql mut\\ation barra" 2 "$PRIV" Bash "$R702P" 'gh api graphq
 confere702 "707 gist \\--public barra" 2 "$PRIV" Bash "$R702P" 'gh gist create \--public a.md'
 confere702 "707 gist \$'--public' barra" 2 "$PRIV" Bash "$R702P" "gh gist create \$'--public' a.md"
 confere702 "707 gist \$'\\x2dp' barra" 2 "$PRIV" Bash "$R702P" "gh gist create \$'\\x2dp' a.md"
+# $'...' no meio do token: segmento ilegivel, barra com termo (falha fechada).
+confere702 "707 gist --\$'public' barra" 2 "$PRIV" Bash "$R702P" "gh gist create --\$'public' a.md"
+confere702 "707 gist -\$'p' barra" 2 "$PRIV" Bash "$R702P" "gh gist create -\$'p' a.md"
+confere702 "707 a\$'p'i barra" 2 "$PRIV" Bash "$R702P" "gh a\$'p'i repos/dono/x/issues -f body=termo702"
+confere702 "707 rel\$'e'ase barra" 2 "$PRIV" Bash "$R702P" "gh rel\$'e'ase create v1 -n termo702"
+confere702 "707 ilegivel sem termo passa" 0 "$PUB" Bash "$R702P" "gh a\$'p'i repos/dono/x/issues -f body=ok"
+# Aspa escapada fora de aspas nao abre aspa (corte de palavra do bash).
+confere702 "707 aspa escapada nao esconde o --public" 2 "$PRIV" Bash "$R702P" "gh gist create \\' --public a.md \\'"
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo

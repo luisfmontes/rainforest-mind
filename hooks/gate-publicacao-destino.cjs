@@ -1009,20 +1009,16 @@ function visibilidadeDoAlvo(ownerRepo) {
  * `gh issue|pr <verbo de texto>`.
  */
 function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
-  const { tokensComAspas, semContrabarra } = require("./lib/tokens-comando.cjs");
+  const { tokensComAspas } = require("./lib/tokens-comando.cjs");
   const { normalizarExecutavel } = require("./lib/heredoc.cjs");
-  // O token chega como o `gh` o recebe (revisão de segurança do 4759f2cb):
-  // `$'...'` se decodifica, e fora dele a contrabarra some, como o bash faz
-  // fora de aspas (`a\pi`, `\-f`, `\--public`, `mut\ation`). Dentro de aspa
-  // simples ela é literal, e tirá-la só aproxima da escrita (falha fechada).
-  // Variável (`$f`) fica como está: é valor da hora.
-  const comoOGhRecebe = (t) => {
-    if (/\$['"]/.test(t.raw || "")) return semContrabarra(t.v);
-    if (t.v.startsWith("$")) return t.v;
-    return t.v.split("\\").join("");
-  };
-  let toks;
-  try { toks = tokensComAspas(segmento).map(comoOGhRecebe); } catch { return null; }
+  // O token chega como o `gh` o recebe (revisões de segurança do 4759f2cb e
+  // do b541c1ba): o tokenizador corta com a regra de escape do bash (fora de
+  // aspa simples, a contrabarra escapa o caractere seguinte, aspa inclusive:
+  // `\-f`, `\'`, `rel\ease`), e a contrabarra que sobra dentro de aspa dupla
+  // também sai (`"mut\ation"`): tirá-la só aproxima da escrita.
+  let brutos;
+  try { brutos = tokensComAspas(segmento, { contrabarra: true }); } catch { return null; }
+  const toks = brutos.map((t) => t.v.split("\\").join(""));
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
   if (iGh === -1) return null;
 
@@ -1036,6 +1032,24 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd) {
   const ehAtribuicao = (x) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(x);
   const prefixoLimpo = antesDoGh.every(ehAtribuicao)
     || (antesDoGh[0] === "env" && antesDoGh.slice(1).every(ehAtribuicao));
+
+  // `$'...'`/`$"..."` em qualquer ponto de um token (`a$'p'i`, `--$'public'`,
+  // `$'\x2dp'`) não se decodifica aqui: o segmento é ilegível, com família e
+  // destino desconhecidos, e barra se o comando ou um arquivo citado nele (o
+  // corpo de um gist, de um --notes-file) tiver termo (falha fechada).
+  if (brutos.some((t) => /\$['"]/.test(t.raw || ""))) {
+    const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];
+    for (const tok of toks.slice(iGh + 1)) {
+      const valor = tok.includes("=") && tok.startsWith("-") ? tok.slice(tok.indexOf("=") + 1).replace(/^@/, "") : tok.replace(/^[^=]*=@/, "");
+      const corpo = valor && !valor.startsWith("-") ? lerCorpoDeArquivo(valor, cwd) : null;
+      if (corpo !== null) textos.push({ origem: `arquivo ${valor}`, texto: corpo });
+    }
+    return {
+      familia: "?", verbo: "(token com $'...' ilegível)",
+      textos,
+      repoFlag: "?", repoUrls: [], repoPrefixo, prefixoLimpo, destinoFixo: null,
+    };
+  }
 
   // #707 (D1): `gh api` tem gramática própria (endpoint e campos), e é lido à parte.
   const iApi = toks.findIndex((t, k) => k > iGh && !t.startsWith("-"));
