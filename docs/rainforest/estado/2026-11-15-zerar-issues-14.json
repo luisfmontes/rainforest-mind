@@ -32,7 +32,7 @@
       5
     ],
     "comando": "bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-bash-c-opcoes.sh",
-    "saida": "HEAD 96d90aa4: testa-gate-fechar-issue 630 ok, 0 falha(s), EXIT=0; subagente 155 ok 0 falhou; bash-c-opcoes 34 ok; gate-worktree 916 ok EXIT=0 (rodada sozinha); staging-total 189, cwd-efetivo 85, mensagem-commit 47, publicacao-destino 186, colapso 19",
+    "saida": "HEAD 80c4c70a: testa-gate-fechar-issue 632 ok, 0 falha(s), EXIT=0; subagente 157 ok 0 falhou; gate-worktree 916 ok EXIT=0; staging-total, cwd-efetivo, mensagem-commit, publicacao-destino, bash-c-opcoes, colapso e corpus EXIT=0 (em serie)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -65,7 +65,7 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "96d90aa4120de99c49cf659b8d9d6160bd44e969",
+      "head": "80c4c70affcd046142be019d7a6048aeea97c9eb",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-11-15-zerar-issues-14.json"
       ]

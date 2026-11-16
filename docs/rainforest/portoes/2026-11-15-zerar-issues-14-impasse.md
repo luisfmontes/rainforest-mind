@@ -64,3 +64,6 @@ Liberar uma 5ª rodada com os consertos do ab00f990 e do f3976b50. É o recomend
 - Revisão de segurança do 96d90aa4: o valor do executável com uma espécie de aspa dentro
   (`'/tmp/x'"'"/bash -c ...`) saía 0 na base e no HEAD. Fechado: o valor sai entre a aspa que ele não contém.
   A revisão 6 foi parada de novo antes do veredito e é redespachada no HEAD novo.
+- Revisão de segurança do 80c4c70a: o ramo da aspa única não cobria as duas espécies juntas nem aspa com
+  contrabarra (preexistente). Com aspa no valor, o executável sai pelo nome final do arquivo. A revisão 6 foi
+  parada de novo e é redespachada no HEAD novo.

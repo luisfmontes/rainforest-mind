@@ -354,12 +354,13 @@ function textoAPartir(toks, i) {
   // O token do EXECUTÁVEL (o primeiro) sai sempre pelo valor: com `raw`, `"ba"s\h -c ...`
   // chegava ao desempacotador como `"ba"s\h`, que não se normaliza para `bash`, e o
   // `bash -c` não era aberto (revisão de segurança do 9d82b5f9; `'ba's\h` desde a #699).
-  // Valor com UMA espécie de aspa dentro (`'/tmp/x'"'"/bash`, valor `/tmp/x'/bash`) sai
-  // entre a aspa que ele não contém: a remontagem pela primeira aspa partia o nome
-  // (revisão de segurança do 96d90aa4). Com as duas espécies, segue a regra de antes.
-  const exe = (t) => (t.v.includes("'") ? `"${t.v}"` : `'${t.v}'`);
-  const umaAspa = (v) => /["']/.test(v) && !(v.includes("'") && v.includes('"')) && !/[$\x60\\]/.test(v);
-  return toks.slice(i).map((t, k) => (k === 0 && t.q && umaAspa(t.v) ? exe(t) : t.raw !== undefined && k > 0 ? t.raw : t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? '"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"' : t.v))).join(" ");
+  // Valor do executável com aspa dentro (`'/tmp/x'"'"/bash`, valor `/tmp/x'/bash`): a
+  // remontagem por aspas partia o nome em qualquer combinação de aspa e contrabarra
+  // (revisões de segurança do 96d90aa4 e do 80c4c70a). Sai só o nome final do arquivo,
+  // que é o que `normalizarNomeExecutavel` compara; o diretório não muda o wrapper.
+  const nomeFinal = (v) => v.split(/[\\/]/).pop();
+  const exeComAspa = (t) => t.q && /["']/.test(t.v) && !/[$\x60]/.test(t.v) && nomeFinal(t.v) !== "" && !/["'\\\s]/.test(nomeFinal(t.v));
+  return toks.slice(i).map((t, k) => (k === 0 && exeComAspa(t) ? nomeFinal(t.v) : t.raw !== undefined && k > 0 ? t.raw : t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? '"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"' : t.v))).join(" ");
 }
 
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------

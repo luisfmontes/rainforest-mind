@@ -4664,6 +4664,10 @@ caso_gate f699-29 2 $'"e"\'val\' "gh issue close 12"'
 # Valor do executavel com uma especie de aspa dentro (revisao de seguranca do 96d90aa4).
 caso_gate f699-30 2 $'\'/tmp/x\'"\'"/bash -c "gh issue close 12"'
 caso_gate f699-31 2 $'\'/tmp/x"\'/bash -c "gh issue close 12"'
+# As duas especies de aspa, e aspa com contrabarra (revisao de seguranca do 80c4c70a).
+caso_gate f699-32 2 $'\'/tmp/a"\'"\'"/bash -c "gh issue close 12"'
+caso_gate f699-33 2 $'\'C:\\x\'"\'"\'\\bash\' -c "gh issue close 12"'
+caso_gate f699-34 0 $'\'/tmp/x\'"\'"/bash -c "echo oi"'
 caso_gate f699-23 0 $'bash -c \'echo hi\' x'
 caso_gate f699-24 0 $'bash -c -- \'echo hi\''
 caso_gate f699-25 0 $'bash -c \'echo hi\' x -I"C:\\x"'
