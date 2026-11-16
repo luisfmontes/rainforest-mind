@@ -358,8 +358,10 @@ function textoAPartir(toks, i) {
   // remontagem por aspas partia o nome em qualquer combinação de aspa e contrabarra
   // (revisões de segurança do 96d90aa4 e do 80c4c70a). Sai só o nome final do arquivo,
   // que é o que `normalizarNomeExecutavel` compara; o diretório não muda o wrapper.
+  // `$` e crase só contam no nome final: no diretório não mudam o wrapper
+  // (`'/tmp/$'"'"/bash`; revisão de segurança do a0e4336a).
   const nomeFinal = (v) => v.split(/[\\/]/).pop();
-  const exeComAspa = (t) => t.q && /["']/.test(t.v) && !/[$\x60]/.test(t.v) && nomeFinal(t.v) !== "" && !/["'\\\s]/.test(nomeFinal(t.v));
+  const exeComAspa = (t) => t.q && /["']/.test(t.v) && nomeFinal(t.v) !== "" && !/["'\\\s$\x60]/.test(nomeFinal(t.v));
   return toks.slice(i).map((t, k) => (k === 0 && exeComAspa(t) ? nomeFinal(t.v) : t.raw !== undefined && k > 0 ? t.raw : t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : (/\s/.test(t.v) ? '"' + t.v.replace(/[\\"$\x60]/g, "\\$&") + '"' : t.v))).join(" ");
 }
 

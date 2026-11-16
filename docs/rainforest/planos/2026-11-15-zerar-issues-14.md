@@ -88,7 +88,7 @@ Isso é provado pelas seções novas de `bash hooks/testa-gate-fechar-issue.sh`,
 
 ### 4. Versão 2.16.0 e registro [tipo: docs]
 atende: D6, D7
-arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`, `docs/rainforest/estado/2026-11-15-zerar-issues-13.json` (fechar ok da rodada 13, PR #717)
 depende de: 1, 2, 3, 5
 paralela: nao
 mutacao: n/a

@@ -67,3 +67,10 @@ Liberar uma 5ª rodada com os consertos do ab00f990 e do f3976b50. É o recomend
 - Revisão de segurança do 80c4c70a: o ramo da aspa única não cobria as duas espécies juntas nem aspa com
   contrabarra (preexistente). Com aspa no valor, o executável sai pelo nome final do arquivo. A revisão 6 foi
   parada de novo e é redespachada no HEAD novo.
+
+## Revisão 6 (HEAD a0e4336a)
+- Aprovou: 638 comandos com `gh` rodando sem regressão, nenhum falso positivo novo, mutação das três mudanças pega.
+- O `marcar revisar ok` recusou: o diff tem `docs/rainforest/estado/2026-11-15-zerar-issues-13.json` (fechar ok da
+  rodada 13, commit 6e82a30b) sem tarefa no plano. Emenda: a tarefa 4 passa a listar o arquivo.
+- Junto, a revisão de segurança do a0e4336a (preexistente: `'/tmp/$'"'"/bash -c ...` saía 0 na base) e a lacuna de
+  cobertura do revisor 6 (`"e"'val'` e executável misto na bateria de subagente). A 7ª rodada revisa só esse delta.

@@ -167,7 +167,8 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   pela primeira aspa e partia o nome, e `'/tmp/x'"'"/bash -c "gh issue close 12"` saía 0 nos dois
   gates. A revisão de segurança do 80c4c70a mostrou que escolher a aspa não cobre as duas espécies
   juntas nem aspa com contrabarra; agora, com aspa no valor, sai só o nome final do arquivo (`bash`),
-  que é o que a normalização do executável compara. Com `$` ou crase no valor, segue a regra de antes.
+  que é o que a normalização do executável compara. `$` e crase só contam no nome final (revisão de
+  segurança do a0e4336a: `'/tmp/$'"'"/bash -c ...` saía 0 na base e no HEAD).
   Resíduo preexistente: `'/usr/bin/env' "ba"sh -c "gh issue close 12"` sai 0 na base e no HEAD.
 - Resíduo aceito (revisão 5, preexistente): o gate de subagente não confere evento `PowerShell`;
   `gh issue comment` digitado no PowerShell de um subagente sai 0 na base e no HEAD. O

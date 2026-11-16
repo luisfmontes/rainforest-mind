@@ -32,7 +32,7 @@
       5
     ],
     "comando": "bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-bash-c-opcoes.sh",
-    "saida": "HEAD 80c4c70a: testa-gate-fechar-issue 632 ok, 0 falha(s), EXIT=0; subagente 157 ok 0 falhou; gate-worktree 916 ok EXIT=0; staging-total, cwd-efetivo, mensagem-commit, publicacao-destino, bash-c-opcoes, colapso e corpus EXIT=0 (em serie)",
+    "saida": "HEAD a0e4336a: testa-gate-fechar-issue 635 ok, 0 falha(s), EXIT=0; subagente 160 ok 0 falhou; gate-worktree 916 ok EXIT=0; staging-total, cwd-efetivo, mensagem-commit, publicacao-destino, bash-c-opcoes, colapso e corpus EXIT=0 (em serie)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -65,12 +65,20 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "80c4c70affcd046142be019d7a6048aeea97c9eb",
+      "head": "a0e4336ae2bb1016d0580455d5002d084421e7d6",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-11-15-zerar-issues-14.json"
       ]
     },
-    "vereditos": [],
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a215dc28165beab89",
+        "veredito": "ok",
+        "em": "2026-11-16",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-a215dc28165beab89.jsonl"
+      }
+    ],
     "em": "2026-11-16",
     "tentativas": 5,
     "voltas": [
