@@ -1156,8 +1156,16 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // (`eval '$'"'gh' issue comment 5"`) o `$'` só aparece juntando as partes,
     // e o `interno` cru não o mostra fora de aspas (revisão 4). Confere também
     // o texto desaspado, palavra por palavra, que é o que o `eval` executa.
-    const desaspado = desasparComoBash(p1.resto);
-    return { interno, ilegivel: contemConstrucaoIlegivel(interno) || contemConstrucaoIlegivel(desaspado) };
+    // No `eval` (bash), o texto desaspado é o que roda, e é ele que vira o
+    // `interno`: desde que a palavra mista chega crua (`raw`, #699), o
+    // `desempacota` devolvia `'gh issue close 12'""` ainda citado, e o gate de
+    // subagente não via o `gh` (revisão de segurança do ab00f990). O `--` que
+    // o `eval` aceita antes do script é pulado. O `iex` segue as aspas do PowerShell.
+    if (exe === "eval") {
+      const desaspado = desasparComoBash(p1.resto).replace(/^\s*--(?=\s|$)/, "").trim();
+      return { interno: desaspado, ilegivel: contemConstrucaoIlegivel(interno) || contemConstrucaoIlegivel(desaspado) };
+    }
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
   }
 
   const p2 = extrairPrimeiroToken(p1.resto);

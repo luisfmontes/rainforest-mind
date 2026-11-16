@@ -138,12 +138,18 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   conhece o `\'` dentro de `$'...'` (`echo $'a\'b'` + quebra + `\` + quebra + `gh issue close 12`
   passa na base e no HEAD). A crase tira `\` + quebra antes de ler, uma terceira leitura que
   a regra das duas leituras não cobre (`` echo a `echo b #c \ `` + quebra + `echo don't` + quebra +
-  `` gh issue close 12` ``). O gate de subagente não desce em crase nem pula o `--` do `eval`.
+  `` gh issue close 12` ``). O gate de subagente não desce em crase (o `--` do `eval` passou a ser pulado na revisão 4).
   Os três passam na base e no HEAD; o `gate-fechar-issue` barra os do gate de subagente.
 - Fechado na revisão 4: no gate de subagente, o `eval` confere também o texto depois da remoção
   de aspas que o bash faz antes de entregar as palavras a ele (`desasparComoBash`). Com isso, palavra mista
   (`eval '$'"'gh' issue comment 5"`), `\$\'` escapado e `eval "$'gh'" issue close 12`, que
   passavam na base ou no 6fed0986, saem 2. O fuzz de 130 formas da revisão 4 dá 0 regressões.
+- Fechado na revisão de segurança do ab00f990: desde o db99558c (#699), a palavra mista chegava
+  crua ao `eval`, e `eval 'gh issue close 12'""`, `eval 'g'"h issue close 12"` e
+  `eval "gh"' issue comment 5'` saíam 0 no gate de subagente (a base barrava). Agora o texto
+  desaspado é o próprio script lido no `eval`, e o `--` antes dele é pulado. O `iex` segue as aspas do
+  PowerShell. `iex '$'"'gh' ..."` sai 0 no HEAD e saía 2 na base, mas não roda `gh` em shell
+  nenhum: no PowerShell são dois argumentos e o `iex` dá erro, e no bash o `iex` não existe.
 - Resíduo aceito (revisão 3, fora do modelo da D6): `echo 'gh issue close 12' | bash` e
   `source <(echo 'gh issue close 12')` são script lido por pipe ou substituição.
 - Resíduo aceito (revisão 3): linha de 100 KB de `# ` leva 2,6 s no regex das duas leituras
