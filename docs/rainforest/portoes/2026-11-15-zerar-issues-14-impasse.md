@@ -41,5 +41,9 @@ Liberar uma 4ª rodada de revisão com esses consertos. É o recomendado.
   - `[[` e `$[` antes de um `#`;
   - a leitura dupla com mais de 350 linhas `#…\`.
 
+- A revisão de segurança do ab00f990 achou outra regressão da mesma classe, que vinha do
+  db99558c. A palavra mista sem `$` (`eval 'g'"h issue close 12"`) passava no gate de subagente.
+  O conserto está no f3976b50: o texto desaspado é o script que o gate lê dentro do `eval`.
+
 ## Decisão pedida ao usuário (2)
-Liberar uma 5ª rodada com o conserto do ab00f990. É o recomendado.
+Liberar uma 5ª rodada com os consertos do ab00f990 e do f3976b50. É o recomendado.
