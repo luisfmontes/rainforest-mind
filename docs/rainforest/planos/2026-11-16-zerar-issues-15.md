@@ -26,7 +26,7 @@ mutacao:
   fixture: testa-gate-publicacao-destino.sh, seção "(#707) gh api, gh release e gh gist", casos "707 api"
 prova: `node -e "process.exit(/function textosDoGhApi/.test(require('fs').readFileSync('hooks/gate-publicacao-destino.cjs','utf8'))?0:1)"`
 Implementação:
-- Função nova `textosDoGhApi(toks, iApi, cmdOriginal, cwd)`: escrita decidida por `apiEhEscrita`; texto = valor de cada campo, arquivo de `-F campo=@arq` e de `--input`, e o comando inteiro só contra a lista de termos; destino pelo endpoint (`repos/<dono>/<repo>`, `:owner`/`{owner}` pelo cwd, `gists` com `public=true`, o resto desconhecido).
+- Função nova `textosDoGhApi(toks, iApi, cmdOriginal, cwd)`: escrita decidida pela régua da `apiEhEscrita`, aplicada sobre os argumentos lidos como o pflag lê (emenda da D1); texto = valor de cada campo, arquivo de `-F campo=@arq` e de `--input`, e o comando inteiro só contra a lista de termos; destino pelo endpoint (`repos/<dono>/<repo>`, `:owner`/`{owner}` pelo cwd, `gists` com `public=true`, o resto desconhecido).
 - `textosDoSegmentoGh` desvia para ela quando o primeiro posicional depois de `gh` é `api`.
 - `ghTextoSegmentos` conta só `issue`/`pr` (D5).
 pronto quando: na seção `(#707)` de `bash hooks/testa-gate-publicacao-destino.sh`, os casos `707 api ...` saem 2 com `GH_RESPONSE` público e 0 com privado (`-f`, `--raw-field`, `-F`, `--field`, `-F @arquivo`, `--input`, `:owner/:repo`, `-XPOST`, URL completa); `gists` com `public=true` sai 2; `graphql` com `mutation` sai 2 e com `query` sai 0; GET e `-X GET` saem 0. Placar `0 falha(s)`.

@@ -812,7 +812,8 @@ const FLAGS_API_CAMPO = new Set(["-f", "-F", "--raw-field", "--field", "--input"
 
 /**
  * #707 (D1, D3): textos e destino de `gh api` de escrita, ou null quando não
- * escreve (decidido por `apiEhEscrita`, a mesma regra do gate de subagente) ou
+ * escreve (a régua da `apiEhEscrita` do gate de subagente, aplicada aqui sobre
+ * os argumentos lidos como o pflag lê) ou
  * quando escreve num gist secreto. O destino sai do endpoint: `repos/<dono>/<repo>`
  * é o repositório; `{owner}`/`{repo}` (ou `:owner`/`:repo`) é o do cwd, como o
  * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
@@ -853,17 +854,18 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
       if (!FLAGS_API_BOOLEANAS.has(flag)) { grupoIlegivel = true; break; }
     }
   }
-  // A `apiEhEscrita` recebe a forma canônica: endpoint, método e campos, cada
-  // valor num token próprio que nunca começa com `-` (senão ela o leria como
-  // flag: `-f -X=GET` é o campo "-X" de valor "GET", não o método).
-  const seguro = (v) => (String(v).startsWith("-") ? `_${v}` : String(v));
-  const canon = posicionais.length ? [seguro(posicionais[0])] : [];
-  for (const [flag, valor] of pares) {
-    if (flag === "-X" || flag === "--method") canon.push("-X", seguro(valor));
-    else if (FLAGS_API_CAMPO.has(flag)) canon.push(flag, seguro(valor));
-  }
-  let ehEscrita = true;
-  try { ehEscrita = require("./gate-subagente-sem-gh.cjs").apiEhEscrita(canon); } catch {}
+  // Escrita decidida aqui, sobre os pares já lidos, com a mesma régua da
+  // `apiEhEscrita`: método explícito diferente de GET; sem método, `graphql`
+  // escreve com `mutation` ou corpo de arquivo, e o resto escreve com campo.
+  // Valor do usuário nunca volta a ser lido como flag (revisões de segurança
+  // de 2026-11-16: `-f -X=GET` e `-f '\-X=GET'` viravam método).
+  let metodoExplicito = null;
+  for (const [flag, valor] of pares) if (flag === "-X" || flag === "--method") metodoExplicito = String(valor).toUpperCase();
+  let ehEscrita;
+  if (metodoExplicito !== null) ehEscrita = metodoExplicito !== "GET";
+  else if (String(posicionais[0] || "").toLowerCase() === "graphql") {
+    ehEscrita = pares.some(([flag, valor]) => flag === "--input" || (FLAGS_API_CAMPO.has(flag) && /^[^=]*=@/.test(valor)) || /\bmutation\b/i.test(valor));
+  } else ehEscrita = pares.some(([flag]) => FLAGS_API_CAMPO.has(flag));
   if (grupoIlegivel) ehEscrita = true;
   if (!ehEscrita) return null;
   const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];

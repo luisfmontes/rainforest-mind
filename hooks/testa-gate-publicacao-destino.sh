@@ -1047,6 +1047,9 @@ par707 "api -q consome -XGET" "$R702P" 'gh api repos/dono/x/issues -f body=termo
 par707 "api --jq consome --method=GET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 --jq --method=GET'
 par707 "api campo -X=GET nao e metodo" "$R702P" 'gh api repos/dono/x/issues -f -X=GET -f body=termo702'
 confere702 "707 api -H consome o token antes do endpoint" 0 "$PUB" Bash "$R702P" 'gh api -H accept:x repos/dono/x/issues'
+# Valor de campo com contrabarra nao vira metodo depois de tirar a contrabarra.
+par707 "api campo \\-X=GET nao e metodo" "$R702P" "gh api repos/dono/x/issues -f '\\-X=GET' -f body=termo702"
+confere702 "707 api graphql -F query=@arquivo barra (destino desconhecido)" 2 "$PRIV" Bash "$R702P" "gh api graphql -F query=@corpo.md"
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo
