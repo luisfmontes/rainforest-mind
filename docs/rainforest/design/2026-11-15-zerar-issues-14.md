@@ -150,6 +150,16 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   desaspado é o próprio script lido no `eval`, e o `--` antes dele é pulado. O `iex` segue as aspas do
   PowerShell. `iex '$'"'gh' ..."` sai 0 no HEAD e saía 2 na base, mas não roda `gh` em shell
   nenhum: no PowerShell são dois argumentos e o `iex` dá erro, e no bash o `iex` não existe.
+- Fechado na revisão 5: o gate de subagente tokeniza sem a opção `contrabarra`, e o `textoAPartir`
+  remontava a palavra que mistura aspa dupla e contrabarra pela primeira aspa. `"gh"\` virava
+  `"gh\"` e `"eval \"gh` virava `"eval \gh"`, então `eval "gh"\ issue\ close\ 12` e
+  `bash -c "eval \"gh issue comment 5 --body hi\""` saíam 0 (a base barrava). A palavra mista
+  com contrabarra passa a guardar o texto original (`raw`), como a palavra mista com aspa simples já
+  guardava. Ainda saem 0 no HEAD e 2 na base formas com aspa dupla sem fechar (`eval "gh\" issue close 12`),
+  que o bash não executa (erro de sintaxe).
+- Resíduo aceito (revisão 5, preexistente): o gate de subagente não confere evento `PowerShell`;
+  `gh issue comment` digitado no PowerShell de um subagente sai 0 na base e no HEAD. O
+  `gate-fechar-issue` cobre o PowerShell para o fechamento.
 - Resíduo aceito (revisão 3, fora do modelo da D6): `echo 'gh issue close 12' | bash` e
   `source <(echo 'gh issue close 12')` são script lido por pipe ou substituição.
 - Resíduo aceito (revisão 3): linha de 100 KB de `# ` leva 2,6 s no regex das duas leituras

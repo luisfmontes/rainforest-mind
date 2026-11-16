@@ -50,7 +50,10 @@ function tokensComAspas(cmd, opcoes = {}) {
     const t = { v: atual, q: citado, aspa: primeiraAspa };
     if (modos.size > 1) {
       t.mista = true;
-      if (modos.has("'")) t.raw = cmd.slice(inicioTok, fim);
+      // Também a palavra mista com contrabarra: sem a opção `contrabarra`, `"gh"\`
+      // e `"eval \"gh` eram remontadas como `"gh\"` e `"eval \gh"`, e o `eval` ou
+      // o `bash -c` liam outro texto (revisão 5 da zerar-issues-14).
+      if (modos.has("'") || cmd.slice(inicioTok, fim).includes("\\")) t.raw = cmd.slice(inicioTok, fim);
     }
     out.push(t);
   };

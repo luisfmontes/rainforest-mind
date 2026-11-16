@@ -21,7 +21,7 @@
     "em": "2026-11-15"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-16",
     "em": "2026-11-16",
     "integradas": [
@@ -60,20 +60,29 @@
         "fixture": "testa-bash-c-opcoes.sh, caso -co errexit"
       }
     ],
-    "reaberturas": 4
+    "reaberturas": 5,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-16"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "42a1a3e291ba98477c767ef6ec1009ffa09b349c",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-11-15-zerar-issues-14.json",
-        "docs/rainforest/portoes/2026-11-15-zerar-issues-14-impasse.md"
-      ]
+      "head": "82ef09e2990cbc9845e121bb3c83e4e81183c371",
+      "caminhos_sujos": []
     },
-    "vereditos": [],
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad5e99c2398080327",
+        "veredito": "reprovado",
+        "em": "2026-11-16",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ab968258-a4a7-4b2e-978f-f6aa338bbff8/subagents/agent-ad5e99c2398080327.jsonl"
+      }
+    ],
     "em": "2026-11-16",
-    "tentativas": 4,
+    "tentativas": 5,
     "voltas": [
       {
         "volta": 1,
@@ -136,9 +145,8 @@
     ],
     "achados": 3,
     "base": "7731a8c0",
-    "head": "870cb69b",
-    "resumo": "regressao no eval com palavra mista (consertada em ab00f990); 2 baixos aceitos no design",
-    "liberado_em": "2026-11-16"
+    "head": "82ef09e2",
+    "resumo": "2 regressoes altas no gate de subagente: textoAPartir remontava palavra mista com contrabarra (eval com gh entre aspas e espacos escapados; bash -c com eval e aspas escapadas); consertado guardando o texto original tambem com contrabarra. 1 baixa preexistente (gate de subagente nao ve PowerShell)."
   },
   "verificar": {
     "status": "pendente"
