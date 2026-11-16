@@ -47,3 +47,6 @@ Liberar uma 4ª rodada de revisão com esses consertos. É o recomendado.
 
 ## Decisão pedida ao usuário (2)
 Liberar uma 5ª rodada com os consertos do ab00f990 e do f3976b50. É o recomendado.
+- Resposta, em 2026-11-16: "sim cara vai no automatico". Lida como a opção B: a 5ª rodada
+  está liberada, e as seguintes da rodada 14 também, desde que cada reprovação seja uma
+  regressão consertada com teste e mutação.
