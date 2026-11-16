@@ -21,7 +21,7 @@
     "em": "2026-11-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-16",
     "em": "2026-11-16",
     "integradas": [
@@ -32,7 +32,7 @@
       5
     ],
     "comando": "bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-bash-c-opcoes.sh",
-    "saida": "HEAD 42a1a3e2 (codigo f3976b50): testa-gate-fechar-issue 626 ok, 0 falha(s), EXIT=0; subagente 147 ok 0 falhou EXIT=0; bash-c-opcoes 34 ok, 0 falha(s) EXIT=0; gate-worktree 916 ok, 0 falha(s) EXIT=0",
+    "saida": "HEAD 9d82b5f9: testa-gate-fechar-issue 626 ok, 0 falha(s), EXIT=0; subagente 155 ok 0 falhou EXIT=0; bash-c-opcoes 34 ok EXIT=0; gate-worktree 916 ok EXIT=0; staging-total 189, cwd-efetivo 85, mensagem-commit 47, publicacao-destino 186, colapso 19, corpus EXIT=0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -60,11 +60,7 @@
         "fixture": "testa-bash-c-opcoes.sh, caso -co errexit"
       }
     ],
-    "reaberturas": 5,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-16"
-    }
+    "reaberturas": 5
   },
   "revisar": {
     "status": "reprovado",
@@ -141,12 +137,17 @@
       {
         "texto": "2026-11-16 usuario: 'sim cara vai no automatico' (opcao B: liberar a 5a rodada e as seguintes da rodada 14 enquanto cada reprovacao for regressao consertada com teste)",
         "em": "2026-11-16"
+      },
+      {
+        "texto": "2026-11-16 usuario: 'sim cara vai no automatico' (opcao B) cobre a 6a rodada: a revisao 5 reprovou por regressao consertada em 9d82b5f9 com teste e mutacao",
+        "em": "2026-11-16"
       }
     ],
     "achados": 3,
     "base": "7731a8c0",
     "head": "82ef09e2",
-    "resumo": "2 regressoes altas no gate de subagente: textoAPartir remontava palavra mista com contrabarra (eval com gh entre aspas e espacos escapados; bash -c com eval e aspas escapadas); consertado guardando o texto original tambem com contrabarra. 1 baixa preexistente (gate de subagente nao ve PowerShell)."
+    "resumo": "2 regressoes altas no gate de subagente: textoAPartir remontava palavra mista com contrabarra (eval com gh entre aspas e espacos escapados; bash -c com eval e aspas escapadas); consertado guardando o texto original tambem com contrabarra. 1 baixa preexistente (gate de subagente nao ve PowerShell).",
+    "liberado_em": "2026-11-16"
   },
   "verificar": {
     "status": "pendente"
