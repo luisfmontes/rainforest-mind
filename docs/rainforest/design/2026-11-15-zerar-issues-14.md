@@ -162,6 +162,12 @@ Decisões tomadas pela sessão em modo autônomo, com a autorização do Luís d
   passar `"ba"s\h -c "gh issue close 12"` (`'ba's\h` já vazava desde a #699). O primeiro token sai
   sempre pelo valor. Resíduo preexistente: o gate de subagente, que tokeniza sem a opção `contrabarra`,
   não abre `"ba"s\h -c` (sai 0 na base e no HEAD).
+- Fechado na revisão de segurança do 96d90aa4 (preexistente na base e no 870cb69b): o valor do
+  executável com uma espécie de aspa dentro (`'/tmp/x'"'"/bash`, valor `/tmp/x'/bash`) era remontado
+  pela primeira aspa e partia o nome, e `'/tmp/x'"'"/bash -c "gh issue close 12"` saía 0 nos dois
+  gates. Agora sai entre a aspa que ele não contém. Com as duas espécies de aspa, ou com `$`, crase
+  ou contrabarra no valor, segue a regra de antes. Resíduo preexistente: `'/usr/bin/env' "ba"sh -c
+  "gh issue close 12"` sai 0 na base e no HEAD.
 - Resíduo aceito (revisão 5, preexistente): o gate de subagente não confere evento `PowerShell`;
   `gh issue comment` digitado no PowerShell de um subagente sai 0 na base e no HEAD. O
   `gate-fechar-issue` cobre o PowerShell para o fechamento.

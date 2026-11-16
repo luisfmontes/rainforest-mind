@@ -61,3 +61,6 @@ Liberar uma 5ª rodada com os consertos do ab00f990 e do f3976b50. É o recomend
 - Revisão de segurança do 9d82b5f9: o `raw` no token do executável fazia `"ba"s\h -c "gh issue close 12"`
   passar no gate de fechamento (a 870cb69b barrava). O primeiro token sai pelo valor; a mutação faz 3 formas voltarem a 0.
   A revisão 6 em andamento foi parada antes do veredito e é redespachada no HEAD novo.
+- Revisão de segurança do 96d90aa4: o valor do executável com uma espécie de aspa dentro
+  (`'/tmp/x'"'"/bash -c ...`) saía 0 na base e no HEAD. Fechado: o valor sai entre a aspa que ele não contém.
+  A revisão 6 foi parada de novo antes do veredito e é redespachada no HEAD novo.

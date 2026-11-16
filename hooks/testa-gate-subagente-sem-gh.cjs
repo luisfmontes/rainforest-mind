@@ -442,6 +442,8 @@ const casosRevisao = [
   [`sh -c "eval 'g'\\"h pr create --title t --body b\\""`, 2, "(r14 rev 5) sh -c com eval de palavra mista"],
   [`bash -c "echo \\"oi\\""`, 0, "(r14 rev 5) bash -c com aspas escapadas sem gh"],
   [`eval "echo"\\ oi`, 0, "(r14 rev 5) eval com aspa e contrabarra sem gh"],
+  [`'/tmp/x'"'"/bash -c "gh issue close 12"`, 2, "(r14 rev seg 96d90aa4) executavel com aspa simples no valor"],
+  [`'/tmp/x"'/bash -c "gh issue close 12"`, 2, "(r14 rev seg 96d90aa4) executavel com aspa dupla no valor"],
   ['bash -o pipefail ./x.sh <<< "$a"', 0, "(r14 rev seg 16571bcd) -o consome o valor e o script e arquivo"],
   ["pwsh -EncodedCommand ZwBoAA==", 2, "(revisão) pwsh -EncodedCommand (ilegível)"],
   ['cmd /c "gh issue close 12"', 2, "(revisão) cmd /c com gh issue close"],
