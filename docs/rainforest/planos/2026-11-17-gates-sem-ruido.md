@@ -50,7 +50,7 @@ arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh
 depende de: nenhuma
 busca:
 - catalogo | listar --raiz hooks/lib | reaproveito corpoDeHeredoc de hooks/lib/heredoc.cjs:138 (devolve corpo, fim, delimitadorQuotado, fechado) e posicoesDeOperadorHeredoc de hooks/lib/heredoc.cjs:258
-- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:301 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
+- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:307 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
 desfecho: estender
 O que fazer:
 - Função nova `function mensagemDeHeredoc(cmd, cmdMascarado)` que devolve a string da mensagem ou `null`. `cmdMascarado` é a saída de `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento: todo índice achado nele vale no `cmd` original.
