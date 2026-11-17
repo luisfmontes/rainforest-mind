@@ -25,8 +25,8 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-11-17",
-    "tarefas_ok": 9,
-    "tarefas": 9,
+    "tarefas_ok": 10,
+    "tarefas": 10,
     "carimbos": [
       {
         "tarefa": 1,
@@ -65,8 +65,8 @@
       4,
       6
     ],
-    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-fechar-issue.cjs --de <leitura so antes do merge> --bateria bash hooks/testa-gate-fechar-issue.sh; idem gate-mensagem-commit",
-    "saida": "tarefa 8: ok: bateria VERMELHA (exit 1), duas rodadas, baseline exit 0; tarefa 9: ok: bateria VERMELHA (exit 1); tarefa 10: testa-gate-agente-em-voo 35 ok, 0 falha(s)",
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-mensagem-commit.cjs --de <recusa de heredoc anterior na linha> --para if (false) return null; --bateria bash hooks/testa-gate-mensagem-commit.sh",
+    "saida": "tarefa 11: ok: bateria VERMELHA (exit 1), duas rodadas; bateria 76 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -112,29 +112,48 @@
         "tarefa": 10,
         "resultado": "n/a",
         "motivo": "desempenho sem comportamento observavel na saida do hook"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh, caso dois heredocs na linha"
       }
     ]
   },
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "cbfaf5ede200e6e33c3f3e9f576c3d151a0651a7",
+      "head": "488917c403086139e49c2c3759b5812c4c19c2a1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a0d29afd643bdb61f",
+        "agente_id": "a0eed895e2b211761",
         "veredito": "ok",
         "em": "2026-11-17",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a0d29afd643bdb61f.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a0eed895e2b211761.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-17",
-    "achados": 8,
+    "achados": 4,
     "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
-    "head": "cbfaf5ede200e6e33c3f3e9f576c3d151a0651a7"
+    "head": "488917c403086139e49c2c3759b5812c4c19c2a1",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a0d29afd643bdb61f",
+            "veredito": "ok",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a0d29afd643bdb61f.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
     "status": "pendente",
@@ -172,6 +191,11 @@
       "em": "2026-11-17",
       "de": "revisar",
       "motivo": "revisar: (6) leitura gh pr view/checks/status depois do merge barra; (1) heredoc do -F - que nao alimenta o stdin do commit (< depois, $( ou crase antes) e aceito; (4/5) agente-em-voo le o transcript inteiro e antes de saber se ha em_voo; (8) linha do agente-em-voo na tabela PreToolUse e README sem head -N"
+    },
+    {
+      "em": "2026-11-17",
+      "de": "revisar",
+      "motivo": "revisar rodada 2: (1) dois heredocs na linha do commit -F - conferem o corpo errado; (2) fd antes do << (3<<) nao e o stdin; (4) | sem escape na linha 193 do README [preexistente]"
     }
   ]
 }
