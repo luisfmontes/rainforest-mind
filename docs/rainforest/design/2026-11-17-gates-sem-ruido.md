@@ -41,7 +41,7 @@ no modo automatico"). Rodada sob `executar-autonomo`: decisões abaixo marcadas
 
 ## Resíduos aceitos da revisão (2026-11-17)
 
-- **Vários `git commit` na mesma linha** (achado 2): `mensagemDeHeredoc` e `achaGitCommit` só conferem o primeiro. A família já existia na base (`git commit -m "ok" && git commit -m "ruim."`), e o gate protege formato de mensagem, não segurança.
+- **Vários `git commit` no mesmo comando** (achado 2; rodada 5, achado 5, para o que vem depois da linha de fechamento): `mensagemDeHeredoc` e `achaGitCommit` só conferem o primeiro. A família já existia na base (`git commit -m "ok" && git commit -m "ruim."`), e o gate protege formato de mensagem, não segurança.
 - **Staging por script não-shell que a busca por texto não vê** (achado 3, preexistente): `node t.cjs; bash t.cjs` com `execSync('git add -A')`, `node - <<'EOF'`/`python - <<'EOF'` e a forma em argv (`execFileSync('git', ['add','-A'])`). Passavam na base; registrados na Issue #722.
 - **Só `entrypoint` `cli` conta como interativo** (achado 5): `claude-vscode` e desktop continuam barrando. É a falha fechada que a D3 escolheu; um sinal mais largo (`CLAUDE_CODE_SESSION_ATTENDED`) precisa de medição própria.
 - **Formas raras que continuam barrando** (achado 7): `| tail -n 2`, merge pela ferramenta PowerShell, `git commit -F - 2>&1 <<'EOF'` e `<<\EOF`.
@@ -49,6 +49,12 @@ no modo automatico"). Rodada sob `executar-autonomo`: decisões abaixo marcadas
 - **Formas raras de `-F -` que barram por a forma canônica ser estreita** (rodada 3, achado 5): `git commit -F - 0<<'EOF'` e uma linha com `<<` aritmético (`x=$((1<<3)); git commit -F - <<'EOF'`). A saída é `-F <arquivo>`.
 - **Heredoc com continuação `\` e comando na linha seguinte** (rodada 3): a máscara de `hooks/lib/heredoc.cjs` trata a linha seguinte como corpo, e nenhum gate vê o comando. Defeito da base, de lib compartilhada por vários gates; registrado na Issue #724 (abre contorno no `gate-staging-total`).
 - **D4 só lê a forma direta** (rodada 4): depois de três reprovações de leituras genéricas de heredoc, o `-F -` só é lido quando a primeira linha do comando casa uma lista branca literal. Barram, como na base: commit fora da primeira linha (`cat > n.md <<'A'` antes, `git add a && \` + quebra), `git -C dir commit`, `--trailer "k: v"` ou `--author="Nome <email>"` na linha, e qualquer coisa depois do delimitador além de `&& git push`. A saída é `-F <arquivo>` ou `-m`.
+- **Implementação final da D4** (rodada 5): a leitura não usa `corpoDeHeredoc` nem `posicoesDeOperadorHeredoc`, como o texto da D4 acima previa; é a lista branca `LINHA0_HEREDOC` da primeira linha, com o corpo lido linha a linha até o delimitador (`mensagemDeHeredoc(cmd)`). O modelo de ameaça da D4 não muda.
+- **Achados [baixa] da rodada 5 que ficam** (já existiam na base ou falham fechados):
+  - `-F` com valor que começa por `-` e não é só `-` (`-F -> /dev/null`, `-F -$X`): o arquivo não existe, e o gate sai inativo. Só `-F -<` foi fechado.
+  - O stage do "corpo obrigatório" é medido no `cwd` do evento, antes dos `git add`/`cd` do próprio comando, para `-m` e `-F <arquivo>` também.
+  - Flag curta agrupada (`git commit -aF - <<'EOF'`) barra; a saída é separar as flags.
+  - `--cleanup=strip`/`scissors` reescrevem a mensagem depois da checagem, e `--amend`/`--no-edit` saem sem conferir, como com `-F <arquivo>`.
 
 ## Fora de escopo
 

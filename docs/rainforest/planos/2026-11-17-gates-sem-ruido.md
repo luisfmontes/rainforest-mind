@@ -45,6 +45,7 @@ pronto quando: com o payload de Stop que o harness manda (`session_id`, `cwd` da
   - todos os casos que já existiam continuam com o exit de antes.
 
 ### 2. gate-mensagem-commit lê a mensagem do heredoc citado em `git commit -F -` [tipo: implementar]
+Nota (rodada 5): a leitura descrita aqui, com `corpoDeHeredoc`, foi substituída pela lista branca da tarefa 11; o `pronto quando:` continua valendo.
 atende: D4
 arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh`
 depende de: nenhuma
@@ -197,6 +198,7 @@ prova-na-base: verde — o defeito só existe depois da tarefa 6; na base o merg
 pronto quando: com `gh pr merge 5 --squash; gh pr view 5 --json state`, `gh pr merge 5 --squash && gh pr view 5 --json state,mergedAt` e `gh pr merge 5 --squash 2>&1 | tail -2; gh pr checks 5`, o gate sai 0; com `gh pr merge 5 --squash; gh pr list` e `gh pr merge 5 --squash; gh pr view 5 --json state; gh pr me''rge 6 --body x`, sai 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` (stub `pm`) imprimindo `ok` nos cinco casos e nenhuma falha no placar.
 
 ### 9. Achado 1 do revisar: o heredoc do `-F -` tem de ser o stdin do commit [tipo: implementar]
+Nota (rodada 5): as recusas descritas aqui viraram a âncora `$` da lista branca da tarefa 11, alvo da mutação abaixo.
 atende: D4
 arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh`
 depende de: 2
