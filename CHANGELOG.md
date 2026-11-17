@@ -10,6 +10,20 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.17.0 — 2026-11-17
+
+Quatro gates deixam de barrar formas que não escondiam nada. Antes, cada uma dessas formas aparecia como "hook error" e o modelo reescrevia o comando para contornar. Os números são da semana anterior, medidos nos transcripts das duas contas.
+
+- **`gate-agente-em-voo` só barra em sessão não interativa (`claude -p`, SDK).** Os 121 bloqueios da semana foram todos de sessão interativa. Nela, o agente em background avisa quando termina e abre um turno novo, então encerrar o turno para esperá-lo é o normal. A sessão conta como interativa quando `CLAUDE_CODE_ENTRYPOINT` é `cli` ou, sem a variável, quando o transcript diz `entrypoint: "cli"`. Qualquer outro valor, ou falha de leitura, barra como antes.
+- **`gate-mensagem-commit` lê a mensagem de `git commit -F - <<'EOF'`.** Com o delimitador entre aspas, o texto do heredoc é literal, então o gate confere assunto e corpo como já fazia com `-F <arquivo>`. Esse caso respondia por 38 bloqueios de "mensagem não resolvível". Heredoc sem aspas, here-string (`<<<`) e mensagem vinda por pipe continuam barrando.
+- **`gate-fechar-issue` julga o próprio segmento do `gh pr merge`.** Passam a ser aceitas `cd <caminho> && gh pr merge N`, `gh pr view N; gh pr merge N` e `gh pr merge N 2>&1 | tail -2`, que somaram 31 bloqueios de "não está sozinho no comando". O que vem antes do merge precisa ser inerte:
+  - um `cd` para caminho literal, sem `~`, `-` nem glob;
+  - ou uma leitura `gh pr view|checks|status`.
+
+  Variável, `$(...)`, wrapper e um segundo `gh` disfarçado continuam barrando. Um merge cujo repositório o gate não consegue saber também barra, e a mensagem pede `--repo` ou a URL do PR.
+- **`gate-staging-total` não lê mais um script node, python e afins como se fosse shell.** Um heredoc citado que vira arquivo rodado por `node`, `python`, `perl`, `ruby`, `deno` ou `bun` é procurado como texto, e só barra se tiver `git add -A`/`.`/`-u` ou `git commit -a`. Antes, um regex de JavaScript lido como shell virava "comando dinâmico". Com `bash`, `sh` ou `pwsh`, o corpo continua sendo lido como shell.
+- **Migrar os gates para mod foi avaliado e descartado.** O mod recebe a mesma string de comando, então recusaria as mesmas formas. Além disso, o fim de turno em mod não bloqueia, e a ponte Codex não roda mods. Recusar com JSON (`permissionDecision: deny`) no lugar do exit 2 também foi medido: o rótulo "hook error" continua o mesmo.
+
 ## 2.16.1 — 2026-11-16
 
 - **O gate de publicação confere `gh api`, `gh release` e `gh gist`.** Com um termo da sua lista privada no texto, estas escritas são barradas quando o destino é público:
