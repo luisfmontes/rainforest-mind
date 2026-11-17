@@ -148,12 +148,13 @@ O que fazer:
 - No ramo do merge, depois de `analisarPrMerge`: se `repo` é nulo, `ref` não começa por `https://`, e `cwdSegmento` é nulo/vazio, barra com a mensagem "não sei em que repositório o merge roda (cd incerto); use --repo dono/repo ou a URL do PR".
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `isolado !== null && segmentoConfere(isolado, segmento) ? isolado : textoDoComando`
-  para: `isolado !== null ? isolado : textoDoComando`
+  de: `const SEG_MERGE_ANTES_OK = [/^cd (?!-)[A-Za-z0-9._\/:-]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];`
+  para: `const SEG_MERGE_ANTES_OK = [/^cd [^\s'"]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, seção "gates-sem-ruido D5 aperto: cada merge pelo próprio texto"
   timeout: `1200000`
 prova-na-base: verde — o defeito só existe depois da tarefa 3; na base do plano o merge composto já barrava pela forma
+Alvo da mutação trocado em 2026-11-17: o `segmentoConfere` e a recusa de `gh` em outra parte se cobrem (a catraca deu VERDE invertendo o primeiro, `RECUSADO: bateria VERDE com o comportamento invertido`); a regex do `cd` é a única que decide sozinha, pelo caso `cd ~`.
 pronto quando: com os comandos dos dois desvios, o gate barra — provado por `bash hooks/testa-gate-fechar-issue.sh` (stub `pm`, `D` = `$SBP_WIN`) imprimindo `ok` em cada caso abaixo e nenhuma falha no placar final:
   - barram: `gh pr merge 5 --squash; gh pr me''rge 6 --body "Closes #12"` → exit 2; `gh pr merge 5 --squash; g\h pr merge 6 --body "Closes #12"` → exit 2; `gh pr merge 5 --squash; "gh" pr merge 6 --body "Closes #12"` → exit 2; `cd ~ && gh pr merge 5 --squash` → exit 2; `cd - && gh pr merge 5 --squash` → exit 2; `cd x* && gh pr merge 5 --squash` → exit 2.
   - continuam passando: os quatro legítimos da seção `gates-sem-ruido D5` (mesmo exit 0).
