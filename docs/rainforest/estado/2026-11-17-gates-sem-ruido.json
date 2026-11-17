@@ -57,20 +57,14 @@
         "ts": "2026-11-17T14:21:46.043Z"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "6 aperto D5",
-        "desde": "2026-11-17",
-        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-11-17",
     "integradas": [
       1,
       2,
       3,
-      4
+      4,
+      6
     ]
   },
   "revisar": {

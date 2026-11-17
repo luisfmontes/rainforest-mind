@@ -94,7 +94,7 @@ O que fazer: função nova `function segmentoDoMerge(comando)`, que devolve o te
 - Bateria: seção nova "gates-sem-ruido D5: merge julgado pelo segmento", usando a função `pm` que já existe. Os `cd` dos casos legítimos apontam para `$SBP_WIN`, o diretório que a bateria já cria, para o `cwdPorSegmento` não cair em diretório inexistente; o caso `cd` para diretório inexistente fica só entre os que barram se o gate barrar por outro motivo, e não entra como legítimo.
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `const forma = analisarPrMerge(segmentoDoMerge(textoDoComando) ?? textoDoComando);`
+  de: `const forma = analisarPrMerge(isolado !== null && segmentoConfere(isolado, segmento) ? isolado : textoDoComando);`
   para: `const forma = analisarPrMerge(textoDoComando);`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, seção "gates-sem-ruido D5: merge julgado pelo segmento"
