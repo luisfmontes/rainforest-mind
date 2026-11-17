@@ -48,6 +48,7 @@ no modo automatico"). Rodada sob `executar-autonomo`: decisões abaixo marcadas
 - **`$`, `(`, crase ou `<` entre `git commit` e o `<<` barram mesmo entre aspas** (rodada 2, achado 3): `git commit --author="Nome <email>" -F - <<'EOF'` e `git -C "$DIR" commit -F - <<'EOF'` barram. Na base todo `-F -` barrava; aceitar exigiria ler aspas no trecho, e a saída é `-F <arquivo>` ou `-m`.
 - **Formas raras de `-F -` que barram por a forma canônica ser estreita** (rodada 3, achado 5): `git commit -F - 0<<'EOF'` e uma linha com `<<` aritmético (`x=$((1<<3)); git commit -F - <<'EOF'`). A saída é `-F <arquivo>`.
 - **Heredoc com continuação `\` e comando na linha seguinte** (rodada 3): a máscara de `hooks/lib/heredoc.cjs` trata a linha seguinte como corpo, e nenhum gate vê o comando. Defeito da base, de lib compartilhada por vários gates; registrado na Issue #724 (abre contorno no `gate-staging-total`).
+- **D4 só lê a forma direta** (rodada 4): depois de três reprovações de leituras genéricas de heredoc, o `-F -` só é lido quando a primeira linha do comando casa uma lista branca literal. Barram, como na base: commit fora da primeira linha (`cat > n.md <<'A'` antes, `git add a && \` + quebra), `git -C dir commit`, `--trailer "k: v"` ou `--author="Nome <email>"` na linha, e qualquer coisa depois do delimitador além de `&& git push`. A saída é `-F <arquivo>` ou `-m`.
 
 ## Fora de escopo
 

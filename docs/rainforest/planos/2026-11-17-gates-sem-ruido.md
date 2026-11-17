@@ -50,7 +50,7 @@ arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh
 depende de: nenhuma
 busca:
 - catalogo | listar --raiz hooks/lib | reaproveito corpoDeHeredoc de hooks/lib/heredoc.cjs:138 (devolve corpo, fim, delimitadorQuotado, fechado) e posicoesDeOperadorHeredoc de hooks/lib/heredoc.cjs:258
-- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:309 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
+- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:306 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
 desfecho: estender
 O que fazer:
 - Função nova `function mensagemDeHeredoc(cmd, cmdMascarado)` que devolve a string da mensagem ou `null`. `cmdMascarado` é a saída de `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento: todo índice achado nele vale no `cmd` original.
@@ -207,8 +207,8 @@ Origem: revisão independente de 2026-11-17 (achado 1, [baixa]). `git commit -F 
 O que fazer: em `mensagemDeHeredoc`, recusar quando o trecho entre o `git commit` e o `<<` tem `(`, `$`, crase ou `<`, e quando o resto da linha depois do `<<` tem `<`.
 mutacao:
   arquivo: `hooks/gate-mensagem-commit.cjs`
-  de: `if (cmd.slice(p + 2, quebra).includes("<")) return null;`
-  para: `if (false) return null;`
+  de: `  `(?: && git push(?: ${TOKEN_LITERAL})*)?$``
+  para: `  `(?: && git push(?: ${TOKEN_LITERAL})*)?``
   bateria: `bash hooks/testa-gate-mensagem-commit.sh`
   fixture: testa-gate-mensagem-commit.sh, seção "gates-sem-ruido D4", caso "< outro.txt (outro stdin vence)"
 prova-na-base: verde — o defeito só existe depois da tarefa 2; na base todo `-F -` barrava
@@ -236,12 +236,12 @@ busca:
 - catalogo | listar --raiz hooks | estendo mensagemDeHeredoc de hooks/gate-mensagem-commit.cjs (tarefas 2 e 9) com posicoesDeOperadorHeredoc, que o arquivo já importa
 desfecho: estender
 Origem: revisão independente, rodada 2 (achados 1 [media], 2 [baixa] e 4 [baixa][preexistente]). `cat <<'A' > /dev/null && git commit -F - <<'B'` conferia o corpo de `A` e o git gravava o de `B`; `git commit -F - 3<<'EOF'` conferia um heredoc que vai para o fd 3. No README, a célula do `gate-verificador-staged` tinha `|` sem escape.
-O que fazer: `mensagemDeHeredoc` aceita só a forma canônica: um único operador de heredoc no comando inteiro; nenhuma continuação `\`+quebra até o fim da linha do `<<`; entre o `git commit` e o `<<`, nenhum de `; | & ( ) $ < { }` nem crase, e só espaço ou o `-` do `-F -` colado logo antes do `<<`; nenhum `<` depois dele na linha. Com `<<-`, as tabulações à esquerda saem de toda linha do corpo. Escapar os `|` da célula nos dois READMEs. Rodada 3 do revisar (reprovada): a lista negra da rodada 2 deixava `{fd}<<`, continuação com `\` e heredoc anterior em outra linha física; daí a troca para a forma canônica.
+O que fazer: `mensagemDeHeredoc` lê a mensagem só quando a PRIMEIRA linha do comando casa uma lista branca literal (`LINHA0_HEREDOC`): zero ou mais `cd <tok>`/`git add <tok>...` seguidos de ` && `, depois `git commit` com flags `-x`/`--x[=tok]`, ` -F - <<`, `-` opcional, delimitador `[A-Za-z_][A-Za-z0-9_]*` entre aspas simples ou duplas, e no máximo ` && git push <tok>...` (tokens `[A-Za-z0-9._/:=-]+`, sem aspa, `$`, crase, `<`, `>` nem `\`); o corpo são as linhas seguintes até a primeira igual ao delimitador (com `<<-`, sem tabulações à esquerda). `-F -<<` colado (vira `fFile` `-<<EOF`) barra em vez de deixar o gate inativo. Escapar os `|` da célula do verificador-staged nos dois READMEs. Histórico: as rodadas 2 a 4 do revisar reprovaram leituras genéricas de heredoc (lista negra), sempre com vizinha aberta; daí a lista branca.
 mutacao:
   arquivo: `hooks/gate-mensagem-commit.cjs`
-  de: `  if (operadores.length !== 1) return null;`
-  para: `  if (false) return null;`
+  de: `  `^(?:(?:cd|git add) ${TOKEN_LITERAL}(?: ${TOKEN_LITERAL})* && )*` +`
+  para: `  `(?:(?:cd|git add) ${TOKEN_LITERAL}(?: ${TOKEN_LITERAL})* && )*` +`
   bateria: `bash hooks/testa-gate-mensagem-commit.sh`
   fixture: testa-gate-mensagem-commit.sh, caso "cat <<'A' && git commit -F - <<'B' (dois heredocs na linha)"
 prova-na-base: verde — o defeito só existe depois da tarefa 2; na base todo `-F -` barrava
-pronto quando: com `cat <<'A' > /dev/null && git commit -F - <<'B'` (corpo ruim em B), `printf x | git commit -F - 3<<'EOF'`, `echo x | git commit -F - {fd}<<'EOF'` e `git commit -F - <<'EOF' \` + `< outro.txt` na linha seguinte, o gate sai 2; com `<<-'EOF'` e tab antes de um assunto de 72 colunas, e com `-F -<<'EOF'` colado, sai 0 — provado por `bash hooks/testa-gate-mensagem-commit.sh` imprimindo `ok` nos dois casos e `0 falha(s)`; e a linha `gate-verificador-staged` do README.md com 3 `|` não escapados.
+pronto quando: com `cat <<'A' > /dev/null && git commit -F - <<'B'`, `printf x | git commit -F - 3<<'EOF'`, `{fd}<<'EOF'`, `<<'EOF' \` + `< outro.txt`, delimitador `"EO\"F"`, aspa aberta e `0>&3` depois do `<<`, `echo git commit <<'EOF'` + commit real por pipe, e `-F -<<'EOF'` colado, o gate sai 2; com `<<-'EOF'` e tab antes de assunto de 72 colunas, corpo que cita `<<` em prosa e outro heredoc depois do fechamento, sai 0 — provado por `bash hooks/testa-gate-mensagem-commit.sh` imprimindo `ok` em cada caso e `0 falha(s)`; e a linha `gate-verificador-staged` do README.md com 3 `|` não escapados.

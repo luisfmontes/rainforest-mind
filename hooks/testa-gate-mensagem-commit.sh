@@ -259,8 +259,22 @@ gate_contendo "git commit -F - <<'EOF' \\ + < outro.txt na linha seguinte -> exi
 # Heredoc com continuacao e commit na linha seguinte fica de fora: a mascara da lib esconde o commit (Issue #724).
 gate "git commit -F - <<-'EOF' com tab antes de assunto de 72 colunas -> exit 0" 0 \
   "$(payload "$R1" Bash $'git commit -F - <<-\x27EOF\x27\n\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n\tCorpo que explica.\n\tEOF')"
-gate "git commit -F -<<'EOF' (operador colado no -) -> exit 0" 0 \
+gate_contendo "git commit -F -<<'EOF' colado (vira arquivo '-<<EOF') -> exit 2" 2 "use -F <arquivo>" \
   "$(payload "$R1" Bash $'git commit -F -<<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+
+# Rodada 4 do revisar: so a primeira linha literal; o resto barra.
+gate_contendo "delimitador \"EO\\\"F\" (bash e gate leem diferente) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<"EO\\"F"\nAssunto bom sem ponto\n\nEO"F\nCorpo falso\nEO\\')"
+gate_contendo "aspa aberta depois do << -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 --trailer "a: x\nAssunto bom sem ponto\nEOF\ny"\nAssunto ruim.\nEOF')"
+gate_contendo "0>&3 depois do << -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 0>&3\nAssunto bom sem ponto\nEOF')"
+gate_contendo "echo git commit <<'EOF' e o commit real por pipe -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'echo git commit <<\x27EOF\x27\nAssunto bom sem ponto\nEOF\nprintf \x27Assunto ruim.\x27 | git commit -F -')"
+gate "corpo que cita <<'EOF' em prosa -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nO corpo cita cat <<\x27X\x27 e a << 3 em prosa.\nEOF')"
+gate "commit por heredoc seguido de outro heredoc -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF\ncat <<\x27B\x27 > saida.txt\nx\nB')"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

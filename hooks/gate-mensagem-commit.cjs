@@ -75,7 +75,7 @@ const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
-const { mascararCorposDeHeredoc, corpoDeHeredoc, posicoesDeOperadorHeredoc } = require("./lib/heredoc.cjs");
+const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
 
 // Flags globais do git (antes do subcomando) que consomem o token seguinte.
 const FLAG_GLOBAL_COM_VALOR = new Set([
@@ -209,40 +209,37 @@ function leFlagsCommit(argsToks) {
   return { mParts, fFile, reusaMensagem };
 }
 
+// Lista branca da primeira linha de um commit por heredoc (gates-sem-ruido D4,
+// rodada 4 do revisar). Tokens literais, sem aspa, `$`, crase nem `\`; o
+// delimitador e um nome simples entre aspas simples.
+const TOKEN_LITERAL = "[A-Za-z0-9._/:=-]+";
+const LINHA0_HEREDOC = new RegExp(
+  `^(?:(?:cd|git add) ${TOKEN_LITERAL}(?: ${TOKEN_LITERAL})* && )*` +
+  `git commit(?: -[A-Za-z-]+(?:=${TOKEN_LITERAL})?)* -F - <<(-?)(?:'([A-Za-z_][A-Za-z0-9_]*)'|"([A-Za-z_][A-Za-z0-9_]*)")` +
+  `(?: && git push(?: ${TOKEN_LITERAL})*)?$`
+);
+
 /**
- * Mensagem de `git commit -F -` quando o stdin e um heredoc CITADO no proprio
- * comando (gates-sem-ruido D4). Devolve a string da mensagem ou `null`.
- * Aceita so a forma canonica (rodada 3 do revisar: lista negra de formas
- * sempre deixava uma vizinha aberta, como `{fd}<<` e continuacao com `\`):
- * - um unico operador de heredoc no comando inteiro;
- * - nenhuma continuacao `\`+quebra ate o fim da linha do `<<`;
- * - entre o `git commit` e o `<<`, nada de `; | & ( ) $ < { }` nem crase, e
- *   so espaco ou o `-` do `-F -` colado logo antes do `<<` (sem descritor);
- * - nenhum `<` depois do `<<` na mesma linha;
- * - delimitador citado e linha de fechamento presente.
- * Com `<<-`, as tabulacoes a esquerda saem de toda linha do corpo, como no bash.
- * `cmdMascarado` e `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento:
- * todo indice achado nele vale no `cmd` original.
+ * Mensagem de `git commit -F -` quando o stdin e um heredoc CITADO (D4).
+ * Devolve a string da mensagem ou `null` (o gate entao barra como antes).
+ * So a forma literal: a PRIMEIRA linha do comando casa `LINHA0_HEREDOC`, e o
+ * corpo sao as linhas seguintes ate a primeira igual ao delimitador (com `<<-`,
+ * sem as tabulacoes a esquerda, como no bash). Com o commit na primeira linha,
+ * nenhum heredoc anterior existe; sem aspa, `$`, `<`, `>` nem `\` na linha, nada
+ * toma o stdin nem estende a linha. Rodadas 2 a 4 do revisar mostraram que
+ * ler heredoc generico (lista negra de formas) sempre deixava vizinha aberta.
  */
-function mensagemDeHeredoc(cmd, cmdMascarado) {
-  const casamento = /\bgit\b[^\n;|&]*?\bcommit\b/.exec(cmdMascarado);
-  if (!casamento) return null;
-  const k = casamento.index;
-  let quebra = cmdMascarado.indexOf("\n", k);
-  if (quebra === -1) quebra = cmdMascarado.length;
-  const operadores = posicoesDeOperadorHeredoc(cmd);
-  if (operadores.length !== 1) return null;
-  const p = operadores.find((x) => x > k && x < quebra);
-  if (p === undefined) return null;
-  if (/\\\r?\n/.test(cmd.slice(0, quebra + 1))) return null;
-  const antes = cmd.slice(k, p);
-  if (/[;|&()$`<{}]/.test(antes)) return null;
-  if (!/[ \t-]$/.test(antes)) return null;
-  if (cmd.slice(p + 2, quebra).includes("<")) return null;
-  const h = corpoDeHeredoc(cmd, p);
-  if (h === null || h.delimitadorQuotado !== true || h.fechado !== true) return null;
-  const corpo = cmd[p + 2] === "-" ? h.corpo.replace(/^\t+/gm, "") : h.corpo;
-  return corpo.replace(/\r?\n$/, "");
+function mensagemDeHeredoc(cmd) {
+  if (typeof cmd !== "string" || cmd.includes("\r")) return null;
+  const linhas = cmd.split("\n");
+  const m = LINHA0_HEREDOC.exec(linhas[0]);
+  if (!m) return null;
+  const delim = m[2] || m[3];
+  const tira = (l) => (m[1] === "-" ? l.replace(/^\t+/, "") : l);
+  for (let i = 1; i < linhas.length; i += 1) {
+    if (tira(linhas[i]) === delim) return linhas.slice(1, i).map(tira).join("\n");
+  }
+  return null;
 }
 
 /**
@@ -327,7 +324,12 @@ function main() {
   const { mParts, fFile, reusaMensagem } = leFlagsCommit(desmontarFlagsCurtas(achado.argsToks));
   if (reusaMensagem) process.exit(0); // --amend/--no-edit/-C/-c: mensagem ja existe
 
-  const mensagemHeredoc = fFile === "-" ? mensagemDeHeredoc(cmd, cmdParaAnalise) : null;
+  // `-F -<<EOF` colado vira o arquivo `-<<EOF`, que nao existe, e o gate saia
+  // INATIVO (rodada 4 do revisar): stdin disfarcado de arquivo barra.
+  if (typeof fFile === "string" && fFile.startsWith("-<")) {
+    bloqueia("mensagem via `-F -` (stdin) ou heredoc nao e resolvivel por este gate — use -F <arquivo>");
+  }
+  const mensagemHeredoc = fFile === "-" ? mensagemDeHeredoc(cmd) : null;
   if (fFile === "-" && mensagemHeredoc === null) {
     bloqueia("mensagem via `-F -` (stdin) ou heredoc nao e resolvivel por este gate — use -F <arquivo>");
   }
