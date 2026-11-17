@@ -10,6 +10,22 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.16.1 — 2026-11-16
+
+- **O gate de publicação confere `gh api`, `gh release` e `gh gist`.** Com um termo da sua lista privada no texto, estas escritas são barradas quando o destino é público:
+  - `gh api` de escrita (`-f`, `--raw-field`, `-F`, `--field`, `-F campo=@arquivo` e `--input arquivo`), com o destino tirado do endpoint `repos/<dono>/<repo>`. Uma query de `graphql` conta como escrita com `mutation` ou com o corpo vindo de arquivo (`--input`, `-F query=@arquivo`). Quando o destino não sai do endpoint (`graphql`, `user`, `orgs`, `--hostname`), ele é desconhecido, e um termo barra mesmo em repositório privado. Use `:owner/:repo` em vez de `{owner}/{repo}`: as chaves sem aspas partem o comando na leitura do gate, e o campo depois delas não é visto;
+  - `gh release create` e `gh release edit` com `--notes`, `-n`, `--notes-file`, `-F`, `--title` ou `-t`;
+  - `gh gist create --public`, incluindo os arquivos e a descrição.
+
+  Um gist sem `--public` é secreto e passa.
+- **Essas três famílias são lidas como o `gh` recebe o comando.** No `gh api`, flags agrupadas (`-ifbody=`) se desagrupam, e uma flag que pede valor consome o token seguinte, mesmo que comece com `-`. Assim, `-p -XGET` não vira método. No Bash, a contrabarra fora de aspas escapa o caractere seguinte, então `a\pi`, `\-f` e `\--public` são lidos como `api`, `-f` e `--public`. Um token com `$'...'` ou `$"..."` deixa o comando ilegível, e ele barra se tiver termo. `gh issue`, `gh pr` e todo comando de PowerShell continuam lidos como antes.
+- **Arquivo de corpo com BOM e com `~`.** Um `--body-file` gravado em UTF-16 pelo PowerShell agora é lido, e `~/x.md` é procurado no HOME.
+- **Continua passando:**
+  - o corpo vindo de stdin;
+  - um valor que só se resolve na hora, como `$f` ou `$(...)`.
+
+  Um termo escrito no próprio comando continua sendo barrado.
+
 ## 2.16.0 — 2026-11-15
 
 - **`bash -c` lê só o script, que é a primeira palavra depois do `-c`.** As palavras seguintes são `$0`, `$1` e não rodam como comando. Um `--` antes do script é pulado. Opção agrupada ou citada que esconde o `-c` (`-co`, `-oc`, `bash -c '-o' errexit`) deixa a leitura ilegível e o gate barra. Um `gh` como palavra depois do script também barra. Isso fecha as Issues #699, #703 e #708.

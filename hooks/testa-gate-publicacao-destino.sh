@@ -969,5 +969,121 @@ printf '%s' "$P702R" | env -u GH_REPO HOME="$H702" RFM_ROOT="$D702" RAINFOREST_G
 if [ "$RC702R" = 0 ]; then ok=$((ok+1)); echo "  ok   702 rede termina com hifens repetidos entre familia e verbo"
 else falhou=$((falhou+1)); echo "  FALHA 702 rede travou ou barrou com hifens repetidos (exit $RC702R; 124 = timeout)"; fi
 echo
+echo "== (#707) gh api, gh release e gh gist =="
+# Mesma caixa de areia da #702 (termo702 na lista, gh falso de visibilidade).
+# Cada forma da matriz do design sai 2 com GH_RESPONSE publico e 0 com privado.
+printf 'notas com termo702\n' > "$R702P/notas.md"
+printf '{"body":"termo702"}\n' > "$R702P/corpo.json"
+printf 'gist com termo702\n' > "$R702P/a.md"
+printf 'gist sem nada\n' > "$R702P/b.md"
+printf 'corpo com termo702\n' > "$R702P/corpo.md"
+node -e 'require("fs").writeFileSync(process.argv[1], Buffer.concat([Buffer.from([0xff,0xfe]), Buffer.from("corpo utf16 termo702\n","utf16le")]))' "$(esc "$R702P")/u16.md"
+printf 'corpo no home com termo702\n' > "$H702/x.md"
+par707() { # nome, cwd, command: publico sai 2, privado sai 0
+  confere702 "707 $1 (publico)" 2 "$PUB" Bash "$2" "$3"
+  confere702 "707 $1 (privado)" 0 "$PRIV" Bash "$2" "$3"
+}
+par707 "api -f" "$R702P" 'gh api repos/dono/x/issues/3/comments -f body=termo702'
+par707 "api --raw-field" "$R702P" 'gh api repos/dono/x/issues/3/comments --raw-field body=termo702'
+par707 "api -F" "$R702P" 'gh api repos/dono/x/issues/3/comments -F body=termo702'
+par707 "api --field" "$R702P" 'gh api repos/dono/x/issues/3/comments --field body=termo702'
+par707 "api -F @arquivo" "$R702P" 'gh api repos/dono/x/issues/3/comments -F body=@corpo.md'
+par707 "api --input" "$R702P" 'gh api repos/dono/x/issues --input corpo.json'
+par707 "api :owner/:repo pelo cwd" "$R702P" 'gh api -X PATCH repos/:owner/:repo/issues/3 -f body=termo702'
+# `{owner}` quebra o segmento no leitor de cwd (chave = grupo), que marca incerto: barra
+# mesmo no privado. Custo aceito no design (falha fechada); no publico sai 2.
+confere702 "707 api {owner}/{repo} no publico barra" 2 "$PUB" Bash "$R702P" 'gh api -X PATCH repos/{owner}/{repo}/issues/3 -f body=termo702'
+par707 "api -XPOST colado" "$R702P" 'gh api -XPOST repos/dono/x/issues -f title=termo702'
+par707 "api URL completa" "$R702P" 'gh api https://api.github.com/repos/dono/x/issues -f title=termo702'
+par707 "release create --notes" "$R702P" 'gh release create v1 --notes termo702'
+par707 "release create -n" "$R702P" 'gh release create v1 -n termo702'
+par707 "release create --notes-file" "$R702P" 'gh release create v1 --notes-file notas.md'
+par707 "release create -F" "$R702P" 'gh release create v1 -F notas.md'
+par707 "release create --title" "$R702P" 'gh release create v1 --title termo702'
+par707 "release create -t" "$R702P" 'gh release create v1 -t termo702'
+par707 "release create -p nao engole -n" "$R702P" 'gh release create v1 -p -n termo702'
+par707 "release create -d nao engole --notes" "$R702P" 'gh release create v1 -d --notes termo702'
+par707 "release edit --notes" "$R702P" 'gh release edit v1 --notes termo702'
+par707 "release edit -F" "$R702P" 'gh release edit v1 -F notas.md'
+par707 "release edit --title" "$R702P" 'gh release edit v1 --title termo702'
+par707 "release -R publico" "$R702P" 'gh release create v1 -R dono/x -n termo702'
+# Gist: o destino e o --public, nao o repositorio (GH_RESPONSE privado).
+confere702 "707 gist --public com arquivo barra" 2 "$PRIV" Bash "$R702P" 'gh gist create --public a.md'
+confere702 "707 gist -p -d barra" 2 "$PRIV" Bash "$R702P" 'gh gist create -p -d termo702 b.md'
+confere702 "707 gist secreto passa" 0 "$PUB" Bash "$R702P" 'gh gist create a.md'
+confere702 "707 gist -d sem --public passa" 0 "$PUB" Bash "$R702P" 'gh gist create -d termo702 b.md'
+confere702 "707 api gists public=true barra" 2 "$PRIV" Bash "$R702P" "gh api gists -f public=true -f 'files[a.md][content]=termo702'"
+confere702 "707 api gists sem public passa" 0 "$PUB" Bash "$R702P" "gh api gists -f 'files[a.md][content]=termo702'"
+# graphql: so mutation escreve; destino desconhecido barra com termo.
+confere702 "707 graphql mutation barra" 2 "$PRIV" Bash "$R702P" "gh api graphql -f query='mutation { addComment(input:{body:\"termo702\"}) { clientMutationId } }'"
+confere702 "707 graphql query de leitura passa" 0 "$PUB" Bash "$R702P" "gh api graphql -f query='query { search(query:\"termo702\", type:ISSUE, first:1) { issueCount } }'"
+# D4: BOM e til.
+confere702 "707 --body-file UTF-16LE com BOM barra" 2 "$PUB" Bash "$R702P" 'gh issue create --title t --body-file u16.md'
+confere702 "707 --body-file ~/x.md barra" 2 "$PUB" Bash "$R702P" 'gh issue create --title t --body-file ~/x.md'
+confere702 "707 --notes-file UTF-16LE com BOM barra" 2 "$PUB" Bash "$R702P" 'gh release create v1 --notes-file u16.md'
+# Leitura nao barra.
+confere702 "707 api GET passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues'
+confere702 "707 api -X GET com campo passa" 0 "$PUB" Bash "$R702P" 'gh api -X GET search/issues -f q=termo702'
+# Revisão de segurança do 8cb061ed: placeholder misto, gist com corpo de arquivo
+# e flag curta com valor grudado.
+confere702 "707 api placeholder misto dono/:repo barra no privado" 2 "$PRIV" Bash "$R702P" 'gh api repos/dono/:repo/issues -f body=termo702'
+confere702 "707 api placeholder misto :owner/x barra no privado" 2 "$PRIV" Bash "$R702P" 'gh api repos/:owner/x/issues -f body=termo702'
+printf '{"public":true,"files":{"a.md":{"content":"termo702"}}}\n' > "$R702P/g.json"
+confere702 "707 api gists --input barra (public no arquivo)" 2 "$PRIV" Bash "$R702P" 'gh api gists --input g.json'
+confere702 "707 api gists -F @arquivo barra" 2 "$PRIV" Bash "$R702P" "gh api gists -F 'files[a.md][content]=@a.md'"
+par707 "api -f grudado" "$R702P" 'gh api repos/dono/x/issues -fbody=termo702'
+par707 "api -F @ grudado" "$R702P" 'gh api repos/dono/x/issues -Fbody=@corpo.md'
+# pflag desagrupa: -i booleana antes da flag de valor, e -f=valor perde o =.
+par707 "api -i agrupado com -f" "$R702P" 'gh api repos/dono/x/issues -ifbody=termo702'
+par707 "api -f=valor" "$R702P" 'gh api repos/dono/x/issues -f=body=termo702'
+par707 "api -iXPOST agrupado" "$R702P" 'gh api -iXPOST repos/dono/x/issues -f title=termo702'
+confere702 "707 api grupo com letra desconhecida barra (falha fechada)" 2 "$PRIV" Bash "$R702P" 'gh api repos/dono/x/issues -zfbody=termo702'
+confere702 "707 api -i sozinho de leitura passa" 0 "$PUB" Bash "$R702P" 'gh api -i repos/dono/x/issues'
+# pflag: flag de valor sem valor colado consome o proximo token, mesmo com -.
+par707 "api -p consome -XGET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 -p -XGET'
+par707 "api -p consome -iXGET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 -p -iXGET'
+par707 "api -q consome -XGET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 -q -XGET'
+par707 "api --jq consome --method=GET" "$R702P" 'gh api repos/dono/x/issues -f body=termo702 --jq --method=GET'
+par707 "api campo -X=GET nao e metodo" "$R702P" 'gh api repos/dono/x/issues -f -X=GET -f body=termo702'
+confere702 "707 api -H consome o token antes do endpoint" 0 "$PUB" Bash "$R702P" 'gh api -H accept:x repos/dono/x/issues'
+# Valor de campo com contrabarra nao vira metodo depois de tirar a contrabarra.
+par707 "api campo \\-X=GET nao e metodo" "$R702P" "gh api repos/dono/x/issues -f '\\-X=GET' -f body=termo702"
+confere702 "707 api graphql -F query=@arquivo barra (destino desconhecido)" 2 "$PRIV" Bash "$R702P" "gh api graphql -F query=@corpo.md"
+# Contrabarra fora de aspas some antes do gh ver o token; $'...' se decodifica.
+par707 "api \\-f fora de aspas" "$R702P" 'gh api repos/dono/x/issues \-f body=termo702'
+par707 "a\\pi esconde a familia" "$R702P" 'gh a\pi repos/dono/x/issues -f body=termo702'
+par707 "rel\\ease esconde a familia" "$R702P" 'gh rel\ease create v1 -n termo702'
+confere702 "707 graphql mut\\ation barra" 2 "$PRIV" Bash "$R702P" 'gh api graphql -f query=mut\ation{termo702}'
+confere702 "707 gist \\--public barra" 2 "$PRIV" Bash "$R702P" 'gh gist create \--public a.md'
+confere702 "707 gist \$'--public' barra" 2 "$PRIV" Bash "$R702P" "gh gist create \$'--public' a.md"
+confere702 "707 gist \$'\\x2dp' barra" 2 "$PRIV" Bash "$R702P" "gh gist create \$'\\x2dp' a.md"
+# $'...' no meio do token: segmento ilegivel, barra com termo (falha fechada).
+confere702 "707 gist --\$'public' barra" 2 "$PRIV" Bash "$R702P" "gh gist create --\$'public' a.md"
+confere702 "707 gist -\$'p' barra" 2 "$PRIV" Bash "$R702P" "gh gist create -\$'p' a.md"
+confere702 "707 a\$'p'i barra" 2 "$PRIV" Bash "$R702P" "gh a\$'p'i repos/dono/x/issues -f body=termo702"
+confere702 "707 rel\$'e'ase barra" 2 "$PRIV" Bash "$R702P" "gh rel\$'e'ase create v1 -n termo702"
+confere702 "707 ilegivel sem termo passa" 0 "$PUB" Bash "$R702P" "gh a\$'p'i repos/dono/x/issues -f body=ok"
+# Aspa escapada fora de aspas nao abre aspa (corte de palavra do bash).
+confere702 "707 aspa escapada nao esconde o --public" 2 "$PRIV" Bash "$R702P" "gh gist create \\' --public a.md \\'"
+# issue/pr e PowerShell seguem a leitura da base: caminho com contrabarra se le.
+confere702 "707 PowerShell issue --body-file .\\corpo.md barra" 2 "$PUB" PowerShell "$R702" 'gh issue create --title t --body-file .\corpo.md'
+confere702 "707 PowerShell pr comment -F .\\corpo.md barra" 2 "$PUB" PowerShell "$R702" 'gh pr comment 5 -F .\corpo.md'
+confere702 "707 Bash issue --body-file \".\\corpo.md\" barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file ".\corpo.md"'
+confere702 "707 Bash issue --body-file '.\\corpo.md' barra" 2 "$PUB" Bash "$R702" "gh issue create --title t --body-file '.\\corpo.md'"
+confere702 "707 Bash pr comment -F \".\\corpo.md\" barra" 2 "$PUB" Bash "$R702" 'gh pr comment 5 -F ".\corpo.md"'
+confere702 "707 Bash issue --body-file .\\corpo.md sem aspas barra" 2 "$PUB" Bash "$R702" 'gh issue create --title t --body-file .\corpo.md'
+# Revisao 2: PowerShell nas familias novas le o caminho com contrabarra.
+confere702 "707 PowerShell release --notes-file .\\notas.md barra" 2 "$PUB" PowerShell "$R702P" 'gh release create v1 --notes-file .\notas.md'
+confere702 "707 PowerShell api -F body=@.\\corpo.md barra" 2 "$PUB" PowerShell "$R702P" 'gh api repos/dono/x/issues/3/comments -F body=@.\corpo.md'
+# Revisao 2: --public=false e secreto; flag curta agrupada se le letra a letra.
+confere702 "707 gist --public=false passa" 0 "$PUB" Bash "$R702P" 'gh gist create --public=false a.md'
+confere702 "707 gist -wp barra" 2 "$PRIV" Bash "$R702P" 'gh gist create -wp a.md'
+par707 "release -dF agrupado" "$R702P" 'gh release create v1 -dF notas.md'
+par707 "release -pF agrupado" "$R702P" 'gh release create v1 -pF notas.md'
+par707 "release -pn agrupado" "$R702P" 'gh release create v1 -pn termo702'
+confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
+confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
+echo
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
