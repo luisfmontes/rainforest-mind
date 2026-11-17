@@ -151,10 +151,10 @@ mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
   de: `const SEG_MERGE_ANTES_OK = [/^cd (?![-~])[A-Za-z0-9._\/:~-]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];`
   para: `const SEG_MERGE_ANTES_OK = [/^cd [^\s'"]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];`
-Nota (CI do PR 725): o `~` passou a valer no meio do caminho (nome 8.3 `RUNNER~1` do runner Windows); só o `~` inicial barra, que é o que o bash expande.
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, seção "gates-sem-ruido D5 aperto: cada merge pelo próprio texto"
   timeout: `1200000`
+Nota (CI do PR 725): o `~` passou a valer no meio do caminho (nome 8.3 `RUNNER~1` do runner Windows); só o `~` inicial barra, que é o que o bash expande.
 prova-na-base: verde — o defeito só existe depois da tarefa 3; na base do plano o merge composto já barrava pela forma
 Alvo da mutação trocado em 2026-11-17: o `segmentoConfere` e a recusa de `gh` em outra parte se cobrem (a catraca deu VERDE invertendo o primeiro, `RECUSADO: bateria VERDE com o comportamento invertido`); a regex do `cd` é a única que decide sozinha, pelo caso `cd ~`.
 pronto quando: com os comandos dos dois desvios, o gate barra — provado por `bash hooks/testa-gate-fechar-issue.sh` (stub `pm`, `D` = `$SBP_WIN`) imprimindo `ok` em cada caso abaixo e nenhuma falha no placar final:
