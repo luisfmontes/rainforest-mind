@@ -23,9 +23,13 @@
  * MENSAGEM. Vem de `-m`/`--message` (cada ocorrencia e um paragrafo; a
  * segunda em diante ja conta como corpo, exceto se for so trailer) ou de
  * `-F`/`--file <arquivo>` (le o arquivo: primeira linha e assunto, resto e
- * corpo). `-F -` (le de stdin) e heredoc como fonte de `-F -` sao mensagem
- * NAO RESOLVIVEL por este gate — ele nao executa o comando, so le o texto
- * de `tool_input.command` — e barram com exit 2 pedindo `-F <arquivo>`.
+ * corpo). `-F -` so e lido quando a mensagem vem de um heredoc CITADO
+ * (`<<'EOF'` ou `<<"EOF"`) no proprio comando, com a linha de fechamento
+ * presente: o gate le o corpo do texto de `tool_input.command`, sem executar
+ * nada (gates-sem-ruido D4; a semana medida teve 38 bloqueios desse caso).
+ * Qualquer outra forma de `-F -` (heredoc sem aspas, here-string, pipe,
+ * heredoc antes do commit ou separado por `;`) segue NAO RESOLVIVEL e barra
+ * com exit 2 pedindo `-F <arquivo>`.
  * Sem nenhuma fonte de mensagem (nem `-m`, nem `-F`, nem flag de reuso)
  * tambem e nao-resolvivel. `--amend`, `--no-edit`, `-C <rev>` (reusa
  * mensagem) e `-c <rev>` (reusa e edita) pulam toda checagem — a mensagem
@@ -44,8 +48,8 @@
  * Protege contra: `git commit` direto ou dentro de wrapper conhecido
  * (bash -c, eval, Invoke-Expression/iex, pwsh -Command, cmd /c) com assunto
  * vazio, longo demais, terminando em ponto, ou sem corpo num diff grande;
- * e mensagem que este gate nao consegue ler (`-F -`, heredoc, nem `-m` nem
- * `-F`). Isso inclui `git commit` PELADO, que abriria o editor — o harness
+ * e mensagem que este gate nao consegue ler (`-F -` fora do heredoc citado,
+ * nem `-m` nem `-F`). Isso inclui `git commit` PELADO, que abriria o editor — o harness
  * nao tem editor, e o commit que fecha um merge com conflito resolvido cai
  * aqui: o gesto e `git commit -F .git/MERGE_MSG` (achado da revisao,
  * 2026-09-12).
@@ -71,7 +75,7 @@ const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
-const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
+const { mascararCorposDeHeredoc, corpoDeHeredoc, posicoesDeOperadorHeredoc } = require("./lib/heredoc.cjs");
 
 // Flags globais do git (antes do subcomando) que consomem o token seguinte.
 const FLAG_GLOBAL_COM_VALOR = new Set([
@@ -206,6 +210,29 @@ function leFlagsCommit(argsToks) {
 }
 
 /**
+ * Mensagem de `git commit -F -` quando o stdin e um heredoc CITADO no proprio
+ * comando (gates-sem-ruido D4). Devolve a string da mensagem ou `null` — e
+ * `null` para toda forma fora da lista: heredoc sem aspas, here-string,
+ * pipe, heredoc antes do `git commit`, heredoc depois de `;`, heredoc numa
+ * linha e commit na seguinte, ou heredoc sem linha de fechamento.
+ * `cmdMascarado` e `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento:
+ * todo indice achado nele vale no `cmd` original.
+ */
+function mensagemDeHeredoc(cmd, cmdMascarado) {
+  const casamento = /\bgit\b[^\n;|&]*?\bcommit\b/.exec(cmdMascarado);
+  if (!casamento) return null;
+  const k = casamento.index;
+  let quebra = cmdMascarado.indexOf("\n", k);
+  if (quebra === -1) quebra = cmdMascarado.length;
+  const p = posicoesDeOperadorHeredoc(cmd).find((x) => x > k && x < quebra);
+  if (p === undefined) return null;
+  if (/[;|&]/.test(cmd.slice(k, p))) return null;
+  const h = corpoDeHeredoc(cmd, p);
+  if (h === null || h.delimitadorQuotado !== true || h.fechado !== true) return null;
+  return h.corpo.replace(/\r?\n$/, "");
+}
+
+/**
  * `true` se, depois da primeira linha em branco em `linhasResto`, existe ao
  * menos uma linha nao-vazia que NAO seja trailer (`^[A-Za-z-]+: `).
  */
@@ -287,7 +314,8 @@ function main() {
   const { mParts, fFile, reusaMensagem } = leFlagsCommit(desmontarFlagsCurtas(achado.argsToks));
   if (reusaMensagem) process.exit(0); // --amend/--no-edit/-C/-c: mensagem ja existe
 
-  if (fFile === "-") {
+  const mensagemHeredoc = fFile === "-" ? mensagemDeHeredoc(cmd, cmdParaAnalise) : null;
+  if (fFile === "-" && mensagemHeredoc === null) {
     bloqueia("mensagem via `-F -` (stdin) ou heredoc nao e resolvivel por este gate — use -F <arquivo>");
   }
 
@@ -304,6 +332,7 @@ function main() {
     }
     partes.push(conteudo);
   }
+  if (mensagemHeredoc !== null) partes.push(mensagemHeredoc);
 
   if (partes.length === 0) {
     bloqueia("nenhuma mensagem resolvivel (sem -m, sem -F, sem flag de reuso) — use -F <arquivo>; fechando merge, -F .git/MERGE_MSG");

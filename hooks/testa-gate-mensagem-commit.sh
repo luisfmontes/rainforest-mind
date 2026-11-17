@@ -208,5 +208,35 @@ gate "payload vazio nunca trava" 0 "{}"
 gate "payload ilegivel nunca trava" 0 "isto nao e json"
 
 echo
+echo "== gates-sem-ruido D4: heredoc citado no -F - =="
+# Legitimos: heredoc citado no proprio comando e lido como mensagem.
+gate "git commit -F - <<'EOF' com assunto de 30 colunas + corpo -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+gate 'git commit -F - <<"EOF" com assunto + corpo -> exit 0' 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<"EOF"\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+gate "cd x && git add a && git commit -q -F - <<'EOF' com corpo -> exit 0" 0 \
+  "$(payload "$R1" Bash $'cd x && git add a && git commit -q -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+# A regra continua valendo dentro do heredoc citado.
+gate_contendo "heredoc citado com assunto de 80 colunas -> exit 2 (acima do limite de 72)" 2 "acima do limite de 72" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\n'"$ASSUNTO80"$'\n\nCorpo.\nEOF')"
+gate_contendo "heredoc citado com assunto terminando em ponto -> exit 2 (termina em ponto)" 2 "termina em ponto" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto valido.\n\nCorpo.\nEOF')"
+# Contornos que continuam barrando.
+gate_contendo "heredoc SEM aspas (<<EOF) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<EOF\nAssunto valido\n\nCorpo\nEOF')"
+gate_contendo "heredoc citado sem linha de fechamento -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto valido\n\nCorpo sem fechar')"
+gate_contendo "git commit -F - <<< 'msg' (here-string) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash "git commit -F - <<< 'msg'")"
+gate_contendo "printf 'msg' | git commit -F - -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash "printf 'msg' | git commit -F -")"
+gate_contendo "cat <<'EOF' | git commit -F - (heredoc antes do commit) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'cat <<\x27EOF\x27 | git commit -F -\nAssunto valido\n\nCorpo\nEOF')"
+gate_contendo "git commit -F - ; cat <<'EOF' (heredoc depois de ;) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - ; cat <<\x27EOF\x27\nAssunto valido\n\nCorpo\nEOF')"
+gate_contendo "cat <<'EOF' > m.txt numa linha e git commit -F - na seguinte -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'cat <<\x27EOF\x27 > m.txt\nmensagem\nEOF\ngit commit -F -')"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
