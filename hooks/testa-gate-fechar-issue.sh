@@ -4899,6 +4899,35 @@ node "$SRC/hooks/gate-fechar-issue.cjs" < "$SBP/orc-aninhado.json" 2>"$SBP/err-o
 EXIT_ORC_ANINHADO=$?
 [ $EXIT_ORC_ANINHADO -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_ORC_ANINHADO: $(head -c 300 "$SBP/err-orc-aninhado"))"
 
+echo
+echo "== gates-sem-ruido D5: merge julgado pelo segmento =="
+D="$SBP_WIN"
+# legitimos: o que vem antes do merge e inerte (cd D, gh pr view), a descricao sem palavra-chave passa
+pm "cd D && gh pr merge 5 --repo dono/repo --squash passa" 0 "cd $D && gh pr merge 5 --repo dono/repo --squash"
+pm "gh pr merge 5 --squash 2>&1 | tail -2 passa" 0 'gh pr merge 5 --squash 2>&1 | tail -2'
+pm "gh pr view 5 --json state; gh pr merge 5 --squash passa" 0 'gh pr view 5 --json state; gh pr merge 5 --squash'
+pm "gh pr merge 5 --squash; echo fim passa" 0 'gh pr merge 5 --squash; echo fim'
+# a conferencia de evidencia continua valendo no segmento do merge
+GH_PR_VIEW_BODY="Closes #321" pm "cd D && gh pr merge 5 --squash com Closes #321 sem marcador barra" 2 "cd $D && gh pr merge 5 --squash"
+if grep -q '321' "$SBP/err-pm" && ! grep -q 'sozinho' "$SBP/err-pm"; then test_ok "motivo cita #321 e nao 'sozinho'"; else test_fail "motivo do Closes #321 (err-pm): $(head -c 200 "$SBP/err-pm")"; fi
+# contornos que continuam barrando
+pm "export GH_REPO=dono/outro; gh pr merge 5 barra" 2 'export GH_REPO=dono/outro; gh pr merge 5'
+pm "GH_REPO=dono/outro gh pr merge 5 barra" 2 'GH_REPO=dono/outro gh pr merge 5'
+pm 'cd "$D" && gh pr merge 5 barra' 2 'cd "$D" && gh pr merge 5'
+pm "(cd D; gh pr merge 5) barra" 2 "(cd $D; gh pr merge 5)"
+pm "gh pr merge 5 | sh barra" 2 'gh pr merge 5 | sh'
+pm "gh pr merge 5 | tail -2 | sh barra" 2 'gh pr merge 5 | tail -2 | sh'
+pm "git checkout outra && gh pr merge 5 barra" 2 'git checkout outra && gh pr merge 5'
+pm "alias gh=x; gh pr merge 5 barra" 2 'alias gh=x; gh pr merge 5'
+pm "gh pr merge 5 > log.txt barra" 2 'gh pr merge 5 > log.txt'
+pm "gh pr merge 5 && gh pr merge 6 barra" 2 'gh pr merge 5 && gh pr merge 6'
+pm "cd D && gh pr merge 5 pela ferramenta PowerShell barra" 2 "cd $D && gh pr merge 5" PowerShell
+pm "gh pr merge 5; gh issue close 12 barra" 2 'gh pr merge 5; gh issue close 12'
+# extras (aperto do segundo merge e do || depois do merge)
+pm "gh pr merge 5 || echo x barra" 2 'gh pr merge 5 || echo x'
+pm "gh pr merge 5 --squash; gh.exe pr merge 6 --squash barra (segundo merge)" 2 'gh pr merge 5 --squash; gh.exe pr merge 6 --squash'
+pm "gh pr merge 5 --squash; gh -R dono/outro pr merge 6 --squash barra (segundo merge)" 2 'gh pr merge 5 --squash; gh -R dono/outro pr merge 6 --squash'
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
