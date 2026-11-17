@@ -4930,6 +4930,12 @@ pm "gh pr merge 5 --squash; gh -R dono/outro pr merge 6 --squash barra (segundo 
 
 echo
 echo "== gates-sem-ruido D5 aperto: cada merge pelo próprio texto =="
+# Achado 6 do revisar: leitura de PR depois do merge passa; outro gh depois dele barra.
+pm "gh pr merge 5 --squash; gh pr view 5 --json state passa" 0 'gh pr merge 5 --squash; gh pr view 5 --json state'
+pm "gh pr merge 5 --squash && gh pr view 5 --json state,mergedAt passa" 0 'gh pr merge 5 --squash && gh pr view 5 --json state,mergedAt'
+pm "gh pr merge 5 --squash 2>&1 | tail -2; gh pr checks 5 passa" 0 'gh pr merge 5 --squash 2>&1 | tail -2; gh pr checks 5'
+pm "gh pr merge 5 --squash; gh pr list barra (so leitura view/checks/status)" 2 'gh pr merge 5 --squash; gh pr list'
+pm "gh pr merge 5 --squash; gh pr view 5 --json state; gh pr me''rge 6 barra" 2 "gh pr merge 5 --squash; gh pr view 5 --json state; gh pr me''rge 6 --body x"
 # barram: o segundo merge escondido em forma que a checagem de substring 'merge' nao ve
 pm "gh pr merge 5 --squash; gh pr me''rge 6 --body Closes #12 barra" 2 "gh pr merge 5 --squash; gh pr me''rge 6 --body \"Closes #12\""
 pm "gh pr merge 5 --squash; g\\h pr merge 6 --body Closes #12 barra" 2 'gh pr merge 5 --squash; g\h pr merge 6 --body "Closes #12"'

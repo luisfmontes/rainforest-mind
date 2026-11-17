@@ -237,6 +237,14 @@ gate_contendo "git commit -F - ; cat <<'EOF' (heredoc depois de ;) -> exit 2" 2 
 gate_contendo "cat <<'EOF' > m.txt numa linha e git commit -F - na seguinte -> exit 2" 2 "use -F <arquivo>" \
   "$(payload "$R1" Bash $'cat <<\x27EOF\x27 > m.txt\nmensagem\nEOF\ngit commit -F -')"
 
+# Achado 1 do revisar: o heredoc tem de ser o stdin do proprio commit.
+gate_contendo "git commit -F - <<'EOF' < outro.txt (outro stdin vence) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 < outro.txt\nAssunto de teste sem ponto\n\nCorpo que explica.\nEOF')"
+gate "git commit -F - \$(cat <<'EOF' ...) (heredoc do cat interno) -> exit 2" 2 \
+  "$(payload "$R1" Bash $'git commit -F - $(cat <<\x27EOF\x27\nAssunto de teste sem ponto\nEOF\n)')"
+gate "git commit -F - <<'EOF' && git push (vizinho legitimo) -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 && git push\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

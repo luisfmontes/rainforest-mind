@@ -149,7 +149,17 @@ function sessaoInterativa(ev) {
   if (typeof ev.transcript_path !== 'string' || ev.transcript_path === '') return false;
   let linhas;
   try {
-    linhas = fs.readFileSync(ev.transcript_path, 'utf8').split('\n').slice(0, 50);
+    // So o comeco do arquivo (achado 5 do revisar): o transcript cresce a
+    // sessao inteira, e o entrypoint esta nas primeiras linhas. Linha cortada
+    // no fim do bloco nao parseia e e pulada.
+    const fd = fs.openSync(ev.transcript_path, 'r');
+    try {
+      const buf = Buffer.alloc(256 * 1024);
+      const n = fs.readSync(fd, buf, 0, buf.length, 0);
+      linhas = buf.subarray(0, n).toString('utf8').split('\n').slice(0, 50);
+    } finally {
+      fs.closeSync(fd);
+    }
   } catch {
     return false;
   }
@@ -191,8 +201,6 @@ function main() {
     }
   } catch {}
 
-  if (sessaoInterativa(ev)) process.exit(0);
-
   const ativo = resolver({ cwd: gitTop });
   if (!ativo || !ativo.slug) process.exit(0);
 
@@ -218,6 +226,10 @@ function main() {
       && (!meuId || !a.sessao || a.sessao === meuId))
     : [];
   if (emVoo.length === 0) process.exit(0);
+
+  // Depois de saber que ha agente em voo (achado 4 do revisar): sem ele, o
+  // transcript nem e aberto.
+  if (sessaoInterativa(ev)) process.exit(0);
 
   // `stop_hook_active` verdadeiro quer dizer que este hook já barrou uma vez
   // neste encerramento. A segunda vez não avisa: deixa o turno acabar.

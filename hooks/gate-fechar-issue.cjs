@@ -1318,17 +1318,21 @@ function segmentoDoMerge(comando) {
   partes.forEach((p, k) => { if (ehMerge(p.texto)) indicesMerge.push(k); });
   if (indicesMerge.length !== 1) return null;
   const m = indicesMerge[0];
-  if (partes.filter((p) => p.texto.includes("merge")).length !== 1) return null;
+  // Leitura `gh pr view|checks|status` nao conta: `--json mergedAt` cita a palavra
+  // sem ser merge (achado 6 do revisar).
+  if (partes.filter((p) => p.texto.includes("merge") && !SEG_MERGE_ANTES_OK[1].test(p.texto.trim())).length !== 1) return null;
   const textoMerge = partes[m].texto.trim().replace(/ 2>&1$/, "");
   if (!comandoUnicoSemShell(textoMerge)) return null;
   // Aperto (gates-sem-ruido D5, tarefa 6): parte que nao e o merge nem leitura
-  // permitida antes dele nao pode ter `gh` como primeiro token, depois de
+  // permitida nao pode ter `gh` como primeiro token, depois de
   // tokenizada e sem contrabarra. Pega `gh pr me''rge 6` e `"gh" pr merge 6`,
   // que a checagem de substring `merge` deixava passar.
   for (let k = 0; k < partes.length; k += 1) {
     if (k === m) continue;
     const t = partes[k].texto.trim();
-    if (k < m && SEG_MERGE_ANTES_OK[1].test(t)) continue;
+    // Leitura de PR passa antes e depois do merge: conferir o estado depois de
+    // mergear e o padrao (achado 6 do revisar).
+    if (SEG_MERGE_ANTES_OK[1].test(t)) continue;
     let toks;
     try { toks = tokensComAspas(t).map((x) => x.v); } catch { return null; }
     if (toks.length === 0 || normalizarExecutavel(semContrabarra(toks[0])) === "gh") return null;

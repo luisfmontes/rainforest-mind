@@ -20,7 +20,7 @@ Quatro gates deixam de barrar formas que não escondiam nada. Antes, cada uma de
   - um `cd` para caminho literal, sem `~`, `-` nem glob;
   - ou uma leitura `gh pr view|checks|status`.
 
-  Variável, `$(...)`, wrapper e um segundo `gh` disfarçado continuam barrando. Um merge cujo repositório o gate não consegue saber também barra, e a mensagem pede `--repo` ou a URL do PR.
+  Depois do merge, uma leitura `gh pr view|checks|status` também passa: conferir o estado logo após o merge é a forma comum. Variável, `$(...)`, wrapper e um segundo `gh` disfarçado continuam barrando. Um merge cujo repositório o gate não consegue saber também barra, e a mensagem pede `--repo` ou a URL do PR.
 - **`gate-staging-total` não lê mais um script node, python e afins como se fosse shell.** Um heredoc citado que vira arquivo rodado por `node`, `python`, `perl`, `ruby`, `deno` ou `bun` é procurado como texto, e só barra se tiver `git add -A`/`.`/`-u` ou `git commit -a`. Antes, um regex de JavaScript lido como shell virava "comando dinâmico". Com `bash`, `sh` ou `pwsh`, o corpo continua sendo lido como shell.
 - **Migrar os gates para mod foi avaliado e descartado.** O mod recebe a mesma string de comando, então recusaria as mesmas formas. Além disso, o fim de turno em mod não bloqueia, e a ponte Codex não roda mods. Recusar com JSON (`permissionDecision: deny`) no lugar do exit 2 também foi medido: o rótulo "hook error" continua o mesmo.
 

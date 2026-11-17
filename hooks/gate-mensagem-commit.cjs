@@ -227,6 +227,11 @@ function mensagemDeHeredoc(cmd, cmdMascarado) {
   const p = posicoesDeOperadorHeredoc(cmd).find((x) => x > k && x < quebra);
   if (p === undefined) return null;
   if (/[;|&]/.test(cmd.slice(k, p))) return null;
+  // O heredoc tem de ser o stdin do proprio commit (achado 1 do revisar): `(`,
+  // `$` ou crase antes dele o poem dentro de outro comando, e um `<` depois
+  // dele na mesma linha e outro redirecionamento de stdin, que vence.
+  if (/[()$`<]/.test(cmd.slice(k, p))) return null;
+  if (cmd.slice(p + 2, quebra).includes("<")) return null;
   const h = corpoDeHeredoc(cmd, p);
   if (h === null || h.delimitadorQuotado !== true || h.fechado !== true) return null;
   return h.corpo.replace(/\r?\n$/, "");
