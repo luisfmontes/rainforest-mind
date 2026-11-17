@@ -65,8 +65,8 @@
       4,
       6
     ],
-    "comando": "node scratchpad/mut-r4.cjs e conferir-mutacao da ancora $ (bateria bash hooks/testa-gate-mensagem-commit.sh)",
-    "saida": "ancora ^, recusa de -F -<< e ancora $: ok: bateria VERMELHA com o comportamento invertido (exit 1), duas rodadas; bateria 93 ok, 0 falha(s)",
+    "comando": "criterio da tarefa 5 (node -e versao/CHANGELOG/README) e conferir-fluxo cobertura",
+    "saida": "t5 exit 0; ok: cobertura valida — 6 decisao(oes), 10 tarefa(s); rodada so de documentacao, sem mudanca de codigo",
     "mutacao": [
       {
         "tarefa": 1,
@@ -122,25 +122,25 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "5909c3c8d664dd7c525fca7bd746e85deb501a20",
+      "head": "d824aabf68e686ea7737a2bab2342c941ce4e8b2",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aa4b79d681b531a7d",
-        "veredito": "reprovado",
+        "agente_id": "a582e9ee9e5f898a8",
+        "veredito": "ok",
         "em": "2026-11-17",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa4b79d681b531a7d.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a582e9ee9e5f898a8.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-17",
-    "achados": 7,
+    "achados": 5,
     "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
-    "head": "488917c403086139e49c2c3759b5812c4c19c2a1",
+    "head": "d824aabf68e686ea7737a2bab2342c941ce4e8b2",
     "voltas": [
       {
         "volta": 1,
@@ -177,9 +177,20 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ad08f05139e1740a6.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aa4b79d681b531a7d",
+            "veredito": "reprovado",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa4b79d681b531a7d.jsonl"
+          }
+        ]
       }
-    ],
-    "tentativas": 2
+    ]
   },
   "verificar": {
     "status": "pendente",
@@ -222,6 +233,11 @@
       "em": "2026-11-17",
       "de": "revisar",
       "motivo": "revisar rodada 2: (1) dois heredocs na linha do commit -F - conferem o corpo errado; (2) fd antes do << (3<<) nao e o stdin; (4) | sem escape na linha 193 do README [preexistente]"
+    },
+    {
+      "em": "2026-11-17",
+      "de": "revisar",
+      "motivo": "revisar rodada 5 (ok): achado 5, documentacao promete mais que o codigo (o que vem depois da linha de fechamento e analisado a parte) e design/plano descrevem a leitura antiga; achados 1-4 [baixa] viram residuos"
     }
   ]
 }
