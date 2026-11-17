@@ -4928,6 +4928,21 @@ pm "gh pr merge 5 || echo x barra" 2 'gh pr merge 5 || echo x'
 pm "gh pr merge 5 --squash; gh.exe pr merge 6 --squash barra (segundo merge)" 2 'gh pr merge 5 --squash; gh.exe pr merge 6 --squash'
 pm "gh pr merge 5 --squash; gh -R dono/outro pr merge 6 --squash barra (segundo merge)" 2 'gh pr merge 5 --squash; gh -R dono/outro pr merge 6 --squash'
 
+echo
+echo "== gates-sem-ruido D5 aperto: cada merge pelo próprio texto =="
+# barram: o segundo merge escondido em forma que a checagem de substring 'merge' nao ve
+pm "gh pr merge 5 --squash; gh pr me''rge 6 --body Closes #12 barra" 2 "gh pr merge 5 --squash; gh pr me''rge 6 --body \"Closes #12\""
+pm "gh pr merge 5 --squash; g\\h pr merge 6 --body Closes #12 barra" 2 'gh pr merge 5 --squash; g\h pr merge 6 --body "Closes #12"'
+pm '"gh" pr merge 6 com --body Closes #12 barra' 2 'gh pr merge 5 --squash; "gh" pr merge 6 --body "Closes #12"'
+# barram: cd com caminho que nao e literal seguro (repositorio incerto)
+pm "cd ~ && gh pr merge 5 --squash barra" 2 'cd ~ && gh pr merge 5 --squash'
+pm "cd - && gh pr merge 5 --squash barra" 2 'cd - && gh pr merge 5 --squash'
+pm "cd x* && gh pr merge 5 --squash barra" 2 'cd x* && gh pr merge 5 --squash'
+# So a lista de cd permitidos decide aqui: com --repo, a checagem de repositorio
+# incerto nao age, e o segmento so e recusado porque `cd ~` nao e literal seguro.
+# E o caso que mede a regex do cd (alvo da mutacao da tarefa 6).
+pm "cd ~ && gh pr merge 5 --repo dono/repo --squash barra (cd fora da lista mesmo com --repo)" 2 'cd ~ && gh pr merge 5 --repo dono/repo --squash'
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

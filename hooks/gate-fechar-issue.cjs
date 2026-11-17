@@ -1266,7 +1266,9 @@ function barraFormaPrMerge(razao) {
  * falha devolve `null`.
  */
 const SEG_MERGE_PROIBIDO_NO_INICIO = new Set(["export", "set", "alias", "unalias", "function", "source", ".", "eval", "exec"]);
-const SEG_MERGE_ANTES_OK = [/^cd [^\s'"]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];
+// Aperto (gates-sem-ruido D5, tarefa 6): `cd` so com caminho literal seguro, sem
+// `~`, sem glob, sem `-` inicial (`cd -` troca de diretorio sem dizer qual).
+const SEG_MERGE_ANTES_OK = [/^cd (?!-)[A-Za-z0-9._\/:-]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];
 const SEG_MERGE_E_TAIL_HEAD = /^(tail|head) -\d+$/;
 function segmentoDoMerge(comando) {
   // 1. PowerShell tem outra regra de aspa e de escape: fica de fora.
@@ -1319,6 +1321,18 @@ function segmentoDoMerge(comando) {
   if (partes.filter((p) => p.texto.includes("merge")).length !== 1) return null;
   const textoMerge = partes[m].texto.trim().replace(/ 2>&1$/, "");
   if (!comandoUnicoSemShell(textoMerge)) return null;
+  // Aperto (gates-sem-ruido D5, tarefa 6): parte que nao e o merge nem leitura
+  // permitida antes dele nao pode ter `gh` como primeiro token, depois de
+  // tokenizada e sem contrabarra. Pega `gh pr me''rge 6` e `"gh" pr merge 6`,
+  // que a checagem de substring `merge` deixava passar.
+  for (let k = 0; k < partes.length; k += 1) {
+    if (k === m) continue;
+    const t = partes[k].texto.trim();
+    if (k < m && SEG_MERGE_ANTES_OK[1].test(t)) continue;
+    let toks;
+    try { toks = tokensComAspas(t).map((x) => x.v); } catch { return null; }
+    if (toks.length === 0 || normalizarExecutavel(semContrabarra(toks[0])) === "gh") return null;
+  }
   // 6. Pipe depois do merge: so `| tail -N` ou `| head -N`, uma vez, e nada mais
   // com `|` (nem `||`) depois dele.
   const comPipe = [];
@@ -1345,6 +1359,18 @@ function segmentoDoMerge(comando) {
   }
   // 9. Devolve o segmento do merge.
   return textoMerge;
+}
+
+/**
+ * gates-sem-ruido D5 aperto (tarefa 6): o texto isolado so vale para o merge que
+ * o gate esta julgando quando e IGUAL ao segmento desse merge. Sem a conferencia,
+ * um `segmentoDoMerge` que devolve o merge de outro segmento daria a este a
+ * descricao do outro PR. Aparado, sem ` 2>&1` final, nos dois lados.
+ */
+function segmentoConfere(isolado, segmento) {
+  if (typeof isolado !== "string" || typeof segmento !== "string") return false;
+  const limpa = (s) => s.trim().replace(/ 2>&1$/, "").trim();
+  return limpa(isolado) === limpa(segmento);
 }
 
 /**
@@ -1625,9 +1651,15 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
   if (subcomandos[0] === "pr" && subcomandos[1] === "merge") {
     // Lista de formas permitidas (#496, Q1): fora dela, barra. Ver o docblock
     // de `analisarPrMerge`.
-    const forma = analisarPrMerge(segmentoDoMerge(textoDoComando) ?? textoDoComando);
+    const isolado = segmentoDoMerge(textoDoComando);
+    const forma = analisarPrMerge(isolado !== null && segmentoConfere(isolado, segmento) ? isolado : textoDoComando);
     if (forma.ajuda) return;
     const { ref, repo, mensagens, arquivos } = forma;
+    // gates-sem-ruido D5 aperto (tarefa 6): sem --repo, sem URL do PR e sem
+    // diretorio resolvido, o merge nao tem repositorio certo: barra.
+    if (!repo && !(typeof ref === "string" && ref.startsWith("https://")) && !cwdSegmento) {
+      barraFormaPrMerge(`não sei em que repositório o merge roda (cd incerto); use --repo dono/repo ou a URL do PR.`);
+    }
     const repoDaIssue = repo || repoDaUrlDoPr(ref);
     for (const arquivo of arquivos) {
       const caminho = arquivo === "-" ? null
