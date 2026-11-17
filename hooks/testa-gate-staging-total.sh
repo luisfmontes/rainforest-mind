@@ -550,5 +550,24 @@ gate "via PowerShell: iex como argumento do Select-String passa (#456, controle)
 gate "via PowerShell: GIT.EXE status passa (#456, controle)"                0 "$(p 'GIT.EXE status --porcelain')"
 
 echo
+echo "== gates-sem-ruido D6: script não-shell escrito por heredoc =="
+# O corpo grava um .cjs/.py e o proprio comando o executa com node/python. O
+# gate lia o corpo como texto: `git` dentro de string JS barrava. A contrabarra
+# da regex vem de printf, nao de heredoc (contrabarra some em heredoc de teste).
+hd() { printf '%s\n' "$@"; }
+BS=$(printf '\\')
+RX="const m=s.match(/([a-z0-9-]+${BS}.(cjs|cmd))/i);"
+gate "heredoc citado com regex gravado em .cjs e executado por node PASSA (D6)" 0 "$(b "$(hd "cat > t.cjs <<'EOF'" "$RX" "EOF" "node t.cjs")")"
+gate "o mesmo corpo gravado em .py e executado por python PASSA (D6)"            0 "$(b "$(hd "cat > t.py <<'EOF'" "$RX" "EOF" "python t.py")")"
+gate "corpo JS com execSync('git status') executado por node PASSA (D6)"        0 "$(b "$(hd "cat > t.cjs <<'EOF'" "execSync('git status');" "EOF" "node t.cjs")")"
+gate "corpo JS com 'digit add -A' em string executado por node PASSA (D6)"       0 "$(b "$(hd "cat > t.cjs <<'EOF'" "console.log('digit add -A');" "EOF" "node t.cjs")")"
+gate "corpo JS com execSync('git add -A') executado por node BARRA (D6)"         2 "$(b "$(hd "cat > t.cjs <<'EOF'" "execSync('git add -A');" "EOF" "node t.cjs")")"
+gate "corpo py com os.system(\"git commit -am x\") executado por python3 BARRA (D6)" 2 "$(b "$(hd "cat > t.py <<'EOF'" 'os.system("git commit -am x")' "EOF" "python3 t.py")")"
+gate "o MESMO corpo do regex executado por bash t.cjs BARRA (D6, shell segue inteiro)" 2 "$(b "$(hd "cat > t.cjs <<'EOF'" "$RX" "EOF" "bash t.cjs")")"
+gate "o MESMO corpo do regex executado por ./t.cjs BARRA (D6)"                  2 "$(b "$(hd "cat > t.cjs <<'EOF'" "$RX" "EOF" "chmod +x t.cjs && ./t.cjs")")"
+gate "corpo do regex executado por node t.cjs; bash t.cjs BARRA (D6)"           2 "$(b "$(hd "cat > t.cjs <<'EOF'" "$RX" "EOF" "node t.cjs; bash t.cjs")")"
+gate "heredoc SEM aspas com \$(git add -A) executado por node BARRA (D6)"        2 "$(b "$(hd "cat > t.cjs <<EOF" '$(git add -A)' "EOF" "node t.cjs")")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

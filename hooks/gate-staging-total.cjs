@@ -334,7 +334,7 @@ function main() {
   // mesmo quando aquele segmento sozinho nao bloqueia (`motivoDe` null).
   let ultimoDirC = null;
   // D1 (zerar-issues-4): remover corpos de heredoc nao-interpretador ANTES de segmentar
-  const cmdParaAnalise = mascararCorposDeHeredoc(cmd);
+  const cmdParaAnalise = mascararCorposDeHeredoc(cmd, { scriptNaoShell: true });
   const segs = segmentos(cmdParaAnalise);
   for (let idx = 0; idx < segs.length; idx += 1) {
     const g = analisaSegmentoGit(segs[idx], ev.tool_name);

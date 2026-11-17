@@ -351,6 +351,78 @@ function alvoDoRedirecionamentoEhExecutadoDepois(cmd, i, fimDoHeredoc) {
 }
 
 /**
+ * Interpretadores que EXECUTAM o arquivo gravado por heredoc sem ser shell
+ * (gates-sem-ruido D6). O corpo deles e codigo de outra linguagem: um `git`
+ * dentro de string JS nao e comando. Shell fica fora de proposito -- `bash
+ * x.sh` segue com o script inteiro analisado.
+ */
+const INTERPRETADORES_NAO_SHELL = new Set(["node", "python", "python3", "py", "perl", "ruby", "deno", "bun"]);
+
+/**
+ * Quem EXECUTA o arquivo que o heredoc em `i` grava, depois dele? Mesma varredura
+ * de `alvoDoRedirecionamentoEhExecutadoDepois`, mas junta TODOS os executores em
+ * vez de parar no primeiro: `"./"` para `./x`, o nome normalizado do comando nos
+ * outros casos. Vazio = nenhum executor.
+ */
+function executoresDoAlvo(cmd, i, fimDoHeredoc) {
+  let ini = i;
+  while (ini > 0 && cmd[ini - 1] !== "\n") ini--;
+  let fimLinha = fimDaLinhaLogica(cmd, i);
+  if (fimLinha === -1) fimLinha = cmd.length;
+  const linha = cmd.slice(ini, fimLinha);
+
+  const alvos = new Set();
+  const re = /(?:^|[\s;|&])\d?>>?\s*([^\s;|&<>]+)/g;
+  let m;
+  while ((m = re.exec(linha)) !== null) {
+    const alvo = m[1].replace(/^["']+|["']+$/g, "");
+    if (!alvo) continue;
+    const base = alvo.split(/[\\/]/).pop();
+    if (base) alvos.add(base);
+  }
+  const executores = [];
+  if (alvos.size === 0) return executores;
+
+  const depois = cmd.slice(Math.min(fimDoHeredoc, cmd.length));
+  let toks;
+  try { toks = tokensComAspas(depois).map((t) => String(t.v)); } catch { toks = depois.split(/\s+/); }
+
+  for (let k = 0; k < toks.length; k++) {
+    const t = toks[k];
+    const nu = t.replace(/^["']+|["']+$/g, "");
+    const base = nu.split(/[\\/]/).pop();
+    if (!base || !alvos.has(base)) continue;
+    if (/^\.[\\/]/.test(nu)) { executores.push("./"); continue; }
+    for (let j = k - 1; j >= 0; j--) {
+      const anterior = String(toks[j]);
+      if (/^[|;&(){}]+$/.test(anterior)) break;
+      if (anterior.startsWith("-")) continue;
+      const alvoTok = anterior.split(/[|;&(){}]+/).filter(Boolean).pop();
+      if (alvoTok && EXECUTAM_ARQUIVO.has(normalizarExecutavel(alvoTok))) executores.push(normalizarExecutavel(alvoTok));
+      break;
+    }
+  }
+  return executores;
+}
+
+/**
+ * Corpo de script nao-shell: cada linha fica em branco, exceto os trechos `git ...`
+ * (ate aspa, `;`, `|`, `&`, `)` ou fim de linha). Comprimento e quebras de linha
+ * sao preservados, como em todo mascaramento deste arquivo.
+ */
+function mascaraSoGit(trecho) {
+  return trecho.split("\n").map((linha) => {
+    const chars = linha.replace(/[^]/g, " ").split("");
+    const re = /\bgit\b[^'"`;|&)\n]*/g;
+    let m;
+    while ((m = re.exec(linha)) !== null) {
+      for (let k = m.index; k < m.index + m[0].length; k++) chars[k] = linha[k];
+    }
+    return chars.join("");
+  }).join("\n");
+}
+
+/**
  * D1 (zerar-issues-4, #258): troca o CORPO de um heredoc por espacos,
  * preservando o comprimento da string, quando aquele corpo e mesmo DADO.
  *
@@ -387,12 +459,21 @@ function alvoDoRedirecionamentoEhExecutadoDepois(cmd, i, fimDoHeredoc) {
  * lado de bloquear. Falha fechada e o unico default aceitavel aqui: este gate
  * existe por um `git add -A` que varreu o trabalho de outra sessao.
  *
+ * Opcao `{ scriptNaoShell: true }` (gates-sem-ruido D6). Sem ela, o resultado e o
+ * de sempre. Com ela, um corpo que as quatro condicoes deixariam ANALISADO como
+ * shell -- porque o arquivo que ele grava e executado depois -- passa a ser
+ * mascarado quando TODO executor desse arquivo e interpretador nao-shell
+ * (`node x.cjs`, `python x.py`): so os trechos `git ...` ficam visiveis. Ex.:
+ * `cat > t.cjs <<'EOF'` + `const m=s.match(/x\.(cjs)/)` + `EOF` + `node t.cjs`
+ * deixa de barrar, e `execSync('git add -A')` no mesmo corpo continua barrando.
+ * So o `gate-staging-total` passa a opcao; os outros gates chamam sem ela.
+ *
  * Movida de `hooks/gate-staging-total.cjs` para `hooks/lib/heredoc.cjs` na
  * Issue #263 (zerar-issues-5, tarefa 2): `gate-mensagem-commit.cjs` tambem
  * precisa isentar corpo de heredoc, e as duas travas nao podiam duplicar a
  * logica sem duplicar tambem o risco de uma desalinhar da outra.
  */
-function mascararCorposDeHeredoc(cmd) {
+function mascararCorposDeHeredoc(cmd, opcoes = {}) {
   let fora = cmd;
   let de = 0;
   for (let guarda = 0; guarda < 200; guarda++) {
@@ -412,6 +493,15 @@ function mascararCorposDeHeredoc(cmd) {
       if (fimDoHeredoc > inicio) {
         const emBranco = fora.slice(inicio, fimDoHeredoc).replace(/[^\n]/g, " ");
         fora = fora.slice(0, inicio) + emBranco + fora.slice(fimDoHeredoc);
+      }
+    } else if (opcoes.scriptNaoShell === true && heredoc.delimitadorQuotado && heredoc.fechado && !linhaDoHeredocTemInterpretador(fora, i)) {
+      const ex = executoresDoAlvo(fora, i, fimDoHeredoc);
+      if (ex.length > 0 && ex.every((e) => INTERPRETADORES_NAO_SHELL.has(e))) {
+        const quebra = fora.indexOf("\n", i);
+        const inicio = quebra === -1 ? fora.length : quebra + 1;
+        if (fimDoHeredoc > inicio) {
+          fora = fora.slice(0, inicio) + mascaraSoGit(fora.slice(inicio, fimDoHeredoc)) + fora.slice(fimDoHeredoc);
+        }
       }
     }
     de = Math.max(fimDoHeredoc, i + 2);
@@ -444,5 +534,7 @@ module.exports = {
   posicoesDeOperadorHeredoc,
   EXECUTAM_ARQUIVO,
   alvoDoRedirecionamentoEhExecutadoDepois,
+  INTERPRETADORES_NAO_SHELL,
+  executoresDoAlvo,
   mascararCorposDeHeredoc,
 };
