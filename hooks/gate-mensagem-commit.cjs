@@ -232,6 +232,12 @@ function mensagemDeHeredoc(cmd, cmdMascarado) {
   // dele na mesma linha e outro redirecionamento de stdin, que vence.
   if (/[()$`<]/.test(cmd.slice(k, p))) return null;
   if (cmd.slice(p + 2, quebra).includes("<")) return null;
+  // Rodada 2 do revisar: `3<<` manda o heredoc para outro descritor, nao para
+  // o stdin; e outro heredoc antes, na mesma linha, faz `corpoDeHeredoc` ler
+  // o corpo errado (os corpos se empilham na ordem dos operadores).
+  if (/\d$/.test(cmd.slice(k, p))) return null;
+  const inicioDaLinha = cmdMascarado.lastIndexOf("\n", k) + 1;
+  if (posicoesDeOperadorHeredoc(cmd).some((x) => x >= inicioDaLinha && x < p)) return null;
   const h = corpoDeHeredoc(cmd, p);
   if (h === null || h.delimitadorQuotado !== true || h.fechado !== true) return null;
   return h.corpo.replace(/\r?\n$/, "");

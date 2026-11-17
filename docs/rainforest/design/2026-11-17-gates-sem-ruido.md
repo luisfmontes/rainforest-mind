@@ -45,6 +45,7 @@ no modo automatico"). Rodada sob `executar-autonomo`: decisões abaixo marcadas
 - **Staging por script não-shell que a busca por texto não vê** (achado 3, preexistente): `node t.cjs; bash t.cjs` com `execSync('git add -A')`, `node - <<'EOF'`/`python - <<'EOF'` e a forma em argv (`execFileSync('git', ['add','-A'])`). Passavam na base; registrados na Issue #722.
 - **Só `entrypoint` `cli` conta como interativo** (achado 5): `claude-vscode` e desktop continuam barrando. É a falha fechada que a D3 escolheu; um sinal mais largo (`CLAUDE_CODE_SESSION_ATTENDED`) precisa de medição própria.
 - **Formas raras que continuam barrando** (achado 7): `| tail -n 2`, merge pela ferramenta PowerShell, `git commit -F - 2>&1 <<'EOF'` e `<<\EOF`.
+- **`$`, `(`, crase ou `<` entre `git commit` e o `<<` barram mesmo entre aspas** (rodada 2, achado 3): `git commit --author="Nome <email>" -F - <<'EOF'` e `git -C "$DIR" commit -F - <<'EOF'` barram. Na base todo `-F -` barrava; aceitar exigiria ler aspas no trecho, e a saída é `-F <arquivo>` ou `-m`.
 
 ## Fora de escopo
 

@@ -245,6 +245,12 @@ gate "git commit -F - \$(cat <<'EOF' ...) (heredoc do cat interno) -> exit 2" 2 
 gate "git commit -F - <<'EOF' && git push (vizinho legitimo) -> exit 0" 0 \
   "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 && git push\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
 
+# Rodada 2 do revisar: dois heredocs na linha, e heredoc em outro descritor.
+gate_contendo "cat <<'A' && git commit -F - <<'B' (dois heredocs na linha) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'cat <<\x27A\x27 > /dev/null && git commit -F - <<\x27B\x27\nAssunto bom do primeiro heredoc\nA\nassunto ruim do segundo heredoc com ponto.\nB')"
+gate_contendo "printf x | git commit -F - 3<<'EOF' (heredoc no fd 3) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'printf \x27ruim.\x27 | git commit -F - 3<<\x27EOF\x27\nAssunto bom sem ponto\nEOF')"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

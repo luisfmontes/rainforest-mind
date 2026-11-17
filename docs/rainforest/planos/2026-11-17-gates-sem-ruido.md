@@ -227,3 +227,21 @@ mutacao: n/a
   motivo: mudança de desempenho sem comportamento observável na saída do hook; o veredito para os mesmos casos é idêntico, e a bateria da tarefa 1 continua cobrindo a detecção
 prova-na-base: verde — desempenho, sem critério que falhe na base
 pronto quando: com os payloads da seção "gates-sem-ruido D3" da bateria, os vereditos não mudam — provado por `bash hooks/testa-gate-agente-em-voo.sh` saindo com `35 ok, 0 falha(s)`; e `grep -n "readFileSync(ev.transcript_path" hooks/gate-agente-em-voo.cjs` sem saída.
+
+### 11. Rodada 2 do revisar: dois heredocs na linha e heredoc em outro descritor [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh`, `README.md`, `README.en.md`
+depende de: 8, 9
+busca:
+- catalogo | listar --raiz hooks | estendo mensagemDeHeredoc de hooks/gate-mensagem-commit.cjs (tarefas 2 e 9) com posicoesDeOperadorHeredoc, que o arquivo já importa
+desfecho: estender
+Origem: revisão independente, rodada 2 (achados 1 [media], 2 [baixa] e 4 [baixa][preexistente]). `cat <<'A' > /dev/null && git commit -F - <<'B'` conferia o corpo de `A` e o git gravava o de `B`; `git commit -F - 3<<'EOF'` conferia um heredoc que vai para o fd 3. No README, a célula do `gate-verificador-staged` tinha `|` sem escape.
+O que fazer: em `mensagemDeHeredoc`, recusar quando o trecho antes do `<<` termina em dígito e quando outro operador de heredoc aparece na mesma linha antes dele. Escapar os `|` da célula nos dois READMEs.
+mutacao:
+  arquivo: `hooks/gate-mensagem-commit.cjs`
+  de: `  if (posicoesDeOperadorHeredoc(cmd).some((x) => x >= inicioDaLinha && x < p)) return null;`
+  para: `  if (false) return null;`
+  bateria: `bash hooks/testa-gate-mensagem-commit.sh`
+  fixture: testa-gate-mensagem-commit.sh, caso "cat <<'A' && git commit -F - <<'B' (dois heredocs na linha)"
+prova-na-base: verde — o defeito só existe depois da tarefa 2; na base todo `-F -` barrava
+pronto quando: com `cat <<'A' > /dev/null && git commit -F - <<'B'` (corpo ruim em B) e `printf x | git commit -F - 3<<'EOF'`, o gate sai 2 — provado por `bash hooks/testa-gate-mensagem-commit.sh` imprimindo `ok` nos dois casos e `0 falha(s)`; e a linha `gate-verificador-staged` do README.md com 3 `|` não escapados.
