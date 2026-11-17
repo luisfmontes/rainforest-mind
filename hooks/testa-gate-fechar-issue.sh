@@ -4948,6 +4948,8 @@ pm "cd x* && gh pr merge 5 --squash barra" 2 'cd x* && gh pr merge 5 --squash'
 # incerto nao age, e o segmento so e recusado porque `cd ~` nao e literal seguro.
 # E o caso que mede a regex do cd (alvo da mutacao da tarefa 6).
 pm "cd ~ && gh pr merge 5 --repo dono/repo --squash barra (cd fora da lista mesmo com --repo)" 2 'cd ~ && gh pr merge 5 --repo dono/repo --squash'
+# CI do PR 725: `~` no meio do caminho (nome 8.3 RUNNER~1) e literal no bash e passa.
+pm "cd C:/Users/RUNNER~1/x && gh pr merge 5 --repo dono/repo --squash passa (~ no meio e literal)" 0 'cd C:/Users/RUNNER~1/x && gh pr merge 5 --repo dono/repo --squash'
 
 # Resultado final
 echo

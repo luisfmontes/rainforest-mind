@@ -1267,8 +1267,10 @@ function barraFormaPrMerge(razao) {
  */
 const SEG_MERGE_PROIBIDO_NO_INICIO = new Set(["export", "set", "alias", "unalias", "function", "source", ".", "eval", "exec"]);
 // Aperto (gates-sem-ruido D5, tarefa 6): `cd` so com caminho literal seguro, sem
-// `~`, sem glob, sem `-` inicial (`cd -` troca de diretorio sem dizer qual).
-const SEG_MERGE_ANTES_OK = [/^cd (?!-)[A-Za-z0-9._\/:-]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];
+// `~` inicial (o bash so expande o `~` no comeco da palavra; no meio, como no
+// nome 8.3 `RUNNER~1` do CI, e literal), sem glob, sem `-` inicial (`cd -`
+// troca de diretorio sem dizer qual).
+const SEG_MERGE_ANTES_OK = [/^cd (?![-~])[A-Za-z0-9._\/:~-]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];
 const SEG_MERGE_E_TAIL_HEAD = /^(tail|head) -\d+$/;
 function segmentoDoMerge(comando) {
   // 1. PowerShell tem outra regra de aspa e de escape: fica de fora.

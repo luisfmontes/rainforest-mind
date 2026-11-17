@@ -149,8 +149,9 @@ O que fazer:
 - No ramo do merge, depois de `analisarPrMerge`: se `repo` é nulo, `ref` não começa por `https://`, e `cwdSegmento` é nulo/vazio, barra com a mensagem "não sei em que repositório o merge roda (cd incerto); use --repo dono/repo ou a URL do PR".
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `const SEG_MERGE_ANTES_OK = [/^cd (?!-)[A-Za-z0-9._\/:-]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];`
+  de: `const SEG_MERGE_ANTES_OK = [/^cd (?![-~])[A-Za-z0-9._\/:~-]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];`
   para: `const SEG_MERGE_ANTES_OK = [/^cd [^\s'"]+$/, /^gh pr (view|checks|status)( [^\s>]+)*$/];`
+Nota (CI do PR 725): o `~` passou a valer no meio do caminho (nome 8.3 `RUNNER~1` do runner Windows); só o `~` inicial barra, que é o que o bash expande.
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, seção "gates-sem-ruido D5 aperto: cada merge pelo próprio texto"
   timeout: `1200000`
