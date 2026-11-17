@@ -65,8 +65,8 @@
       4,
       6
     ],
-    "comando": "node scratchpad/mut-r3.cjs (conferir-mutacao nas tres travas de mensagemDeHeredoc, bateria bash hooks/testa-gate-mensagem-commit.sh)",
-    "saida": "tres travas: ok: bateria VERMELHA com o comportamento invertido (exit 1), duas rodadas; bateria 82 ok, 0 falha(s)",
+    "comando": "node scratchpad/mut-r4.cjs e conferir-mutacao da ancora $ (bateria bash hooks/testa-gate-mensagem-commit.sh)",
+    "saida": "ancora ^, recusa de -F -<< e ancora $: ok: bateria VERMELHA com o comportamento invertido (exit 1), duas rodadas; bateria 93 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -119,26 +119,26 @@
         "fixture": "testa-gate-mensagem-commit.sh, caso dois heredocs na linha"
       }
     ],
-    "reaberturas": 1
+    "reaberturas": 2
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a7d3993a53e750a76060d823f1cac6072c467349",
+      "head": "5909c3c8d664dd7c525fca7bd746e85deb501a20",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad08f05139e1740a6",
+        "agente_id": "aa4b79d681b531a7d",
         "veredito": "reprovado",
         "em": "2026-11-17",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ad08f05139e1740a6.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa4b79d681b531a7d.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-17",
-    "achados": 5,
+    "achados": 7,
     "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
     "head": "488917c403086139e49c2c3759b5812c4c19c2a1",
     "voltas": [
@@ -165,9 +165,21 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a0eed895e2b211761.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ad08f05139e1740a6",
+            "veredito": "reprovado",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ad08f05139e1740a6.jsonl"
+          }
+        ]
       }
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente",
