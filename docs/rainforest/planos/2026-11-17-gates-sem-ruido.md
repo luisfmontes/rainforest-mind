@@ -50,7 +50,7 @@ arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh
 depende de: nenhuma
 busca:
 - catalogo | listar --raiz hooks/lib | reaproveito corpoDeHeredoc de hooks/lib/heredoc.cjs:138 (devolve corpo, fim, delimitadorQuotado, fechado) e posicoesDeOperadorHeredoc de hooks/lib/heredoc.cjs:258
-- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:307 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
+- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:309 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
 desfecho: estender
 O que fazer:
 - Função nova `function mensagemDeHeredoc(cmd, cmdMascarado)` que devolve a string da mensagem ou `null`. `cmdMascarado` é a saída de `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento: todo índice achado nele vale no `cmd` original.
@@ -236,12 +236,12 @@ busca:
 - catalogo | listar --raiz hooks | estendo mensagemDeHeredoc de hooks/gate-mensagem-commit.cjs (tarefas 2 e 9) com posicoesDeOperadorHeredoc, que o arquivo já importa
 desfecho: estender
 Origem: revisão independente, rodada 2 (achados 1 [media], 2 [baixa] e 4 [baixa][preexistente]). `cat <<'A' > /dev/null && git commit -F - <<'B'` conferia o corpo de `A` e o git gravava o de `B`; `git commit -F - 3<<'EOF'` conferia um heredoc que vai para o fd 3. No README, a célula do `gate-verificador-staged` tinha `|` sem escape.
-O que fazer: em `mensagemDeHeredoc`, recusar quando o trecho antes do `<<` termina em dígito e quando outro operador de heredoc aparece na mesma linha antes dele. Escapar os `|` da célula nos dois READMEs.
+O que fazer: `mensagemDeHeredoc` aceita só a forma canônica: um único operador de heredoc no comando inteiro; nenhuma continuação `\`+quebra até o fim da linha do `<<`; entre o `git commit` e o `<<`, nenhum de `; | & ( ) $ < { }` nem crase, e só espaço ou o `-` do `-F -` colado logo antes do `<<`; nenhum `<` depois dele na linha. Com `<<-`, as tabulações à esquerda saem de toda linha do corpo. Escapar os `|` da célula nos dois READMEs. Rodada 3 do revisar (reprovada): a lista negra da rodada 2 deixava `{fd}<<`, continuação com `\` e heredoc anterior em outra linha física; daí a troca para a forma canônica.
 mutacao:
   arquivo: `hooks/gate-mensagem-commit.cjs`
-  de: `  if (posicoesDeOperadorHeredoc(cmd).some((x) => x >= inicioDaLinha && x < p)) return null;`
+  de: `  if (operadores.length !== 1) return null;`
   para: `  if (false) return null;`
   bateria: `bash hooks/testa-gate-mensagem-commit.sh`
   fixture: testa-gate-mensagem-commit.sh, caso "cat <<'A' && git commit -F - <<'B' (dois heredocs na linha)"
 prova-na-base: verde — o defeito só existe depois da tarefa 2; na base todo `-F -` barrava
-pronto quando: com `cat <<'A' > /dev/null && git commit -F - <<'B'` (corpo ruim em B) e `printf x | git commit -F - 3<<'EOF'`, o gate sai 2 — provado por `bash hooks/testa-gate-mensagem-commit.sh` imprimindo `ok` nos dois casos e `0 falha(s)`; e a linha `gate-verificador-staged` do README.md com 3 `|` não escapados.
+pronto quando: com `cat <<'A' > /dev/null && git commit -F - <<'B'` (corpo ruim em B), `printf x | git commit -F - 3<<'EOF'`, `echo x | git commit -F - {fd}<<'EOF'` e `git commit -F - <<'EOF' \` + `< outro.txt` na linha seguinte, o gate sai 2; com `<<-'EOF'` e tab antes de um assunto de 72 colunas, e com `-F -<<'EOF'` colado, sai 0 — provado por `bash hooks/testa-gate-mensagem-commit.sh` imprimindo `ok` nos dois casos e `0 falha(s)`; e a linha `gate-verificador-staged` do README.md com 3 `|` não escapados.

@@ -211,10 +211,16 @@ function leFlagsCommit(argsToks) {
 
 /**
  * Mensagem de `git commit -F -` quando o stdin e um heredoc CITADO no proprio
- * comando (gates-sem-ruido D4). Devolve a string da mensagem ou `null` — e
- * `null` para toda forma fora da lista: heredoc sem aspas, here-string,
- * pipe, heredoc antes do `git commit`, heredoc depois de `;`, heredoc numa
- * linha e commit na seguinte, ou heredoc sem linha de fechamento.
+ * comando (gates-sem-ruido D4). Devolve a string da mensagem ou `null`.
+ * Aceita so a forma canonica (rodada 3 do revisar: lista negra de formas
+ * sempre deixava uma vizinha aberta, como `{fd}<<` e continuacao com `\`):
+ * - um unico operador de heredoc no comando inteiro;
+ * - nenhuma continuacao `\`+quebra ate o fim da linha do `<<`;
+ * - entre o `git commit` e o `<<`, nada de `; | & ( ) $ < { }` nem crase, e
+ *   so espaco ou o `-` do `-F -` colado logo antes do `<<` (sem descritor);
+ * - nenhum `<` depois do `<<` na mesma linha;
+ * - delimitador citado e linha de fechamento presente.
+ * Com `<<-`, as tabulacoes a esquerda saem de toda linha do corpo, como no bash.
  * `cmdMascarado` e `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento:
  * todo indice achado nele vale no `cmd` original.
  */
@@ -224,23 +230,19 @@ function mensagemDeHeredoc(cmd, cmdMascarado) {
   const k = casamento.index;
   let quebra = cmdMascarado.indexOf("\n", k);
   if (quebra === -1) quebra = cmdMascarado.length;
-  const p = posicoesDeOperadorHeredoc(cmd).find((x) => x > k && x < quebra);
+  const operadores = posicoesDeOperadorHeredoc(cmd);
+  if (operadores.length !== 1) return null;
+  const p = operadores.find((x) => x > k && x < quebra);
   if (p === undefined) return null;
-  if (/[;|&]/.test(cmd.slice(k, p))) return null;
-  // O heredoc tem de ser o stdin do proprio commit (achado 1 do revisar): `(`,
-  // `$` ou crase antes dele o poem dentro de outro comando, e um `<` depois
-  // dele na mesma linha e outro redirecionamento de stdin, que vence.
-  if (/[()$`<]/.test(cmd.slice(k, p))) return null;
+  if (/\\\r?\n/.test(cmd.slice(0, quebra + 1))) return null;
+  const antes = cmd.slice(k, p);
+  if (/[;|&()$`<{}]/.test(antes)) return null;
+  if (!/[ \t-]$/.test(antes)) return null;
   if (cmd.slice(p + 2, quebra).includes("<")) return null;
-  // Rodada 2 do revisar: `3<<` manda o heredoc para outro descritor, nao para
-  // o stdin; e outro heredoc antes, na mesma linha, faz `corpoDeHeredoc` ler
-  // o corpo errado (os corpos se empilham na ordem dos operadores).
-  if (/\d$/.test(cmd.slice(k, p))) return null;
-  const inicioDaLinha = cmdMascarado.lastIndexOf("\n", k) + 1;
-  if (posicoesDeOperadorHeredoc(cmd).some((x) => x >= inicioDaLinha && x < p)) return null;
   const h = corpoDeHeredoc(cmd, p);
   if (h === null || h.delimitadorQuotado !== true || h.fechado !== true) return null;
-  return h.corpo.replace(/\r?\n$/, "");
+  const corpo = cmd[p + 2] === "-" ? h.corpo.replace(/^\t+/gm, "") : h.corpo;
+  return corpo.replace(/\r?\n$/, "");
 }
 
 /**

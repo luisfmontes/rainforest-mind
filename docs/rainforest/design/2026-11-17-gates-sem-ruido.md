@@ -46,6 +46,8 @@ no modo automatico"). Rodada sob `executar-autonomo`: decisões abaixo marcadas
 - **Só `entrypoint` `cli` conta como interativo** (achado 5): `claude-vscode` e desktop continuam barrando. É a falha fechada que a D3 escolheu; um sinal mais largo (`CLAUDE_CODE_SESSION_ATTENDED`) precisa de medição própria.
 - **Formas raras que continuam barrando** (achado 7): `| tail -n 2`, merge pela ferramenta PowerShell, `git commit -F - 2>&1 <<'EOF'` e `<<\EOF`.
 - **`$`, `(`, crase ou `<` entre `git commit` e o `<<` barram mesmo entre aspas** (rodada 2, achado 3): `git commit --author="Nome <email>" -F - <<'EOF'` e `git -C "$DIR" commit -F - <<'EOF'` barram. Na base todo `-F -` barrava; aceitar exigiria ler aspas no trecho, e a saída é `-F <arquivo>` ou `-m`.
+- **Formas raras de `-F -` que barram por a forma canônica ser estreita** (rodada 3, achado 5): `git commit -F - 0<<'EOF'` e uma linha com `<<` aritmético (`x=$((1<<3)); git commit -F - <<'EOF'`). A saída é `-F <arquivo>`.
+- **Heredoc com continuação `\` e comando na linha seguinte** (rodada 3): a máscara de `hooks/lib/heredoc.cjs` trata a linha seguinte como corpo, e nenhum gate vê o comando. Defeito da base, de lib compartilhada por vários gates; registrado na Issue #724 (abre contorno no `gate-staging-total`).
 
 ## Fora de escopo
 

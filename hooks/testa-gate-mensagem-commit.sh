@@ -251,6 +251,17 @@ gate_contendo "cat <<'A' && git commit -F - <<'B' (dois heredocs na linha) -> ex
 gate_contendo "printf x | git commit -F - 3<<'EOF' (heredoc no fd 3) -> exit 2" 2 "use -F <arquivo>" \
   "$(payload "$R1" Bash $'printf \x27ruim.\x27 | git commit -F - 3<<\x27EOF\x27\nAssunto bom sem ponto\nEOF')"
 
+# Rodada 3 do revisar: so a forma canonica; vizinhas de descritor e de continuacao barram.
+gate_contendo "echo x | git commit -F - {fd}<<'EOF' (descritor alocado) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'echo \x27ruim.\x27 | git commit -F - {fd}<<\x27EOF\x27\nAssunto bom sem ponto\nEOF')"
+gate_contendo "git commit -F - <<'EOF' \\ + < outro.txt na linha seguinte -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 \\\n< outro.txt\nAssunto bom sem ponto\nEOF')"
+# Heredoc com continuacao e commit na linha seguinte fica de fora: a mascara da lib esconde o commit (Issue #724).
+gate "git commit -F - <<-'EOF' com tab antes de assunto de 72 colunas -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<-\x27EOF\x27\n\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n\tCorpo que explica.\n\tEOF')"
+gate "git commit -F -<<'EOF' (operador colado no -) -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F -<<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
