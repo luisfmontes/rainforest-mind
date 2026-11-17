@@ -1,0 +1,272 @@
+Data: 2026-11-17
+Termos: gate-agente-em-voo, gate-mensagem-commit, heredoc, permissionDecision, nao interativ, segmento
+
+$ gh issue list --state all --search "gate-agente-em-voo" --limit 200 --json number,title,state
+[{"number":567,"state":"CLOSED","title":"estado.cjs: commit depois do verificar ok nao reabre revisar nem verificar"},{"number":298,"state":"CLOSED","title":"gate-agente-em-voo promete avisar UMA vez e repete a cada turno em sessao interativa"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":180,"state":"CLOSED","title":"Fluxo: o estagio que despacha agente aposta que o turno dura mais que o agente"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"}]
+
+
+$ gh issue list --state all --search "gate-mensagem-commit" --limit 200 --json number,title,state
+[{"number":707,"state":"CLOSED","title":"gate-publicacao não confere gh api, gh release e gh gist"},{"number":573,"state":"CLOSED","title":"gate-worktree: escrita via Bash de subagente em worktree isolado barrada como \"diretorio de trabalho principal\""},{"number":671,"state":"CLOSED","title":"gate-worktree: git quebrado em repo libera escrita; /worktrees/ no caminho vira worktree"},{"number":263,"state":"CLOSED","title":"gate-mensagem-commit nao reconhece flag curta agrupada (-am, -qm) e nao isenta corpo de heredoc"},{"number":623,"state":"CLOSED","title":"aviso-fluxo barra edição de arquivo gitignored na branch padrão"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":564,"state":"CLOSED","title":"aviso-fluxo não vê escrita pelo Bash: código entra sem fluxo aberto"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":289,"state":"CLOSED","title":"gate-worktree: cd com caminho MSYS (/c/...) vira incerto e barra commit no scratchpad, chamando o worktree de principal"},{"number":456,"state":"CLOSED","title":"Gate de staging deixa passar git.cmd, GIT.EXE, nome com espaco e | iex"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":220,"state":"CLOSED","title":"Tres dos quatro gates ainda nomeiam .rainforest-gate-off pro subagente que bloqueiam"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":185,"state":"CLOSED","title":"gate-publicacao: hash de commit vira 'telefone', e a saída de emergência não vale no mesmo comando"},{"number":369,"state":"CLOSED","title":"Dividas menores da revisao da rodada 13: empate de veredito, --exige extremo, CRLF sem teste"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":541,"state":"CLOSED","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":88,"state":"CLOSED","title":"gate-worktree so inspeciona Bash com verbo git: 'echo x > arquivo' escreve fora do worktree sem ser examinado"},{"number":146,"state":"CLOSED","title":"O _comum.md manda o vigia escrever direto no ERROS.md — um chamador vivo por fora da porta unica"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":38,"state":"CLOSED","title":"CORRIGE #25: a saida prescrita (branch nova) e o que derruba a outra sessao em diretorio compartilhado"},{"number":175,"state":"CLOSED","title":"limpar-branches --remoto ignora a classe mergeada-por-squash e afirma que nao havia remoto para apagar"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh issue list --state all --search "heredoc" --limit 200 --json number,title,state
+[{"number":706,"state":"CLOSED","title":"segmentosParaGate cola no último token o último caractere do delimitador de heredoc"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":407,"state":"CLOSED","title":"gate-fechar-issue barra --body-file criado por heredoc no mesmo comando"},{"number":692,"state":"CLOSED","title":"gate-fechar-issue: ${...} em \"$(...)\", here-string com $'...' e crase do PowerShell escondem gh issue close"},{"number":708,"state":"CLOSED","title":"gate-fechar-issue: palavra mista em argumento posicional do bash -c barra sem gh"},{"number":703,"state":"CLOSED","title":"Gate: bash -c com --, exec -a e cmd //c escondem o gh"},{"number":699,"state":"CLOSED","title":"Gate: argumento posicional depois do script de bash -c esconde o gh"},{"number":707,"state":"CLOSED","title":"gate-publicacao não confere gh api, gh release e gh gist"},{"number":694,"state":"CLOSED","title":"gate-fechar-issue: builtin eval e $IFS escondem gh de escrita"},{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":263,"state":"CLOSED","title":"gate-mensagem-commit nao reconhece flag curta agrupada (-am, -qm) e nao isenta corpo de heredoc"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":337,"state":"CLOSED","title":"gate-fechar-issue barra bash $t sem aspas como comando encapsulado"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":86,"state":"CLOSED","title":"observar.cjs sem argumento processa TODAS as marcas pendentes, mas o cabeçalho diz que processa só a mais recente"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":261,"state":"CLOSED","title":"gate-staging-total: mensagem citaria o repo errado com -C — nao reproduz, falta a linha exata"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"}]
+
+
+$ gh issue list --state all --search "permissionDecision" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "nao interativ" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "segmento" --limit 200 --json number,title,state
+[{"number":706,"state":"CLOSED","title":"segmentosParaGate cola no último token o último caractere do delimitador de heredoc"},{"number":708,"state":"CLOSED","title":"gate-fechar-issue: palavra mista em argumento posicional do bash -c barra sem gh"},{"number":703,"state":"CLOSED","title":"Gate: bash -c com --, exec -a e cmd //c escondem o gh"},{"number":699,"state":"CLOSED","title":"Gate: argumento posicional depois do script de bash -c esconde o gh"},{"number":692,"state":"CLOSED","title":"gate-fechar-issue: ${...} em \"$(...)\", here-string com $'...' e crase do PowerShell escondem gh issue close"},{"number":694,"state":"CLOSED","title":"gate-fechar-issue: builtin eval e $IFS escondem gh de escrita"},{"number":580,"state":"CLOSED","title":"gate-worktree: caminho por variável fora do segmento de leitura simples não é julgado (|, $(, argumento)"},{"number":602,"state":"CLOSED","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":707,"state":"CLOSED","title":"gate-publicacao não confere gh api, gh release e gh gist"},{"number":261,"state":"CLOSED","title":"gate-staging-total: mensagem citaria o repo errado com -C — nao reproduz, falta a linha exata"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":594,"state":"CLOSED","title":"gate-fechar-issue: temMarcadorEvidencia consulta a Issue no cwd do hook e lê erro como falta de evidência"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"}]
+
+
+$ gh pr list --state all --search "gate-agente-em-voo" --limit 200 --json number,title,state
+[{"number":420,"state":"MERGED","title":"Gate de agente em voo so barra a sessao que despachou"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":202,"state":"MERGED","title":"Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado"}]
+
+
+$ gh pr list --state all --search "gate-mensagem-commit" --limit 200 --json number,title,state
+[{"number":690,"state":"MERGED","title":"gate-fechar-issue confere o comando dentro de crases (2.12.2)"},{"number":676,"state":"MERGED","title":"Exigir avisa quando o contexto da sessão está alto (2.11.0)"},{"number":718,"state":"MERGED","title":"Rodada 14: gh escondido dos gates de fechamento e de subagente (2.16.0)"},{"number":491,"state":"MERGED","title":"Gate de staging reconhece git.cmd, GIT.EXE, espaco no fim e iex (#456)"},{"number":630,"state":"MERGED","title":"Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0)"},{"number":506,"state":"MERGED","title":"Versao 1.64.0: fechar com push conferido e merge confirmado pelo state"},{"number":524,"state":"MERGED","title":"Gate: barrar matar processo por nome (#517, 1.67.0)"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":353,"state":"MERGED","title":"1.28.1 — vigia que nao chega ao claude nao sai mais com sucesso"},{"number":318,"state":"MERGED","title":"gates: & com alvo literal no PowerShell e comando comum, nao ilegivel"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":114,"state":"MERGED","title":"Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"}]
+
+
+$ gh pr list --state all --search "heredoc" --limit 200 --json number,title,state
+[{"number":690,"state":"MERGED","title":"gate-fechar-issue confere o comando dentro de crases (2.12.2)"},{"number":665,"state":"MERGED","title":"gate-fechar-issue: recusas do corpo do PR com uma receita só (2.8.2)"},{"number":572,"state":"MERGED","title":"gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1)"},{"number":711,"state":"MERGED","title":"gate-fechar-issue não se deixa esconder por here-string, contrabarra e $(...) (2.13.3)"},{"number":718,"state":"MERGED","title":"Rodada 14: gh escondido dos gates de fechamento e de subagente (2.16.0)"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":715,"state":"MERGED","title":"Gate de publicação confere o texto de gh issue e gh pr (2.14.1)"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":605,"state":"MERGED","title":"Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4)"},{"number":351,"state":"MERGED","title":"gate-subagente-sem-gh: subagente nao escreve no GitHub (1.28.0)"},{"number":459,"state":"MERGED","title":"Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":96,"state":"MERGED","title":"Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco"},{"number":104,"state":"MERGED","title":"Versao 0.77.0: o dia das sete issues, e as cinco provas que nao provavam"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"}]
+
+
+$ gh pr list --state all --search "permissionDecision" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "nao interativ" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "segmento" --limit 200 --json number,title,state
+[{"number":690,"state":"MERGED","title":"gate-fechar-issue confere o comando dentro de crases (2.12.2)"},{"number":560,"state":"MERGED","title":"statusline: perfil mostra a conta logada, nao a da pasta (1.67.12)"},{"number":603,"state":"MERGED","title":"Catraca de mutação lê o placar do vitest (#602, 2.0.3)"},{"number":720,"state":"MERGED","title":"Gate de publicação confere gh api, gh release e gh gist (2.16.1)"},{"number":229,"state":"MERGED","title":"fix(statusline): barra sumiu dos dois perfis — cwd faltando no segmento da escada"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":455,"state":"MERGED","title":"Gate: & \"$pasta\\script.ps1\" analisado pelo nome literal (1.53.2)"},{"number":586,"state":"MERGED","title":"gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1)"},{"number":245,"state":"MERGED","title":"Versao 1.12.1: gate de staging le argumento citado e -- encerra opcoes"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":24,"state":"MERGED","title":"A captura passa a ser nossa, e a memoria passa a ter projeto"},{"number":40,"state":"MERGED","title":"A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario"}]
+
+
+$ git ls-remote --heads origin | grep -F "gate-agente-em-voo"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gate-mensagem-commit"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "heredoc"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "permissionDecision"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "nao interativ"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "segmento"
+(vazio)
+
+$ git log --all --grep="gate-agente-em-voo" --oneline
+21f24271 Versao 1.44.1: gate de agente em voo so barra a sessao dona
+4b2ce642 tarefa 2: hooks gate-* e portaria pelo caminho
+19f03851 contrato de veredito: registra SubagentStop e toggle contrato-veredito (tarefa 9)
+19bd8d85 gate-agente-em-voo: memoria por sessao em mapa, nao slot unico
+fc0f5490 fix(gate-agente-em-voo): aviso por sessao, nao so por turno
+c208a280 1.4.0: MINOR, porque entrou comportamento novo e um hook novo
+add5bb5a Tarefa 9, rodada 2: a bateria media o repositorio de quem a roda, e o hook lia o cwd errado
+3efd28e6 Tarefa 9: Gate Stop detecta agentes em voo que morreram
+
+$ git log --all --grep="gate-mensagem-commit" --oneline
+4b2ce642 tarefa 2: hooks gate-* e portaria pelo caminho
+1509f27b I5 + I6 rodada 2: controle positivo nos 10 gates e caso --max 1
+6237bb1a zerar-issues-10: unifica escape+continuacao em aspas duplas (#339)
+ed1b65b1 Tarefa 2 (#313): escape de aspas duplas reduzido antes do colapso
+82837b95 zerar-issues-8: tarefa 13, continuacao de linha no topo do comando (#309)
+115da24c zerar-issues-8: tarefas 11-12 - |& e continuacao de linha na fronteira de segmento (#309, revisao 2)
+b4c9d1e8 gate: variavel citada com aspas duplas, sozinha e por ultimo, e caminho de script (#309)
+0a26f91a gate-mensagem-commit reconhece flag curta agrupada e heredoc
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+de2bec4d Versao 1.9.0 (MINOR): gate de mensagem de commit, --confirmo, exit 69, duplicacao e carimbos
+3175f374 Trocar no travas-mecanicas o numero sem lastro pelo que o design registra
+a53c5cd3 Pôr no README e no travas-mecanicas o que o lote absorver-plugin-terceiro trouxe
+48c2c805 Corrigir os tres avisos da revisao do lote absorver-plugin-terceiro
+cbdcc670 Fechar o estagio executar do fluxo absorver-plugin-terceiro
+72fe131e Ajustar duas baterias que a rodada completa do T15 deixou vermelhas
+72e37024 Adiciona gate para exigir forma minima na mensagem de commit
+
+$ git log --all --grep="heredoc" --oneline
+55da5f9d Rodada 14: gh escondido dos gates de fechamento e de subagente (2.16.0) (#718)
+11d99344 Gate de publicação confere o texto de gh issue e gh pr (2.14.1) (#715)
+56c63465 gate-fechar-issue não se deixa esconder por here-string, contrabarra e $(...) (2.13.3) (#711)
+41e814a3 gate-fechar-issue confere o comando dentro de crases (2.12.2) (#690)
+510c08cd gate-fechar-issue: recusas do corpo do PR com uma receita só (2.8.2) (#665)
+0533241c Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4) (#605)
+458a18a1 gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1) (#586)
+68c1cbad gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1) (#572)
+f539ba7b Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25 (#535)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+f11f8100 Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0 (#459)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+02d5d99a gate-subagente-sem-gh: nega gh de escrita em subagente (tarefa 1)
+e75eb2c8 agente-sem-background: gate nega bateria sem timeout em subagente
+fdea13e4 revisao 4: #337 sai da entrega, bash $VAR volta a ser ilegivel
+14b3e4f5 gate-busca-raiz: projeto pelo cwd do evento, heredoc e separadores
+0a26f91a gate-mensagem-commit reconhece flag curta agrupada e heredoc
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+068468fb Merge pull request #247 from luisfmontes/fluxo/zerar-issues-3
+8c3b8a6d Gate de Issue: texto do here-string para sumidouro entra na varredura
+8d8b1723 Gate de Issue: linha logica do heredoc e texto do corpo varrido
+0a0f8913 Gate de Issue: corpo de heredoc e script se a LINHA tem interpretador
+c06cdb0f Gate de Issue: here-string dirigido a interpretador e script
+f5751d1a Gate de Issue: <<< e here-string, nao heredoc
+93ceca0e Gate de Issue: so o corpo do heredoc e dado; o resto da linha e comando
+59f58081 Docs: heredoc e dado no gate de Issue, radar custa quatro chamadas
+6b5b97a2 D1: heredoc em gate-fechar-issue
+ef92114a Design e plano: zerar-issues rodada 3 (D1-D5, tarefas 1-5)
+f4ae8906 Fechar os achados da quarta rodada, e apagar um ramo sem efeito
+b01f73bd Mapear regra -> trava, com bateria (D6)
+fdfe3464 Fluxo: verificar ok (4/4 criterios no artefato real) + emenda de criterio
+5dad7948 Fluxo: revisar reprovado — o modelo do NUL estava errado, e o setimo nao-objetivo caiu junto
+5b5e5974 Rodada 8: uma maquina de aspas so, e $'...' desembrulhado como as outras
+7666a5e2 Revisar reprovado (3 achados) e sexto nao-objetivo registrado
+c4db8b7f Rodada 4 do gate: delimitador citado vs nao citado no heredoc
+38a31904 Conserta falso negativo do gate-git-verificacao: heredoc sem aspas expande $(...) e crase
+9aaade4c Revisar reprovado na 3a rodada: o conserto do falso positivo abriu um buraco
+a5a51dda Fluxo nao-mente: executar ok — falso positivo de heredoc consertado
+54c8eabf Merge conserto do falso positivo de heredoc into fluxo/nao-mente
+a6422e04 Corrige falso positivo do gate-git-verificacao: corpo de heredoc e dado, nunca comando
+f954817b Revisar reprovado na 2a rodada: falso positivo em corpo de heredoc
+5c6f9c15 Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+4a82027e Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+3a93869c Fluxo 2 executar ok (2a volta): conserto da revisao integrado
+6a57aea1 Fluxo 2 executar ok (2a volta): conserto da revisao integrado
+839b414a Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco (#96)
+a79e116d Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco (#96)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+c9acd299 A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+22963a8e A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+b6e97315 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+2120dba6 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+
+$ git log --all --grep="permissionDecision" --oneline
+64d5e301 memoria: injecao pelo assunto no pedido e no subagente (1.49.0) (#437)
+
+$ git log --all --grep="nao interativ" --oneline
+12e91712 mod: Faz agora so descarta o item se o prompt aceitou o texto
+af3eb860 mod: session.start nao interativo nao cancela o relogio
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+
+$ git log --all --grep="segmento" --oneline
+1a87ee94 Gate de publicação confere gh api, gh release e gh gist (2.16.1) (#720)
+55da5f9d Rodada 14: gh escondido dos gates de fechamento e de subagente (2.16.0) (#718)
+11d99344 Gate de publicação confere o texto de gh issue e gh pr (2.14.1) (#715)
+56c63465 gate-fechar-issue não se deixa esconder por here-string, contrabarra e $(...) (2.13.3) (#711)
+41e814a3 gate-fechar-issue confere o comando dentro de crases (2.12.2) (#690)
+77ff9113 gate-fechar-issue: -F, valor colado e flag curta com caixa (2.11.1) (#680)
+f882989a Lote A: saude, gate-fechar-issue e esperar-ci sem falso alarme (2.0.5) (#615)
+0533241c Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4) (#605)
+4cfff569 Catraca de mutação lê o placar do vitest (#602, 2.0.3) (#603)
+458a18a1 gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1) (#586)
+1ba5156b gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0) (#563)
+6a7bd99c statusline: perfil mostra a conta logada, nao a da pasta (1.67.12) (#560)
+f539ba7b Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25 (#535)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+658b2c8a Um nome por projeto no banco de memoria (#435), versao 1.53.0 (#453)
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+fff2a310 integra tarefas 1 e 2 (#337 #313)
+0c0af687 gate-busca-raiz: depois de envoltorio, o primeiro find e o comando
+eeaaeab0 gate-busca-raiz: palavra-chave, envoltorio, bash -c e eval antes do find
+33c3d190 gate-busca-raiz: todo parentese sem barra abre segmento
+82837b95 zerar-issues-8: tarefa 13, continuacao de linha no topo do comando (#309)
+115da24c zerar-issues-8: tarefas 11-12 - |& e continuacao de linha na fronteira de segmento (#309, revisao 2)
+074053d3 gate: pular palavra reservada do shell na posicao de comando (#309)
+981253ce gate-staging-total: preserva -C de segmento anterior e nomeia o bloqueio
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+e77502ab portaria: nome de agente nao vira caminho sem ser um segmento simples
+f873a8df testa-memoria-session-start: fixture do teste 11.c usa placeholder $USUARIO
+8c3b8a6d Gate de Issue: texto do here-string para sumidouro entra na varredura
+8d8b1723 Gate de Issue: linha logica do heredoc e texto do corpo varrido
+c06cdb0f Gate de Issue: here-string dirigido a interpretador e script
+78411f93 Gate de Issue: <<< consumido inteiro em segmentosParaGate
+93ceca0e Gate de Issue: so o corpo do heredoc e dado; o resto da linha e comando
+3c58814b Versao 1.12.1: gate de staging le argumento citado e -- encerra opcoes
+ef92114a Design e plano: zerar-issues rodada 3 (D1-D5, tarefas 1-5)
+f126bc02 Trazer a main para a branch do statusline e resolver os dois conflitos
+10251507 Merge pull request #229 from luisfmontes/fix/statusline-escada-cwd
+2b924421 Versao 1.8.2: a barra volta a aparecer
+2a164e16 fix(statusline): passar cwd para o segmento da escada, e bateria do main()
+08254133 Revisão rodada 2: a barra nunca trava — cada segmento nasce no próprio try; chave invertida lida sem ligado()
+84eddec1 Revisão rodada 1: NaN/Infinity não derrubam a barra; trava do iniciar olha o cwd real; núcleo cita a chave
+7333fa86 T1: statusline mostra o tempo até o reset das janelas 5h/7d; barra deixa de estourar no segmento de escada
+e80d4ffe D6: conserta quatro achados de revisão independente
+27fcb1fa Tarefa 6: Dial de intensidade para a escada YAGNI
+4ce9352c Rodada 13: procedencia do token, no lugar de varredura do comando
+d1f5f8ce Conserto: procedência, não varredura, no gate-git-verificacao
+a7683035 Fluxo: executar ok (8a passada) — fim do segmento pelo mapa, origem na mensagem
+515a2f94 Rodada 12: o fim do segmento pelo mapa, e a origem por NUL na mensagem
+21097b8f Falso negativo no gate-git-verificacao: aspa escapada depois do NUL
+8abeb53f Fluxo: revisar reprovado — aspa escapada depois do NUL funde o token
+bfa99435 Rodada 11: o modelo certo do NUL, e o sufixo pelo token que casou
+9ddca9e6 Corrige Defeito A: modelo correto do NUL e restaura 3 testes
+e6e12e99 Consertos dos três defeitos no gate-git-verificacao: A (NUL), B (sufixo), C (Teste 5)
+5b5e5974 Rodada 8: uma maquina de aspas so, e $'...' desembrulhado como as outras
+d6856a46 Defeito B: Unificar máquina de aspas em uma implementação só
+df7c10c6 Rodada 7: tokens() passa a entender $'...' — falso negativo fechado
+99536b9d Falso negativo no gate: unificar máquina de estado de aspas entre segmentos() e tokens()
+40b4705a Rodada 6 do gate: $'...' entendido, e recusa ambigua que nao inventa comando
+9b9a9db2 Falso positivo no gate-git-verificacao: ANSI-C quotes e ambiguidade honesta
+8fc08750 Achado 1 da rodada 5: segmentos() ciente de aspas
+441de8ab Conserto: falso positivo em gate-git-verificacao com quebras de linha em aspas
+7666a5e2 Revisar reprovado (3 achados) e sexto nao-objetivo registrado
+38a31904 Conserta falso negativo do gate-git-verificacao: heredoc sem aspas expande $(...) e crase
+a6422e04 Corrige falso positivo do gate-git-verificacao: corpo de heredoc e dado, nunca comando
+f954817b Revisar reprovado na 2a rodada: falso positivo em corpo de heredoc
+b6bce104 Lote 3 rodada 19: injecao no pr merge, chaves como fronteira, apostrofo no conferir
+15f35257 Gate git-verificacao: cobre bash -c/sh -c aninhado e subshell (parenteses)
+6e0cb0cb Amplia de novo o criterio da tarefa 2: bash -c, sh -c e subshell
+bcbedd46 Conserta o gate git-verificacao: nove contornos que passavam no criterio velho
+0236f369 Merge lote 3 rodada 15 (--body-file pelo cwd efetivo do segmento) into fluxo/guardas
+5aa440fe Lote 3 rodada 15: --body-file resolvido contra o cwd efetivo do segmento
+9c8fb467 Lote 3 rodada 8: vigia saneia a linha de erro antes de truncar
+33b8d553 Lote 3 rodada 6: caso que isola comandoEhGit — o -C de outra ferramenta nao muda o cwd do proprio segmento
+c13f2003 Lote 3 rodada 6: & simples separa segmento nos tres gates; git -C so quando git e o comando e so naquele segmento
+68b20646 Merge lote 3 rodada 5 (cwd por segmento, pushd/env -C, procuraCLI em posicao de comando) into fluxo/guardas
+63bc4b8a Lote 3 rodada 5: alvosBash e alvosBashEscrita usam o mesmo movedor de diretorio (pushd, popd, env -C)
+97327d16 Lote 3 rodada 5: cwd por segmento, pushd/env -C, procuraCLI so em posicao de comando
+43b0c4fd Lote 3 rodada 4: alvosBash usa o ultimo -C, subshell vira incerto, procuraCLI le $'...' e barra invertida
+ecf66cf0 Merge lote 3 rodada 4 (gate-fechar-issue por segmento) into fluxo/guardas
+795c2383 Lote 3 rodada 4: gate-fechar-issue confere cada segmento e a string do bash -c
+75ac3142 Lote 3 rodada 2: F1 (múltiplos -C) e F2 (aspas em separadores) fechadas
+fa68491c Gate: placeholder de usuario nao e nome de ninguem
+5a282ae2 Gate: placeholder de usuario nao e nome de ninguem
+250bffaa Vigias: varredura adversarial do saneamento — tres vazamentos que ninguem tinha procurado
+1f43b5cc Vigias: varredura adversarial do saneamento — tres vazamentos que ninguem tinha procurado
+7dc929f1 Vigias: terceira rodada do saneamento — a regra deixa de ser lista e passa a ser a do sistema de arquivos
+88f1b654 Vigias: terceira rodada do saneamento — a regra deixa de ser lista e passa a ser a do sistema de arquivos
+955a3074 Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+83301c7b Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+65821514 Gate de worktree: decidir escrita por token, e isentar o scratchpad
+a461e9dc Gate de worktree: decidir escrita por token, e isentar o scratchpad
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+c0508a73 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+465f2544 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+c3d775c0 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+3e615363 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+7dc1a9bf A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+e265afc5 A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+
+$ cat <dados>/ideias.jsonl
+{"id":"prazo-data-de-contexto-em-linha-com-marcador","titulo":"Falso positivo residual do segmento de prazo: data de contexto em linha que ja tem marcador"}
+{"id":"obs-2026-09-29-mascara-assumi-um-segmento-por-nivel","titulo":"Assumi que o ponto da mascara separa grupo/rubrica/item"}
+
+
