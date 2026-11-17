@@ -122,25 +122,25 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "d824aabf68e686ea7737a2bab2342c941ce4e8b2",
+      "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a582e9ee9e5f898a8",
+        "agente_id": "ac9ae03aa9538129a",
         "veredito": "ok",
         "em": "2026-11-17",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a582e9ee9e5f898a8.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ac9ae03aa9538129a.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-17",
-    "achados": 5,
+    "achados": 2,
     "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
-    "head": "d824aabf68e686ea7737a2bab2342c941ce4e8b2",
+    "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
     "voltas": [
       {
         "volta": 1,
@@ -189,12 +189,28 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa4b79d681b531a7d.jsonl"
           }
         ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a582e9ee9e5f898a8",
+            "veredito": "ok",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a582e9ee9e5f898a8.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-17"
+    "status": "ok",
+    "em": "2026-11-17",
+    "comando": "bash hooks/testa-gate-agente-em-voo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-fechar-issue.sh; criterio node da tarefa 5; grep da tarefa 10; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-17-gates-sem-ruido",
+    "saida": "35 ok 0 falha; 93 ok 0 falha; 199 ok 0 falha; 668 ok 0 falha; tarefa 5 exit 0; tarefa 10 grep sem saida (exit 1); mutacoes: tarefas 1,2,3,4,6,8,9,11 vermelho, 5 e 10 puladas (n/a), exit 0",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes",
+    "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150"
   },
   "fechar": {
     "status": "pendente",
