@@ -25,8 +25,8 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-11-17",
-    "tarefas_ok": 0,
-    "tarefas": 5,
+    "tarefas_ok": 4,
+    "tarefas": 7,
     "carimbos": [
       {
         "tarefa": 1,
@@ -60,13 +60,13 @@
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "3 merge por segmento (redespacho)",
+        "tarefa": "6 aperto D5",
         "desde": "2026-11-17",
         "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
       },
       {
         "agente": "executor",
-        "tarefa": "4 staging script nao-shell",
+        "tarefa": "7 aperto D6",
         "desde": "2026-11-17",
         "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
       }
@@ -74,7 +74,9 @@
     "em": "2026-11-17",
     "integradas": [
       1,
-      2
+      2,
+      3,
+      4
     ]
   },
   "revisar": {
@@ -85,5 +87,21 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "A revisão de segurança automática achou três desvios na D6 (spawn com git em array, arquivo reaproveitado por shell, mais de um destino de escrita). Afrouxar, aceitar ou apertar?",
+      "escolha": "Apertar: corpo com primitiva de spawn + git volta à análise inteira; o arquivo só pode reaparecer como argumento de interpretador não-shell; linha do heredoc com um destino só, sem pipe nem tee",
+      "porque": "Regra de parada do plano: contorno dentro das formas novas se conserta apertando, nunca somando parser; o falso positivo medido (regex JS sem spawn) continua passando",
+      "estagio": "executar",
+      "em": "2026-11-17T14:45:18.646Z"
+    },
+    {
+      "pergunta": "A revisão de segurança achou dois desvios na D5 (merge com verbo entre aspas herda o texto de outro merge; cd para ~, - ou glob deixa o repo incerto). Apertar?",
+      "escolha": "Apertar: o segmento isolado só vale quando é o próprio segmento conferido; outra parte com verbo do gh devolve null; cd só com caminho [A-Za-z0-9._/:-] que não começa com - nem ~; merge sem cwd resolvido e sem --repo ou URL barra",
+      "porque": "Regra de parada do plano: contorno dentro das formas novas se conserta apertando; os quatro casos legítimos medidos continuam passando",
+      "estagio": "executar",
+      "em": "2026-11-17T15:08:41.972Z"
+    }
+  ]
 }

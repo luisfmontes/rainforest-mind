@@ -22,7 +22,7 @@ atende: D1, D3
 arquivos: `hooks/gate-agente-em-voo.cjs`, `hooks/testa-gate-agente-em-voo.sh`
 depende de: nenhuma
 busca:
-- catalogo | listar --raiz hooks | reaproveito toplevel de hooks/gate-agente-em-voo.cjs:65 e o main de hooks/gate-agente-em-voo.cjs:135; nenhuma lib detecta modo interativo (rg CLAUDE_CODE_ENTRYPOINT em hooks e scripts: só scripts/testa-jornada-origem.cjs, que lê entrypoint de transcript)
+- catalogo | listar --raiz hooks | reaproveito toplevel de hooks/gate-agente-em-voo.cjs:72 e o main de hooks/gate-agente-em-voo.cjs:168; nenhuma lib detecta modo interativo (rg CLAUDE_CODE_ENTRYPOINT em hooks e scripts: só scripts/testa-jornada-origem.cjs, que lê entrypoint de transcript)
 - doc | https://code.claude.com/docs/en/hooks | o hook herda o ambiente do processo pai; o payload do Stop não tem campo de modo interativo, mas traz transcript_path
 desfecho: estender
 O que fazer:
@@ -50,7 +50,7 @@ arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh
 depende de: nenhuma
 busca:
 - catalogo | listar --raiz hooks/lib | reaproveito corpoDeHeredoc de hooks/lib/heredoc.cjs:138 (devolve corpo, fim, delimitadorQuotado, fechado) e posicoesDeOperadorHeredoc de hooks/lib/heredoc.cjs:258
-- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:269 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:179
+- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:296 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
 desfecho: estender
 O que fazer:
 - Função nova `function mensagemDeHeredoc(cmd, cmdMascarado)` que devolve a string da mensagem ou `null`. `cmdMascarado` é a saída de `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento: todo índice achado nele vale no `cmd` original.
@@ -78,7 +78,7 @@ atende: D5
 arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
 depende de: nenhuma
 busca:
-- catalogo | listar --raiz hooks | reaproveito segmentosParaGate de hooks/gate-fechar-issue.cjs:259, comandoUnicoSemShell de hooks/gate-fechar-issue.cjs:1129 e analisarPrMerge de hooks/gate-fechar-issue.cjs:1262; o cwd do merge já vem de cwdPorSegmento (hooks/lib/cwd-efetivo.cjs) pelo main
+- catalogo | listar --raiz hooks | reaproveito segmentosParaGate de hooks/gate-fechar-issue.cjs:259, comandoUnicoSemShell de hooks/gate-fechar-issue.cjs:1129 e analisarPrMerge de hooks/gate-fechar-issue.cjs:1355; o cwd do merge já vem de cwdPorSegmento (hooks/lib/cwd-efetivo.cjs) pelo main
 desfecho: estender
 O que fazer: função nova `function segmentoDoMerge(comando)`, que devolve o texto do segmento `gh pr merge` isolado ou `null`. Ela lê a variável de módulo `FERRAMENTA` (já global no arquivo, setada no `main`). Passos, nesta ordem; qualquer falha devolve `null`:
   1. `FERRAMENTA === "PowerShell"` → `null`.
@@ -111,7 +111,7 @@ atende: D6
 arquivos: `hooks/lib/heredoc.cjs`, `hooks/gate-staging-total.cjs`, `hooks/testa-gate-staging-total.sh`
 depende de: nenhuma
 busca:
-- catalogo | listar --raiz hooks/lib | estendo mascararCorposDeHeredoc de hooks/lib/heredoc.cjs:395 e alvoDoRedirecionamentoEhExecutadoDepois de hooks/lib/heredoc.cjs:311 (o conjunto EXECUTAM_ARQUIVO já separa os interpretadores)
+- catalogo | listar --raiz hooks/lib | estendo mascararCorposDeHeredoc de hooks/lib/heredoc.cjs:476 e alvoDoRedirecionamentoEhExecutadoDepois de hooks/lib/heredoc.cjs:311 (o conjunto EXECUTAM_ARQUIVO já separa os interpretadores)
 desfecho: estender
 O que fazer:
 - Em `hooks/lib/heredoc.cjs`:
@@ -132,10 +132,63 @@ pronto quando: com o comando exato que o gate barrou nesta sessão (heredoc cita
   - contornos que continuam barrando: corpo JS com `execSync('git add -A')` executado por `node` → exit 2; corpo com `os.system("git commit -am x")` executado por `python3` → exit 2; o MESMO corpo do regex executado por `bash t.cjs` → exit 2 (shell segue analisado inteiro, D11 do zerar-issues-4); executado por `./t.cjs` → exit 2; executado por `node t.cjs; bash t.cjs` → exit 2; heredoc SEM aspas executado por `node` com `$(git add -A)` no corpo → exit 2.
   - casos vizinhos de outros gates: `bash hooks/testa-gate-worktree.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com o mesmo placar que deram no worktree desta tarefa antes da edição (a chamada sem opção não mudou).
 
+### 6. Aperto da D5: cada merge conferido pelo próprio texto, `cd` só literal seguro [tipo: implementar]
+atende: D5
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 3
+busca:
+- catalogo | listar --raiz hooks | estendo segmentoDoMerge e verificarComandoGh de hooks/gate-fechar-issue.cjs (tarefa 3) e reaproveito tokensComAspas e normalizarExecutavel que o arquivo já importa
+desfecho: estender
+Origem: revisão de segurança automática do commit da tarefa 3 (decisão registrada com `estado.cjs decidir`). Dois desvios: (1) `gh pr merge 5 --squash; gh pr me''rge 6 --body "Closes #12"` — a segunda parte não contém o texto `merge`, então `segmentoDoMerge` devolve o texto do merge 5, e o merge 6 é conferido com os argumentos do 5; (2) `cd ~`, `cd -` e `cd x*` passam no `/^cd [^\s'"]+$/` e deixam o repositório do merge incerto.
+O que fazer:
+- Em `segmentoDoMerge`, dois apertos:
+  1. Toda parte que NÃO é o merge e NÃO é uma das leituras permitidas antes dele (`gh pr view|checks|status`) é tokenizada com `tokensComAspas(parte).map((t) => t.v)`; se o primeiro token, sem contrabarra e normalizado com `normalizarExecutavel`, é `gh` → `null`. Isso troca a checagem por substring `merge` que a tarefa 3 pôs (mantenha-a também; ela só aperta).
+  2. A regra do `cd` antes do merge passa a ser `/^cd (?!-)[A-Za-z0-9._\/:-]+$/` (sem `~`, sem glob, sem começar por `-`).
+- Função nova `function segmentoConfere(isolado, segmento)`: devolve `true` só quando `isolado` e `segmento`, ambos aparados e sem um ` 2>&1` final, são iguais. No call site, a linha da tarefa 3 vira as duas linhas literais `const isolado = segmentoDoMerge(textoDoComando);` e `const forma = analisarPrMerge(isolado !== null && segmentoConfere(isolado, segmento) ? isolado : textoDoComando);` (o `segmento` é o primeiro parâmetro de `verificarComandoGh`).
+- No ramo do merge, depois de `analisarPrMerge`: se `repo` é nulo, `ref` não começa por `https://`, e `cwdSegmento` é nulo/vazio, barra com a mensagem "não sei em que repositório o merge roda (cd incerto); use --repo dono/repo ou a URL do PR".
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `isolado !== null && segmentoConfere(isolado, segmento) ? isolado : textoDoComando`
+  para: `isolado !== null ? isolado : textoDoComando`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, seção "gates-sem-ruido D5 aperto: cada merge pelo próprio texto"
+  timeout: `1200000`
+prova-na-base: verde — o defeito só existe depois da tarefa 3; na base do plano o merge composto já barrava pela forma
+pronto quando: com os comandos dos dois desvios, o gate barra — provado por `bash hooks/testa-gate-fechar-issue.sh` (stub `pm`, `D` = `$SBP_WIN`) imprimindo `ok` em cada caso abaixo e nenhuma falha no placar final:
+  - barram: `gh pr merge 5 --squash; gh pr me''rge 6 --body "Closes #12"` → exit 2; `gh pr merge 5 --squash; g\h pr merge 6 --body "Closes #12"` → exit 2; `gh pr merge 5 --squash; "gh" pr merge 6 --body "Closes #12"` → exit 2; `cd ~ && gh pr merge 5 --squash` → exit 2; `cd - && gh pr merge 5 --squash` → exit 2; `cd x* && gh pr merge 5 --squash` → exit 2.
+  - continuam passando: os quatro legítimos da seção `gates-sem-ruido D5` (mesmo exit 0).
+  - todos os casos que já existiam continuam com o exit de antes.
+
+### 7. Aperto da D6: só mascara script não-shell sem spawn de git, com destino único e sem outro uso do arquivo [tipo: implementar]
+atende: D6
+arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`
+depende de: 4
+busca:
+- catalogo | listar --raiz hooks/lib | estendo mascararCorposDeHeredoc e executoresDoAlvo de hooks/lib/heredoc.cjs (tarefa 4)
+desfecho: estender
+Origem: revisão de segurança automática do commit da tarefa 4 (decisão registrada com `estado.cjs decidir`). Três desvios: (1) `spawnSync('git',['add','-A'])` deixa visível só `git`, e o staging passa; (2) o arquivo pode ser reaproveitado por shell (`cp t.cjs x.sh; bash x.sh`, `cat t.cjs | sh`, `sh < t.cjs`); (3) a linha do heredoc pode gravar em mais de um destino (`| tee b.sh`, dois `>`).
+O que fazer, em `hooks/lib/heredoc.cjs`, dentro do ramo `scriptNaoShell` de `mascararCorposDeHeredoc` (fora dele nada muda):
+- Função nova `function temSpawnComGit(corpo)`: `true` quando o corpo casa `/\bgit\b/` E casa `/child_process|\bexec(Sync|File|FileSync)?\s*\(|\bspawn(Sync)?\s*\(|subprocess|os\.system|\bPopen\b|\bsystem\s*\(|`/`. No ramo, a primeira linha é a literal `if (temSpawnComGit(heredoc.corpo)) return false;` dentro de uma função auxiliar `function podeMascararNaoShell(cmd, i, fimDoHeredoc, heredoc)` que devolve booleano, chamada pelo ramo.
+- Na mesma função auxiliar: a linha lógica do heredoc (do início da linha até `fimDaLinhaLogica`) tem de ter exatamente UM alvo de redirecionamento `>`/`>>` e nenhum `|` nem a palavra `tee` → senão `false`.
+- Na mesma função auxiliar: no texto depois do heredoc, toda ocorrência do nome-base do alvo tem de ser argumento direto de um comando em `INTERPRETADORES_NAO_SHELL` (o token anterior, pulando flags, é o interpretador). Qualquer outra ocorrência (`cp`, `mv`, `cat`, `<`, `sh`, `./`) → `false`.
+- Quando `podeMascararNaoShell` devolve `false`, o corpo segue sem máscara nenhuma (análise inteira, o comportamento de antes da D6).
+Bateria: o caso legítimo `execSync('git status')` da tarefa 4 passa a ter `spawn` com `git` e cai na análise inteira; ele sai da lista de "passa" e vira "mesmo exit que na base do plano" (meça e escreva o exit real). O caso do regex (sem spawn) continua passando.
+mutacao:
+  arquivo: `hooks/lib/heredoc.cjs`
+  de: `if (temSpawnComGit(heredoc.corpo)) return false;`
+  para: `if (false) return false;`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "gates-sem-ruido D6 aperto: spawn, destino único, arquivo reaproveitado"
+prova-na-base: verde — o defeito só existe depois da tarefa 4; na base do plano todo script executado era analisado inteiro
+pronto quando: com os comandos dos três desvios, num `git init` temporário, o gate barra — provado por `bash hooks/testa-gate-staging-total.sh` imprimindo `ok` em cada caso abaixo e nenhuma falha no placar final:
+  - barram: corpo `require('child_process').spawnSync('git',['add','-A'])` executado por `node` → exit 2; corpo `subprocess.run(['git','add','-A'])` executado por `python` → exit 2; o regex inofensivo em `t.cjs` executado por `node t.cjs; cp t.cjs x.sh; bash x.sh` com `git add -A` no corpo → exit 2; `cat <<'EOF' > t.cjs | tee b.sh` com `git add -A` no corpo e `node t.cjs; bash b.sh` → exit 2; `cat > t.cjs <<'EOF'` com `git add -A` e `node t.cjs; sh < t.cjs` → exit 2.
+  - continuam passando: o regex em `.cjs` por `node` (o falso positivo medido no design) → exit 0; o mesmo em `.py` por `python` → exit 0.
+  - `bash hooks/testa-gate-worktree.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com o mesmo placar de antes da edição.
+
 ### 5. Versão 2.17.0, CHANGELOG e README [tipo: docs]
 atende: D1, D2, D3, D4, D5, D6
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`, `README.en.md`
-depende de: 1, 2, 3, 4
+depende de: 1, 2, 3, 4, 6, 7
 mutacao: n/a
   motivo: tarefa de texto e número de versão; não há comportamento a inverter
 O que fazer:
