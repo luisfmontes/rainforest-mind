@@ -25,8 +25,8 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-11-17",
-    "tarefas_ok": 6,
-    "tarefas": 6,
+    "tarefas_ok": 9,
+    "tarefas": 9,
     "carimbos": [
       {
         "tarefa": 1,
@@ -65,8 +65,8 @@
       4,
       6
     ],
-    "comando": "node scripts/conferir-mutacao.cjs --raiz . --arquivo hooks/gate-fechar-issue.cjs --de <chamada analisarPrMerge atual> --para analisarPrMerge(textoDoComando) --bateria bash hooks/testa-gate-fechar-issue.sh",
-    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas. Tarefas 1,2,4,6 aceitas por integrar-tarefa (catraca vermelha); tarefa 5: criterio do plano exit=0",
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-fechar-issue.cjs --de <leitura so antes do merge> --bateria bash hooks/testa-gate-fechar-issue.sh; idem gate-mensagem-commit",
+    "saida": "tarefa 8: ok: bateria VERMELHA (exit 1), duas rodadas, baseline exit 0; tarefa 9: ok: bateria VERMELHA (exit 1); tarefa 10: testa-gate-agente-em-voo 35 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -97,17 +97,52 @@
         "tarefa": 6,
         "resultado": "vermelho",
         "fixture": "testa-gate-fechar-issue.sh, caso cd ~ && gh pr merge 5 --repo dono/repo --squash barra"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos do achado 6 do revisar (gh pr view depois do merge)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh, caso < outro.txt (outro stdin vence)"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "desempenho sem comportamento observavel na saida do hook"
       }
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "cbfaf5ede200e6e33c3f3e9f576c3d151a0651a7",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0d29afd643bdb61f",
+        "veredito": "ok",
+        "em": "2026-11-17",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a0d29afd643bdb61f.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-17",
+    "achados": 8,
+    "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
+    "head": "cbfaf5ede200e6e33c3f3e9f576c3d151a0651a7"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-17"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-17"
   },
   "decididos": [
     {
@@ -130,6 +165,13 @@
       "porque": "Medido com o gate da main, da tarefa 4 e da tarefa 7: os três contornos já passavam antes da D6 (exit 0 na main), a tarefa 4 não abriu nenhum e ainda fechou o execSync('git add -A'); a tarefa 7 desfazia esse ganho sem fechar os outros. Não é contorno dentro das formas novas, então a regra de parada não pede aperto aqui",
       "estagio": "executar",
       "em": "2026-11-17T15:35:06.135Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-11-17",
+      "de": "revisar",
+      "motivo": "revisar: (6) leitura gh pr view/checks/status depois do merge barra; (1) heredoc do -F - que nao alimenta o stdin do commit (< depois, $( ou crase antes) e aceito; (4/5) agente-em-voo le o transcript inteiro e antes de saber se ha em_voo; (8) linha do agente-em-voo na tabela PreToolUse e README sem head -N"
     }
   ]
 }
