@@ -23,9 +23,9 @@
     "em": "2026-11-17"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-17",
-    "tarefas_ok": 4,
+    "tarefas_ok": 6,
     "tarefas": 6,
     "carimbos": [
       {
@@ -57,7 +57,6 @@
         "ts": "2026-11-17T14:21:46.043Z"
       }
     ],
-    "em_voo": [],
     "em": "2026-11-17",
     "integradas": [
       1,
@@ -65,6 +64,40 @@
       3,
       4,
       6
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs --raiz . --arquivo hooks/gate-fechar-issue.cjs --de <chamada analisarPrMerge atual> --para analisarPrMerge(textoDoComando) --bateria bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas. Tarefas 1,2,4,6 aceitas por integrar-tarefa (catraca vermelha); tarefa 5: criterio do plano exit=0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-agente-em-voo.sh, secao gates-sem-ruido D3: sessao interativa"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh, secao gates-sem-ruido D4: heredoc citado no -F -"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao gates-sem-ruido D5: merge julgado pelo segmento"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-staging-total.sh, secao gates-sem-ruido D6: script nao-shell escrito por heredoc"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "tarefa de texto e numero de versao; nao ha comportamento a inverter"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso cd ~ && gh pr merge 5 --repo dono/repo --squash barra"
+      }
     ]
   },
   "revisar": {
