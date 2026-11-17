@@ -1,0 +1,272 @@
+{
+  "slug": "2026-11-17-gates-sem-ruido",
+  "titulo": "Gates sem ruído: menos bloqueio falso que aparece como hook error",
+  "criado_em": "2026-11-17",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-17-gates-sem-ruido.md",
+    "em": "2026-11-17"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-17-gates-sem-ruido.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "em": "2026-11-17"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-17",
+    "tarefas_ok": 10,
+    "tarefas": 10,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "1242dd4",
+        "iteracao": 1,
+        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb",
+        "ts": "2026-11-17T14:21:46.043Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1242dd4",
+        "iteracao": 1,
+        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb",
+        "ts": "2026-11-17T14:21:46.043Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1242dd4",
+        "iteracao": 1,
+        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb",
+        "ts": "2026-11-17T14:21:46.043Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "1242dd4",
+        "iteracao": 1,
+        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb",
+        "ts": "2026-11-17T14:21:46.043Z"
+      }
+    ],
+    "em": "2026-11-17",
+    "integradas": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-fechar-issue.cjs --de <regex do cd com ~ inicial> --bateria bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "ok: baseline VERDE (exit 0); ok: bateria VERMELHA com o comportamento invertido (exit 1), duas rodadas",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-agente-em-voo.sh, secao gates-sem-ruido D3: sessao interativa"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh, secao gates-sem-ruido D4: heredoc citado no -F -"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao gates-sem-ruido D5: merge julgado pelo segmento"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-staging-total.sh, secao gates-sem-ruido D6: script nao-shell escrito por heredoc"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "tarefa de texto e numero de versao; nao ha comportamento a inverter"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso cd ~ && gh pr merge 5 --repo dono/repo --squash barra"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos do achado 6 do revisar (gh pr view depois do merge)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh, caso < outro.txt (outro stdin vence)"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "desempenho sem comportamento observavel na saida do hook"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh, caso dois heredocs na linha"
+      }
+    ],
+    "reaberturas": 2,
+    "em_voo": []
+  },
+  "revisar": {
+    "status": "parcial",
+    "snapshot": {
+      "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ac9ae03aa9538129a",
+        "veredito": "ok",
+        "em": "2026-11-17",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ac9ae03aa9538129a.jsonl"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "rodada 7: conserto do CI (~ no cd)",
+        "desde": "2026-11-17",
+        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
+      }
+    ],
+    "em": "2026-11-17",
+    "achados": 2,
+    "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
+    "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a0d29afd643bdb61f",
+            "veredito": "ok",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a0d29afd643bdb61f.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a0eed895e2b211761",
+            "veredito": "ok",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a0eed895e2b211761.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ad08f05139e1740a6",
+            "veredito": "reprovado",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ad08f05139e1740a6.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aa4b79d681b531a7d",
+            "veredito": "reprovado",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa4b79d681b531a7d.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a582e9ee9e5f898a8",
+            "veredito": "ok",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a582e9ee9e5f898a8.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "pendente",
+    "em": "2026-11-17",
+    "comando": "bash hooks/testa-gate-agente-em-voo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-fechar-issue.sh; criterio node da tarefa 5; grep da tarefa 10; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-17-gates-sem-ruido",
+    "saida": "35 ok 0 falha; 93 ok 0 falha; 199 ok 0 falha; 668 ok 0 falha; tarefa 5 exit 0; tarefa 10 grep sem saida (exit 1); mutacoes: tarefas 1,2,3,4,6,8,9,11 vermelho, 5 e 10 puladas (n/a), exit 0",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes",
+    "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-17"
+  },
+  "decididos": [
+    {
+      "pergunta": "A revisão de segurança automática achou três desvios na D6 (spawn com git em array, arquivo reaproveitado por shell, mais de um destino de escrita). Afrouxar, aceitar ou apertar?",
+      "escolha": "Apertar: corpo com primitiva de spawn + git volta à análise inteira; o arquivo só pode reaparecer como argumento de interpretador não-shell; linha do heredoc com um destino só, sem pipe nem tee",
+      "porque": "Regra de parada do plano: contorno dentro das formas novas se conserta apertando, nunca somando parser; o falso positivo medido (regex JS sem spawn) continua passando",
+      "estagio": "executar",
+      "em": "2026-11-17T14:45:18.646Z"
+    },
+    {
+      "pergunta": "A revisão de segurança achou dois desvios na D5 (merge com verbo entre aspas herda o texto de outro merge; cd para ~, - ou glob deixa o repo incerto). Apertar?",
+      "escolha": "Apertar: o segmento isolado só vale quando é o próprio segmento conferido; outra parte com verbo do gh devolve null; cd só com caminho [A-Za-z0-9._/:-] que não começa com - nem ~; merge sem cwd resolvido e sem --repo ou URL barra",
+      "porque": "Regra de parada do plano: contorno dentro das formas novas se conserta apertando; os quatro casos legítimos medidos continuam passando",
+      "estagio": "executar",
+      "em": "2026-11-17T15:08:41.972Z"
+    },
+    {
+      "pergunta": "O aperto da D6 (tarefa 7) deu 7 falhas. Seguir, corrigir ou descartar?",
+      "escolha": "Descartar a tarefa 7 e manter a tarefa 4 como integrada; os buracos antigos (spawn com git em array, sh < arquivo, cp + bash) viram Issue",
+      "porque": "Medido com o gate da main, da tarefa 4 e da tarefa 7: os três contornos já passavam antes da D6 (exit 0 na main), a tarefa 4 não abriu nenhum e ainda fechou o execSync('git add -A'); a tarefa 7 desfazia esse ganho sem fechar os outros. Não é contorno dentro das formas novas, então a regra de parada não pede aperto aqui",
+      "estagio": "executar",
+      "em": "2026-11-17T15:35:06.135Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-11-17",
+      "de": "revisar",
+      "motivo": "revisar: (6) leitura gh pr view/checks/status depois do merge barra; (1) heredoc do -F - que nao alimenta o stdin do commit (< depois, $( ou crase antes) e aceito; (4/5) agente-em-voo le o transcript inteiro e antes de saber se ha em_voo; (8) linha do agente-em-voo na tabela PreToolUse e README sem head -N"
+    },
+    {
+      "em": "2026-11-17",
+      "de": "revisar",
+      "motivo": "revisar rodada 2: (1) dois heredocs na linha do commit -F - conferem o corpo errado; (2) fd antes do << (3<<) nao e o stdin; (4) | sem escape na linha 193 do README [preexistente]"
+    },
+    {
+      "em": "2026-11-17",
+      "de": "revisar",
+      "motivo": "revisar rodada 5 (ok): achado 5, documentacao promete mais que o codigo (o que vem depois da linha de fechamento e analisado a parte) e design/plano descrevem a leitura antiga; achados 1-4 [baixa] viram residuos"
+    },
+    {
+      "em": "2026-11-17",
+      "de": "verificar",
+      "motivo": "CI do PR 725: cd com caminho 8.3 do runner (RUNNER~1) barra; ~ no meio do caminho e literal no bash"
+    }
+  ]
+}

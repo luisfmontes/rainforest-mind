@@ -23,9 +23,13 @@
  * MENSAGEM. Vem de `-m`/`--message` (cada ocorrencia e um paragrafo; a
  * segunda em diante ja conta como corpo, exceto se for so trailer) ou de
  * `-F`/`--file <arquivo>` (le o arquivo: primeira linha e assunto, resto e
- * corpo). `-F -` (le de stdin) e heredoc como fonte de `-F -` sao mensagem
- * NAO RESOLVIVEL por este gate — ele nao executa o comando, so le o texto
- * de `tool_input.command` — e barram com exit 2 pedindo `-F <arquivo>`.
+ * corpo). `-F -` so e lido quando a mensagem vem de um heredoc CITADO
+ * (`<<'EOF'` ou `<<"EOF"`) no proprio comando, com a linha de fechamento
+ * presente: o gate le o corpo do texto de `tool_input.command`, sem executar
+ * nada (gates-sem-ruido D4; a semana medida teve 38 bloqueios desse caso).
+ * Qualquer outra forma de `-F -` (heredoc sem aspas, here-string, pipe,
+ * heredoc antes do commit ou separado por `;`) segue NAO RESOLVIVEL e barra
+ * com exit 2 pedindo `-F <arquivo>`.
  * Sem nenhuma fonte de mensagem (nem `-m`, nem `-F`, nem flag de reuso)
  * tambem e nao-resolvivel. `--amend`, `--no-edit`, `-C <rev>` (reusa
  * mensagem) e `-c <rev>` (reusa e edita) pulam toda checagem — a mensagem
@@ -44,8 +48,8 @@
  * Protege contra: `git commit` direto ou dentro de wrapper conhecido
  * (bash -c, eval, Invoke-Expression/iex, pwsh -Command, cmd /c) com assunto
  * vazio, longo demais, terminando em ponto, ou sem corpo num diff grande;
- * e mensagem que este gate nao consegue ler (`-F -`, heredoc, nem `-m` nem
- * `-F`). Isso inclui `git commit` PELADO, que abriria o editor — o harness
+ * e mensagem que este gate nao consegue ler (`-F -` fora do heredoc citado,
+ * nem `-m` nem `-F`). Isso inclui `git commit` PELADO, que abriria o editor — o harness
  * nao tem editor, e o commit que fecha um merge com conflito resolvido cai
  * aqui: o gesto e `git commit -F .git/MERGE_MSG` (achado da revisao,
  * 2026-09-12).
@@ -205,6 +209,39 @@ function leFlagsCommit(argsToks) {
   return { mParts, fFile, reusaMensagem };
 }
 
+// Lista branca da primeira linha de um commit por heredoc (gates-sem-ruido D4,
+// rodada 4 do revisar). Tokens literais, sem aspa, `$`, crase nem `\`; o
+// delimitador e um nome simples entre aspas simples.
+const TOKEN_LITERAL = "[A-Za-z0-9._/:=-]+";
+const LINHA0_HEREDOC = new RegExp(
+  `^(?:(?:cd|git add) ${TOKEN_LITERAL}(?: ${TOKEN_LITERAL})* && )*` +
+  `git commit(?: -[A-Za-z-]+(?:=${TOKEN_LITERAL})?)* -F - <<(-?)(?:'([A-Za-z_][A-Za-z0-9_]*)'|"([A-Za-z_][A-Za-z0-9_]*)")` +
+  `(?: && git push(?: ${TOKEN_LITERAL})*)?$`
+);
+
+/**
+ * Mensagem de `git commit -F -` quando o stdin e um heredoc CITADO (D4).
+ * Devolve a string da mensagem ou `null` (o gate entao barra como antes).
+ * So a forma literal: a PRIMEIRA linha do comando casa `LINHA0_HEREDOC`, e o
+ * corpo sao as linhas seguintes ate a primeira igual ao delimitador (com `<<-`,
+ * sem as tabulacoes a esquerda, como no bash). Com o commit na primeira linha,
+ * nenhum heredoc anterior existe; sem aspa, `$`, `<`, `>` nem `\` na linha, nada
+ * toma o stdin nem estende a linha. Rodadas 2 a 4 do revisar mostraram que
+ * ler heredoc generico (lista negra de formas) sempre deixava vizinha aberta.
+ */
+function mensagemDeHeredoc(cmd) {
+  if (typeof cmd !== "string" || cmd.includes("\r")) return null;
+  const linhas = cmd.split("\n");
+  const m = LINHA0_HEREDOC.exec(linhas[0]);
+  if (!m) return null;
+  const delim = m[2] || m[3];
+  const tira = (l) => (m[1] === "-" ? l.replace(/^\t+/, "") : l);
+  for (let i = 1; i < linhas.length; i += 1) {
+    if (tira(linhas[i]) === delim) return linhas.slice(1, i).map(tira).join("\n");
+  }
+  return null;
+}
+
 /**
  * `true` se, depois da primeira linha em branco em `linhasResto`, existe ao
  * menos uma linha nao-vazia que NAO seja trailer (`^[A-Za-z-]+: `).
@@ -287,7 +324,13 @@ function main() {
   const { mParts, fFile, reusaMensagem } = leFlagsCommit(desmontarFlagsCurtas(achado.argsToks));
   if (reusaMensagem) process.exit(0); // --amend/--no-edit/-C/-c: mensagem ja existe
 
-  if (fFile === "-") {
+  // `-F -<<EOF` colado vira o arquivo `-<<EOF`, que nao existe, e o gate saia
+  // INATIVO (rodada 4 do revisar): stdin disfarcado de arquivo barra.
+  if (typeof fFile === "string" && fFile.startsWith("-<")) {
+    bloqueia("mensagem via `-F -` (stdin) ou heredoc nao e resolvivel por este gate — use -F <arquivo>");
+  }
+  const mensagemHeredoc = fFile === "-" ? mensagemDeHeredoc(cmd) : null;
+  if (fFile === "-" && mensagemHeredoc === null) {
     bloqueia("mensagem via `-F -` (stdin) ou heredoc nao e resolvivel por este gate — use -F <arquivo>");
   }
 
@@ -304,6 +347,7 @@ function main() {
     }
     partes.push(conteudo);
   }
+  if (mensagemHeredoc !== null) partes.push(mensagemHeredoc);
 
   if (partes.length === 0) {
     bloqueia("nenhuma mensagem resolvivel (sem -m, sem -F, sem flag de reuso) — use -F <arquivo>; fechando merge, -F .git/MERGE_MSG");

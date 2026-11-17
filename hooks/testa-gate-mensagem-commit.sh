@@ -208,5 +208,74 @@ gate "payload vazio nunca trava" 0 "{}"
 gate "payload ilegivel nunca trava" 0 "isto nao e json"
 
 echo
+echo "== gates-sem-ruido D4: heredoc citado no -F - =="
+# Legitimos: heredoc citado no proprio comando e lido como mensagem.
+gate "git commit -F - <<'EOF' com assunto de 30 colunas + corpo -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+gate 'git commit -F - <<"EOF" com assunto + corpo -> exit 0' 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<"EOF"\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+gate "cd x && git add a && git commit -q -F - <<'EOF' com corpo -> exit 0" 0 \
+  "$(payload "$R1" Bash $'cd x && git add a && git commit -q -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+# A regra continua valendo dentro do heredoc citado.
+gate_contendo "heredoc citado com assunto de 80 colunas -> exit 2 (acima do limite de 72)" 2 "acima do limite de 72" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\n'"$ASSUNTO80"$'\n\nCorpo.\nEOF')"
+gate_contendo "heredoc citado com assunto terminando em ponto -> exit 2 (termina em ponto)" 2 "termina em ponto" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto valido.\n\nCorpo.\nEOF')"
+# Contornos que continuam barrando.
+gate_contendo "heredoc SEM aspas (<<EOF) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<EOF\nAssunto valido\n\nCorpo\nEOF')"
+gate_contendo "heredoc citado sem linha de fechamento -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto valido\n\nCorpo sem fechar')"
+gate_contendo "git commit -F - <<< 'msg' (here-string) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash "git commit -F - <<< 'msg'")"
+gate_contendo "printf 'msg' | git commit -F - -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash "printf 'msg' | git commit -F -")"
+gate_contendo "cat <<'EOF' | git commit -F - (heredoc antes do commit) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'cat <<\x27EOF\x27 | git commit -F -\nAssunto valido\n\nCorpo\nEOF')"
+gate_contendo "git commit -F - ; cat <<'EOF' (heredoc depois de ;) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - ; cat <<\x27EOF\x27\nAssunto valido\n\nCorpo\nEOF')"
+gate_contendo "cat <<'EOF' > m.txt numa linha e git commit -F - na seguinte -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'cat <<\x27EOF\x27 > m.txt\nmensagem\nEOF\ngit commit -F -')"
+
+# Achado 1 do revisar: o heredoc tem de ser o stdin do proprio commit.
+gate_contendo "git commit -F - <<'EOF' < outro.txt (outro stdin vence) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 < outro.txt\nAssunto de teste sem ponto\n\nCorpo que explica.\nEOF')"
+gate "git commit -F - \$(cat <<'EOF' ...) (heredoc do cat interno) -> exit 2" 2 \
+  "$(payload "$R1" Bash $'git commit -F - $(cat <<\x27EOF\x27\nAssunto de teste sem ponto\nEOF\n)')"
+gate "git commit -F - <<'EOF' && git push (vizinho legitimo) -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 && git push\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+
+# Rodada 2 do revisar: dois heredocs na linha, e heredoc em outro descritor.
+gate_contendo "cat <<'A' && git commit -F - <<'B' (dois heredocs na linha) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'cat <<\x27A\x27 > /dev/null && git commit -F - <<\x27B\x27\nAssunto bom do primeiro heredoc\nA\nassunto ruim do segundo heredoc com ponto.\nB')"
+gate_contendo "printf x | git commit -F - 3<<'EOF' (heredoc no fd 3) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'printf \x27ruim.\x27 | git commit -F - 3<<\x27EOF\x27\nAssunto bom sem ponto\nEOF')"
+
+# Rodada 3 do revisar: so a forma canonica; vizinhas de descritor e de continuacao barram.
+gate_contendo "echo x | git commit -F - {fd}<<'EOF' (descritor alocado) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'echo \x27ruim.\x27 | git commit -F - {fd}<<\x27EOF\x27\nAssunto bom sem ponto\nEOF')"
+gate_contendo "git commit -F - <<'EOF' \\ + < outro.txt na linha seguinte -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 \\\n< outro.txt\nAssunto bom sem ponto\nEOF')"
+# Heredoc com continuacao e commit na linha seguinte fica de fora: a mascara da lib esconde o commit (Issue #724).
+gate "git commit -F - <<-'EOF' com tab antes de assunto de 72 colunas -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<-\x27EOF\x27\n\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n\n\tCorpo que explica.\n\tEOF')"
+gate_contendo "git commit -F -<<'EOF' colado (vira arquivo '-<<EOF') -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F -<<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF')"
+
+# Rodada 4 do revisar: so a primeira linha literal; o resto barra.
+gate_contendo "delimitador \"EO\\\"F\" (bash e gate leem diferente) -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<"EO\\"F"\nAssunto bom sem ponto\n\nEO"F\nCorpo falso\nEO\\')"
+gate_contendo "aspa aberta depois do << -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 --trailer "a: x\nAssunto bom sem ponto\nEOF\ny"\nAssunto ruim.\nEOF')"
+gate_contendo "0>&3 depois do << -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27 0>&3\nAssunto bom sem ponto\nEOF')"
+gate_contendo "echo git commit <<'EOF' e o commit real por pipe -> exit 2" 2 "use -F <arquivo>" \
+  "$(payload "$R1" Bash $'echo git commit <<\x27EOF\x27\nAssunto bom sem ponto\nEOF\nprintf \x27Assunto ruim.\x27 | git commit -F -')"
+gate "corpo que cita <<'EOF' em prosa -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nO corpo cita cat <<\x27X\x27 e a << 3 em prosa.\nEOF')"
+gate "commit por heredoc seguido de outro heredoc -> exit 0" 0 \
+  "$(payload "$R1" Bash $'git commit -F - <<\x27EOF\x27\nAssunto de teste sem ponto\n\nCorpo que explica o porque da mudanca.\nEOF\ncat <<\x27B\x27 > saida.txt\nx\nB')"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
