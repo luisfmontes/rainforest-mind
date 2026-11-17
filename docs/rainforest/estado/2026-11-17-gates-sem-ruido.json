@@ -23,7 +23,7 @@
     "em": "2026-11-17"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-17",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -122,7 +122,7 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
       "caminhos_sujos": []
@@ -205,7 +205,7 @@
     ]
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "em": "2026-11-17",
     "comando": "bash hooks/testa-gate-agente-em-voo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-fechar-issue.sh; criterio node da tarefa 5; grep da tarefa 10; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-17-gates-sem-ruido",
     "saida": "35 ok 0 falha; 93 ok 0 falha; 199 ok 0 falha; 668 ok 0 falha; tarefa 5 exit 0; tarefa 10 grep sem saida (exit 1); mutacoes: tarefas 1,2,3,4,6,8,9,11 vermelho, 5 e 10 puladas (n/a), exit 0",
@@ -254,6 +254,11 @@
       "em": "2026-11-17",
       "de": "revisar",
       "motivo": "revisar rodada 5 (ok): achado 5, documentacao promete mais que o codigo (o que vem depois da linha de fechamento e analisado a parte) e design/plano descrevem a leitura antiga; achados 1-4 [baixa] viram residuos"
+    },
+    {
+      "em": "2026-11-17",
+      "de": "verificar",
+      "motivo": "CI do PR 725: cd com caminho 8.3 do runner (RUNNER~1) barra; ~ no meio do caminho e literal no bash"
     }
   ]
 }
