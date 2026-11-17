@@ -22,7 +22,7 @@ atende: D1, D3
 arquivos: `hooks/gate-agente-em-voo.cjs`, `hooks/testa-gate-agente-em-voo.sh`
 depende de: nenhuma
 busca:
-- catalogo | listar --raiz hooks | reaproveito toplevel de hooks/gate-agente-em-voo.cjs:72 e o main de hooks/gate-agente-em-voo.cjs:168; nenhuma lib detecta modo interativo (rg CLAUDE_CODE_ENTRYPOINT em hooks e scripts: só scripts/testa-jornada-origem.cjs, que lê entrypoint de transcript)
+- catalogo | listar --raiz hooks | reaproveito toplevel de hooks/gate-agente-em-voo.cjs:72 e o main de hooks/gate-agente-em-voo.cjs:178; nenhuma lib detecta modo interativo (rg CLAUDE_CODE_ENTRYPOINT em hooks e scripts: só scripts/testa-jornada-origem.cjs, que lê entrypoint de transcript)
 - doc | https://code.claude.com/docs/en/hooks | o hook herda o ambiente do processo pai; o payload do Stop não tem campo de modo interativo, mas traz transcript_path
 desfecho: estender
 O que fazer:
@@ -50,7 +50,7 @@ arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh
 depende de: nenhuma
 busca:
 - catalogo | listar --raiz hooks/lib | reaproveito corpoDeHeredoc de hooks/lib/heredoc.cjs:138 (devolve corpo, fim, delimitadorQuotado, fechado) e posicoesDeOperadorHeredoc de hooks/lib/heredoc.cjs:258
-- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:296 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
+- catalogo | listar --raiz hooks | estendo o main de hooks/gate-mensagem-commit.cjs:301 e leFlagsCommit de hooks/gate-mensagem-commit.cjs:183
 desfecho: estender
 O que fazer:
 - Função nova `function mensagemDeHeredoc(cmd, cmdMascarado)` que devolve a string da mensagem ou `null`. `cmdMascarado` é a saída de `mascararCorposDeHeredoc(cmd)`, que preserva o comprimento: todo índice achado nele vale no `cmd` original.
@@ -78,7 +78,7 @@ atende: D5
 arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
 depende de: nenhuma
 busca:
-- catalogo | listar --raiz hooks | reaproveito segmentosParaGate de hooks/gate-fechar-issue.cjs:259, comandoUnicoSemShell de hooks/gate-fechar-issue.cjs:1129 e analisarPrMerge de hooks/gate-fechar-issue.cjs:1355; o cwd do merge já vem de cwdPorSegmento (hooks/lib/cwd-efetivo.cjs) pelo main
+- catalogo | listar --raiz hooks | reaproveito segmentosParaGate de hooks/gate-fechar-issue.cjs:259, comandoUnicoSemShell de hooks/gate-fechar-issue.cjs:1129 e analisarPrMerge de hooks/gate-fechar-issue.cjs:1385; o cwd do merge já vem de cwdPorSegmento (hooks/lib/cwd-efetivo.cjs) pelo main
 desfecho: estender
 O que fazer: função nova `function segmentoDoMerge(comando)`, que devolve o texto do segmento `gh pr merge` isolado ou `null`. Ela lê a variável de módulo `FERRAMENTA` (já global no arquivo, setada no `main`). Passos, nesta ordem; qualquer falha devolve `null`:
   1. `FERRAMENTA === "PowerShell"` → `null`.
@@ -175,3 +175,55 @@ O que fazer:
 - `CHANGELOG.md`: entrada `## 2.17.0 — 2026-11-17` logo acima da `## 2.16.1`, do ponto de vista de quem usa, uma bala por comportamento novo (D3, D4, D5, D6) com o número medido no design (121 bloqueios de agente em voo em sessão interativa; 38 de heredoc no commit; 31 de merge "não está sozinho"; o script node lido como shell), e uma bala dizendo que migrar os gates para mod foi avaliado e descartado, com o motivo da D2 (o mod recebe o mesmo comando e o fim de turno em mod não bloqueia).
 - `README.md` e `README.en.md`, tabela de gates: atualizar as linhas de `gate-staging-total.cjs`, `gate-fechar-issue.cjs` e `gate-mensagem-commit.cjs` (README.md linhas 188, 191 e 192, e as equivalentes do README.en.md) com a regra nova de cada um em uma frase; acrescentar, logo abaixo da linha do `gate-mensagem-commit.cjs`, uma linha nova `gate-agente-em-voo.cjs` | "fim de turno com agente registrado em voo, só em sessão não interativa (`claude -p`, SDK)" (em inglês no README.en.md).
 pronto quando: com o diff das tarefas 1 a 4 integrado, as duas `plugin.json` e a badge dizem 2.17.0, e a entrada nova do CHANGELOG cita os números do design e o descarte do mod — provado por `node -e "const fs=require('fs');const a=require('./.claude-plugin/plugin.json').version,b=require('./.codex-plugin/plugin.json').version;const c=fs.readFileSync('CHANGELOG.md','utf8');const i=c.indexOf('## 2.17.0');const s=c.slice(i,c.indexOf('## 2.16.1'));const r=fs.readFileSync('README.md','utf8');process.exit(a==='2.17.0'&&b==='2.17.0'&&i>0&&/121/.test(s)&&/38/.test(s)&&/31/.test(s)&&/\bmods?\b/.test(s)&&r.includes('vers%C3%A3o-2.17.0')&&r.includes('gate-agente-em-voo.cjs')?0:1)"` saindo 0; e as quatro linhas da tabela batem com D3–D6 (lidas pelo `revisar`, que cita cada linha conferida).
+
+
+### 8. Achado 6 do revisar: leitura de PR depois do merge passa [tipo: implementar]
+atende: D5
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`, `README.md`, `README.en.md`, `CHANGELOG.md`
+depende de: 5, 6
+busca:
+- catalogo | listar --raiz hooks | estendo segmentoDoMerge de hooks/gate-fechar-issue.cjs (tarefas 3 e 6), sem função nova
+desfecho: estender
+Origem: revisão independente de 2026-11-17 (achado 6, [media]). O aperto da tarefa 6 recusava toda parte com `gh` que não fosse leitura ANTES do merge, e o teste de substring `merge` recusava `--json mergedAt`; a D5 manda os segmentos depois do merge seguirem pelo laço do main.
+O que fazer: no laço da tarefa 6, a leitura `SEG_MERGE_ANTES_OK[1]` passa em qualquer posição; o teste de substring `merge` ignora partes que casam com essa leitura. README (tabela, linha do fechar-issue) cita `head -N` e a leitura depois do merge; CHANGELOG 2.17.0 ganha a frase.
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `    if (SEG_MERGE_ANTES_OK[1].test(t)) continue;`
+  para: `    if (k < m && SEG_MERGE_ANTES_OK[1].test(t)) continue;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, seção "gates-sem-ruido D5 aperto", casos do achado 6 do revisar
+  timeout: `1200000`
+prova-na-base: verde — o defeito só existe depois da tarefa 6; na base o merge composto já barrava pela forma
+pronto quando: com `gh pr merge 5 --squash; gh pr view 5 --json state`, `gh pr merge 5 --squash && gh pr view 5 --json state,mergedAt` e `gh pr merge 5 --squash 2>&1 | tail -2; gh pr checks 5`, o gate sai 0; com `gh pr merge 5 --squash; gh pr list` e `gh pr merge 5 --squash; gh pr view 5 --json state; gh pr me''rge 6 --body x`, sai 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` (stub `pm`) imprimindo `ok` nos cinco casos e nenhuma falha no placar.
+
+### 9. Achado 1 do revisar: o heredoc do `-F -` tem de ser o stdin do commit [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-mensagem-commit.sh`
+depende de: 2
+busca:
+- catalogo | listar --raiz hooks | estendo mensagemDeHeredoc de hooks/gate-mensagem-commit.cjs (tarefa 2), sem função nova
+desfecho: estender
+Origem: revisão independente de 2026-11-17 (achado 1, [baixa]). `git commit -F - <<'EOF' < outro.txt` e `git commit -F - $(cat <<'EOF' ...)` saíam 0 com o texto de um heredoc que o git não lê.
+O que fazer: em `mensagemDeHeredoc`, recusar quando o trecho entre o `git commit` e o `<<` tem `(`, `$`, crase ou `<`, e quando o resto da linha depois do `<<` tem `<`.
+mutacao:
+  arquivo: `hooks/gate-mensagem-commit.cjs`
+  de: `if (cmd.slice(p + 2, quebra).includes("<")) return null;`
+  para: `if (false) return null;`
+  bateria: `bash hooks/testa-gate-mensagem-commit.sh`
+  fixture: testa-gate-mensagem-commit.sh, seção "gates-sem-ruido D4", caso "< outro.txt (outro stdin vence)"
+prova-na-base: verde — o defeito só existe depois da tarefa 2; na base todo `-F -` barrava
+pronto quando: com `git commit -F - <<'EOF' < outro.txt` e `git commit -F - $(cat <<'EOF' ...)`, o gate sai 2; com `git commit -F - <<'EOF' && git push`, sai 0 — provado por `bash hooks/testa-gate-mensagem-commit.sh` imprimindo `ok` nos três casos e `0 falha(s)`.
+
+### 10. Achados 4 e 5 do revisar: agente-em-voo lê só o começo do transcript, e só com agente em voo [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-agente-em-voo.cjs`
+depende de: 1
+busca:
+- catalogo | listar --raiz hooks | estendo sessaoInterativa de hooks/gate-agente-em-voo.cjs (tarefa 1), sem função nova
+desfecho: estender
+Origem: revisão independente de 2026-11-17 (achados 4 e 5, [baixa]). `sessaoInterativa` lia o transcript inteiro (98 MB: 142 ms, RSS 155 MB) e rodava antes de conferir `em_voo`.
+O que fazer: ler os primeiros 256 KB com `openSync`/`readSync`; chamar `sessaoInterativa` só depois de `emVoo.length === 0` sair.
+mutacao: n/a
+  motivo: mudança de desempenho sem comportamento observável na saída do hook; o veredito para os mesmos casos é idêntico, e a bateria da tarefa 1 continua cobrindo a detecção
+prova-na-base: verde — desempenho, sem critério que falhe na base
+pronto quando: com os payloads da seção "gates-sem-ruido D3" da bateria, os vereditos não mudam — provado por `bash hooks/testa-gate-agente-em-voo.sh` saindo com `35 ok, 0 falha(s)`; e `grep -n "readFileSync(ev.transcript_path" hooks/gate-agente-em-voo.cjs` sem saída.

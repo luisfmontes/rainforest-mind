@@ -39,6 +39,13 @@ no modo automatico"). Rodada sob `executar-autonomo`: decisões abaixo marcadas
 - **Bloquear por recusa estruturada em JSON (`permissionDecision: "deny"`, exit 0) para tirar o rótulo "hook error"**: medido em 2026-11-17 numa sessão `claude -p --model haiku` com hook de sonda passado por `--settings` (scratchpad, sem tocar config): o `tool_result` do deny JSON chegou como `PreToolUse:Bash hook error: MOTIVO-JSON: recusado pela sonda` (`is_error: true`) e o do exit 2 como `PreToolUse:Bash hook error: [node .../hook.cjs]: MOTIVO-EXIT2: ...`. O rótulo é o mesmo; só some o caminho do script. A doc oficial (code.claude.com/docs/en/hooks) não descreve rótulo diferente para o deny. Ganho cosmético não paga a troca em ~20 gates.
 - **Subir o limite de 72 colunas do assunto** (~25 na semana): é convenção do git, não falha de leitura; o bloqueio diz o número exato e a correção custa uma reescrita.
 
+## Resíduos aceitos da revisão (2026-11-17)
+
+- **Vários `git commit` na mesma linha** (achado 2): `mensagemDeHeredoc` e `achaGitCommit` só conferem o primeiro. A família já existia na base (`git commit -m "ok" && git commit -m "ruim."`), e o gate protege formato de mensagem, não segurança.
+- **Staging por script não-shell que a busca por texto não vê** (achado 3, preexistente): `node t.cjs; bash t.cjs` com `execSync('git add -A')`, `node - <<'EOF'`/`python - <<'EOF'` e a forma em argv (`execFileSync('git', ['add','-A'])`). Passavam na base; registrados na Issue #722.
+- **Só `entrypoint` `cli` conta como interativo** (achado 5): `claude-vscode` e desktop continuam barrando. É a falha fechada que a D3 escolheu; um sinal mais largo (`CLAUDE_CODE_SESSION_ATTENDED`) precisa de medição própria.
+- **Formas raras que continuam barrando** (achado 7): `| tail -n 2`, merge pela ferramenta PowerShell, `git commit -F - 2>&1 <<'EOF'` e `<<\EOF`.
+
 ## Fora de escopo
 
 - `gate-pergunta-memoria` e `aviso-fluxo`: os bloqueios deles são a regra funcionando (memória que responde a Q, edição sem fluxo); medir falso positivo exige outra amostra.
