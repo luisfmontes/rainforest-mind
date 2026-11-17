@@ -23,7 +23,7 @@
     "em": "2026-11-17"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-17",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -65,8 +65,8 @@
       4,
       6
     ],
-    "comando": "criterio da tarefa 5 (node -e versao/CHANGELOG/README) e conferir-fluxo cobertura",
-    "saida": "t5 exit 0; ok: cobertura valida — 6 decisao(oes), 10 tarefa(s); rodada so de documentacao, sem mudanca de codigo",
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-fechar-issue.cjs --de <regex do cd com ~ inicial> --bateria bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "ok: baseline VERDE (exit 0); ok: bateria VERMELHA com o comportamento invertido (exit 1), duas rodadas",
     "mutacao": [
       {
         "tarefa": 1,
@@ -119,10 +119,11 @@
         "fixture": "testa-gate-mensagem-commit.sh, caso dois heredocs na linha"
       }
     ],
-    "reaberturas": 2
+    "reaberturas": 2,
+    "em_voo": []
   },
   "revisar": {
-    "status": "pendente",
+    "status": "parcial",
     "snapshot": {
       "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
       "caminhos_sujos": []
@@ -136,7 +137,14 @@
         "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ac9ae03aa9538129a.jsonl"
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "rodada 7: conserto do CI (~ no cd)",
+        "desde": "2026-11-17",
+        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
+      }
+    ],
     "em": "2026-11-17",
     "achados": 2,
     "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
