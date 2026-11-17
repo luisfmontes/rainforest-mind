@@ -44,6 +44,13 @@
  * antes) ou com `sessao === session_id` do payload. Payload sem `session_id`
  * não tem como comparar: tudo conta. Se não sobra item, exit 0 em silêncio.
  *
+ * Sessão interativa (gates-sem-ruido D3, 2026-11-17): o gate só barra em sessão
+ * não interativa (`claude -p`, SDK). Medido no design: 121 bloqueios em 7 dias,
+ * em 6 sessões, todas com `entrypoint: "cli"`; sessões `sdk-cli` tiveram zero.
+ * O modo sai de `CLAUDE_CODE_ENTRYPOINT` (quando existe) ou do `entrypoint` de
+ * nível raiz nas primeiras 50 linhas do transcript. Sem nenhum dos dois, conta
+ * como não interativa e barra como antes.
+ *
  * Saídas de emergência, na ordem que os outros gates usam:
  * `RAINFOREST_GATE_OFF` no ambiente e o toggle do `/setup` (chave
  * `gate-agente-em-voo`). O arquivo `.rainforest-gate-off` deixou de ser lido (#417).
@@ -132,6 +139,32 @@ function gravaAviso(caminho, memoria, sessionId, assinatura, emVoo) {
   } catch {}
 }
 
+/** Sessão interativa (gates-sem-ruido D3). Variável `CLAUDE_CODE_ENTRYPOINT`
+ * quando existe; senão, o `entrypoint` de nível raiz nas primeiras 50 linhas
+ * do transcript. Nunca regex no texto: texto de usuário com
+ * `"entrypoint":"cli"` não pode forjar o modo. */
+function sessaoInterativa(ev) {
+  const v = process.env.CLAUDE_CODE_ENTRYPOINT;
+  if (typeof v === 'string' && v !== '') return v === 'cli';
+  if (typeof ev.transcript_path !== 'string' || ev.transcript_path === '') return false;
+  let linhas;
+  try {
+    linhas = fs.readFileSync(ev.transcript_path, 'utf8').split('\n').slice(0, 50);
+  } catch {
+    return false;
+  }
+  for (const linha of linhas) {
+    let obj;
+    try {
+      obj = JSON.parse(linha);
+    } catch {
+      continue;
+    }
+    if (obj && typeof obj === 'object' && typeof obj.entrypoint === 'string') return obj.entrypoint === 'cli';
+  }
+  return false;
+}
+
 function main() {
   let ev;
   try {
@@ -157,6 +190,8 @@ function main() {
       process.exit(0);
     }
   } catch {}
+
+  if (sessaoInterativa(ev)) process.exit(0);
 
   const ativo = resolver({ cwd: gitTop });
   if (!ativo || !ativo.slug) process.exit(0);

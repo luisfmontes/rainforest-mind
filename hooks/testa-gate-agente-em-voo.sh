@@ -7,6 +7,9 @@
 # Uso: bash hooks/testa-gate-agente-em-voo.sh
 
 set -u
+# Rodada de dentro do Claude Code herda CLAUDE_CODE_ENTRYPOINT=cli: sem o unset,
+# todo caso que espera exit 2 vira exit 0 (gates-sem-ruido D3).
+unset CLAUDE_CODE_ENTRYPOINT
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$SRC/hooks/gate-agente-em-voo.cjs"
 ESTADO="$SRC/scripts/estado.cjs"
@@ -27,13 +30,18 @@ ok=0; falhou=0
 # Payload de Stop montado por node, com os valores chegando por argv — printf
 # com aspas aninhadas ja produziu JSON invalido neste repo, e JSON invalido faz
 # o hook sair 0: o exit esperado pelo motivo errado.
-pay() { # cwd, stop_hook_active(true|false), [session_id=s1]
-  node -e 'const [c,s,sid]=process.argv.slice(1);process.stdout.write(JSON.stringify({session_id:sid||"s1",cwd:c,hook_event_name:"Stop",stop_hook_active:s==="true"}))' "$1" "$2" "${3:-}"
+pay() { # cwd, stop_hook_active(true|false), [session_id=s1], [transcript_path]
+  node -e 'const [c,s,sid,tr]=process.argv.slice(1);const o={session_id:sid||"s1",cwd:c,hook_event_name:"Stop",stop_hook_active:s==="true"};if(tr)o.transcript_path=tr;process.stdout.write(JSON.stringify(o))' "$1" "$2" "${3:-}" "${4:-}"
 }
 
-checa() { # nome, exit esperado, payload, [trecho que a mensagem deve conter]
-  local nome="$1" esp="$2" json="$3" trecho="${4:-}"
-  local saida; saida=$(printf '%s' "$json" | node "$HOOK" 2>&1); local got=$?
+checa() { # nome, exit esperado, payload, [trecho que a mensagem deve conter], [valor de CLAUDE_CODE_ENTRYPOINT]
+  local nome="$1" esp="$2" json="$3" trecho="${4:-}" entry="${5:-}"
+  local saida got
+  if [ -n "$entry" ]; then
+    saida=$(printf '%s' "$json" | CLAUDE_CODE_ENTRYPOINT="$entry" node "$HOOK" 2>&1); got=$?
+  else
+    saida=$(printf '%s' "$json" | node "$HOOK" 2>&1); got=$?
+  fi
   if [ "$got" != "$esp" ]; then
     falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp, veio $got"
     echo "$saida" | sed 's/^/         /' | head -6
@@ -177,6 +185,35 @@ git init -q -b main "$R2"; git -C "$R2" config user.email t@t; git -C "$R2" conf
 git -C "$R2" config commit.gpgsign false
 echo x > "$R2/a.txt"; git -C "$R2" add a.txt; git -C "$R2" commit -qm base
 checa "repositorio sem fluxo aberto nao barra"         0 "$(pay "$R2" false)"
+
+echo
+echo
+echo "== gates-sem-ruido D3: sessão interativa =="
+# Todo caso desta seção tem agente em voo: barra SE a sessão não for interativa.
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"}]}'
+# Transcripts da fixture, um registro JSON por linha (printf com aspas simples: sem escape aninhado).
+TR_CLI="$RAIZ/tr-cli.jsonl"; printf '%s\n' '{"type":"user","entrypoint":"cli"}' > "$TR_CLI"
+TR_CLI_LIXO="$RAIZ/tr-cli-lixo.jsonl"; printf '%s\n' 'isto nao e json' '{truncado' '{"type":"user","entrypoint":"cli"}' > "$TR_CLI_LIXO"
+TR_SDK="$RAIZ/tr-sdk.jsonl"; printf '%s\n' '{"type":"user","entrypoint":"sdk-cli"}' > "$TR_SDK"
+TR_TEXTO="$RAIZ/tr-texto.jsonl"; printf '%s\n' '{"type":"user","message":"\"entrypoint\":\"cli\""}' > "$TR_TEXTO"
+TR_INEXISTENTE="$RAIZ/nao-existe.jsonl"
+
+# Sessões novas em cada checagem (memória por sessão, #298, não pode mascarar o exit).
+saida_d3=$(printf '%s' "$(pay "$R" false d3-env-cli)" | CLAUDE_CODE_ENTRYPOINT=cli node "$HOOK" 2>&1); got_d3=$?
+if [ "$got_d3" = 0 ] && [ -z "$saida_d3" ]; then
+  ok=$((ok+1)); echo "  ok   CLAUDE_CODE_ENTRYPOINT=cli NAO barra, stderr vazio (exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA CLAUDE_CODE_ENTRYPOINT=cli: veio exit $got_d3 com saida:"; echo "$saida_d3" | sed 's/^/         /' | head -6
+fi
+checa "transcript com entrypoint cli na 1a linha NAO barra"               0 "$(pay "$R" false d3-tr-cli "$TR_CLI")"
+checa "transcript cli depois de duas linhas invalidas NAO barra"          0 "$(pay "$R" false d3-tr-lixo "$TR_CLI_LIXO")"
+checa "CLAUDE_CODE_ENTRYPOINT=sdk-cli BARRA"                              2 "$(pay "$R" false d3-env-sdk)" "" sdk-cli
+checa "sem variavel e sem transcript_path BARRA"                          2 "$(pay "$R" false d3-sem-nada)"
+checa "transcript inexistente BARRA"                                      2 "$(pay "$R" false d3-inexistente "$TR_INEXISTENTE")"
+checa "transcript com entrypoint sdk-cli BARRA"                           2 "$(pay "$R" false d3-tr-sdk "$TR_SDK")"
+checa "entrypoint cli so dentro de string no transcript BARRA"            2 "$(pay "$R" false d3-tr-texto "$TR_TEXTO")"
+checa "CLAUDE_CODE_ENTRYPOINT=CLI (caixa trocada) BARRA"                  2 "$(pay "$R" false d3-env-caixa)" "" CLI
+checa "variavel sdk-cli vence transcript cli: BARRA"                      2 "$(pay "$R" false d3-env-vence "$TR_CLI")" "" sdk-cli
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
