@@ -123,32 +123,25 @@
     "em_voo": []
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
+      "head": "bb18b71e6972fd359d847a221677d51d567c0be3",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ac9ae03aa9538129a",
+        "agente_id": "aa54159971a9fe556",
         "veredito": "ok",
         "em": "2026-11-17",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ac9ae03aa9538129a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa54159971a9fe556.jsonl"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "rodada 7: conserto do CI (~ no cd)",
-        "desde": "2026-11-17",
-        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-11-17",
     "achados": 2,
     "base": "b61eb37c623a9f41e8d74400d47c3c41ff63f3b5",
-    "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150",
+    "head": "bb18b71e6972fd359d847a221677d51d567c0be3",
     "voltas": [
       {
         "volta": 1,
@@ -209,20 +202,34 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-a582e9ee9e5f898a8.jsonl"
           }
         ]
+      },
+      {
+        "volta": 6,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac9ae03aa9538129a",
+            "veredito": "ok",
+            "em": "2026-11-17",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-ac9ae03aa9538129a.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-11-17",
     "comando": "bash hooks/testa-gate-agente-em-voo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-fechar-issue.sh; criterio node da tarefa 5; grep da tarefa 10; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-17-gates-sem-ruido",
-    "saida": "35 ok 0 falha; 93 ok 0 falha; 199 ok 0 falha; 668 ok 0 falha; tarefa 5 exit 0; tarefa 10 grep sem saida (exit 1); mutacoes: tarefas 1,2,3,4,6,8,9,11 vermelho, 5 e 10 puladas (n/a), exit 0",
+    "saida": "HEAD bb18b71e: 35 ok 0 falha; 93 ok 0 falha; 199 ok 0 falha; 669 ok 0 falha; tarefa 5 exit 0; tarefa 10 grep sem saida; mutacoes 1,2,3,4,6,8,9,11 vermelho, 5 e 10 n/a, exit 0; CI PR 725 tres shards pass",
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes",
-    "head": "667a1be12f5012b23a9b4784fc9d9fbe73ec6150"
+    "head": "bb18b71e6972fd359d847a221677d51d567c0be3"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-11-17"
+    "status": "ok",
+    "em": "2026-11-17",
+    "acao": "merge",
+    "pr": 725
   },
   "decididos": [
     {
