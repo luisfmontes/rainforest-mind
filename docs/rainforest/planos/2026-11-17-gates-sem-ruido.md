@@ -159,36 +159,14 @@ pronto quando: com os comandos dos dois desvios, o gate barra — provado por `b
   - continuam passando: os quatro legítimos da seção `gates-sem-ruido D5` (mesmo exit 0).
   - todos os casos que já existiam continuam com o exit de antes.
 
-### 7. Aperto da D6: só mascara script não-shell sem spawn de git, com destino único e sem outro uso do arquivo [tipo: implementar]
-atende: D6
-arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`
-depende de: 4
-busca:
-- catalogo | listar --raiz hooks/lib | estendo mascararCorposDeHeredoc e executoresDoAlvo de hooks/lib/heredoc.cjs (tarefa 4)
-desfecho: estender
-Origem: revisão de segurança automática do commit da tarefa 4 (decisão registrada com `estado.cjs decidir`). Três desvios: (1) `spawnSync('git',['add','-A'])` deixa visível só `git`, e o staging passa; (2) o arquivo pode ser reaproveitado por shell (`cp t.cjs x.sh; bash x.sh`, `cat t.cjs | sh`, `sh < t.cjs`); (3) a linha do heredoc pode gravar em mais de um destino (`| tee b.sh`, dois `>`).
-O que fazer, em `hooks/lib/heredoc.cjs`, dentro do ramo `scriptNaoShell` de `mascararCorposDeHeredoc` (fora dele nada muda):
-- Função nova `function temSpawnComGit(corpo)`: `true` quando o corpo casa `/\bgit\b/` E casa `/child_process|\bexec(Sync|File|FileSync)?\s*\(|\bspawn(Sync)?\s*\(|subprocess|os\.system|\bPopen\b|\bsystem\s*\(|`/`. No ramo, a primeira linha é a literal `if (temSpawnComGit(heredoc.corpo)) return false;` dentro de uma função auxiliar `function podeMascararNaoShell(cmd, i, fimDoHeredoc, heredoc)` que devolve booleano, chamada pelo ramo.
-- Na mesma função auxiliar: a linha lógica do heredoc (do início da linha até `fimDaLinhaLogica`) tem de ter exatamente UM alvo de redirecionamento `>`/`>>` e nenhum `|` nem a palavra `tee` → senão `false`.
-- Na mesma função auxiliar: no texto depois do heredoc, toda ocorrência do nome-base do alvo tem de ser argumento direto de um comando em `INTERPRETADORES_NAO_SHELL` (o token anterior, pulando flags, é o interpretador). Qualquer outra ocorrência (`cp`, `mv`, `cat`, `<`, `sh`, `./`) → `false`.
-- Quando `podeMascararNaoShell` devolve `false`, o corpo segue sem máscara nenhuma (análise inteira, o comportamento de antes da D6).
-Bateria: o caso legítimo `execSync('git status')` da tarefa 4 passa a ter `spawn` com `git` e cai na análise inteira; ele sai da lista de "passa" e vira "mesmo exit que na base do plano" (meça e escreva o exit real). O caso do regex (sem spawn) continua passando.
-mutacao:
-  arquivo: `hooks/lib/heredoc.cjs`
-  de: `if (temSpawnComGit(heredoc.corpo)) return false;`
-  para: `if (false) return false;`
-  bateria: `bash hooks/testa-gate-staging-total.sh`
-  fixture: testa-gate-staging-total.sh, seção "gates-sem-ruido D6 aperto: spawn, destino único, arquivo reaproveitado"
-prova-na-base: verde — o defeito só existe depois da tarefa 4; na base do plano todo script executado era analisado inteiro
-pronto quando: com os comandos dos três desvios, num `git init` temporário, o gate barra — provado por `bash hooks/testa-gate-staging-total.sh` imprimindo `ok` em cada caso abaixo e nenhuma falha no placar final:
-  - barram: corpo `require('child_process').spawnSync('git',['add','-A'])` executado por `node` → exit 2; corpo `subprocess.run(['git','add','-A'])` executado por `python` → exit 2; o regex inofensivo em `t.cjs` executado por `node t.cjs; cp t.cjs x.sh; bash x.sh` com `git add -A` no corpo → exit 2; `cat <<'EOF' > t.cjs | tee b.sh` com `git add -A` no corpo e `node t.cjs; bash b.sh` → exit 2; `cat > t.cjs <<'EOF'` com `git add -A` e `node t.cjs; sh < t.cjs` → exit 2.
-  - continuam passando: o regex em `.cjs` por `node` (o falso positivo medido no design) → exit 0; o mesmo em `.py` por `python` → exit 0.
-  - `bash hooks/testa-gate-worktree.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com o mesmo placar de antes da edição.
+### Tarefa 7 descartada (2026-11-17)
+
+O aperto da D6 foi descartado depois de medido. Com o gate da `main` (antes da D6), da tarefa 4 e da tarefa 7, num `git init` temporário: `spawnSync('git',['add','-A'])` por node, `node t.cjs; sh < t.cjs` e `node t.cjs; cp t.cjs x.sh; bash x.sh` saem 0 nas três versões — já passavam antes da D6, então não são contorno das formas novas e a regra de parada não pede aperto. `execSync('git add -A')` por node sai 0 na `main`, 2 com a tarefa 4 e 0 com a tarefa 7: a tarefa 7 desfazia um ganho. Os buracos antigos viram Issue. Decisão registrada com `estado.cjs decidir`.
 
 ### 5. Versão 2.17.0, CHANGELOG e README [tipo: docs]
 atende: D1, D2, D3, D4, D5, D6
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`, `README.en.md`
-depende de: 1, 2, 3, 4, 6, 7
+depende de: 1, 2, 3, 4, 6
 mutacao: n/a
   motivo: tarefa de texto e número de versão; não há comportamento a inverter
 O que fazer:

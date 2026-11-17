@@ -26,7 +26,7 @@
     "status": "parcial",
     "catraca_mutacao": "2026-11-17",
     "tarefas_ok": 4,
-    "tarefas": 7,
+    "tarefas": 6,
     "carimbos": [
       {
         "tarefa": 1,
@@ -63,12 +63,6 @@
         "tarefa": "6 aperto D5",
         "desde": "2026-11-17",
         "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "7 aperto D6",
-        "desde": "2026-11-17",
-        "sessao": "87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb"
       }
     ],
     "em": "2026-11-17",
@@ -102,6 +96,13 @@
       "porque": "Regra de parada do plano: contorno dentro das formas novas se conserta apertando; os quatro casos legítimos medidos continuam passando",
       "estagio": "executar",
       "em": "2026-11-17T15:08:41.972Z"
+    },
+    {
+      "pergunta": "O aperto da D6 (tarefa 7) deu 7 falhas. Seguir, corrigir ou descartar?",
+      "escolha": "Descartar a tarefa 7 e manter a tarefa 4 como integrada; os buracos antigos (spawn com git em array, sh < arquivo, cp + bash) viram Issue",
+      "porque": "Medido com o gate da main, da tarefa 4 e da tarefa 7: os três contornos já passavam antes da D6 (exit 0 na main), a tarefa 4 não abriu nenhum e ainda fechou o execSync('git add -A'); a tarefa 7 desfazia esse ganho sem fechar os outros. Não é contorno dentro das formas novas, então a regra de parada não pede aperto aqui",
+      "estagio": "executar",
+      "em": "2026-11-17T15:35:06.135Z"
     }
   ]
 }
