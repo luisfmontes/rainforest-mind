@@ -130,10 +130,10 @@ function gitEm(gitTop, args) {
   return r.status === 0 ? r.stdout : null;
 }
 
-/** Arquivos que a branch mudou desde o merge-base com a padrão do remoto (D1, parte 2), contra a
- *  árvore de trabalho: o commitado na branch e o modificado ainda não commitado. Set de caminhos
- *  relativos a gitTop, com `/` e em minúsculas. null quando não dá para calcular (sem remoto,
- *  sem merge-base): aí o diff não libera nada. */
+/** Arquivos que a branch mudou desde o merge-base com a padrão do remoto (D1, parte 2), só o
+ *  COMMITADO (`base..HEAD`): mudança não commitada não prova que o plano é da branch (revisão de
+ *  segurança de 2026-11-18). Set de caminhos relativos a gitTop, com `/` e em minúsculas. null
+ *  quando não dá para calcular (sem remoto, sem merge-base): aí o diff não libera nada. */
 function arquivosDaBranch(gitTop) {
   let padrao = null;
   const sym = gitEm(gitTop, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']);
@@ -149,7 +149,7 @@ function arquivosDaBranch(gitTop) {
   if (!padrao) return null;
   const base = gitEm(gitTop, ['merge-base', 'HEAD', padrao]);
   if (!base || !base.trim()) return null;
-  const lista = gitEm(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '-z', base.trim()]);
+  const lista = gitEm(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '-z', base.trim(), 'HEAD']);
   if (lista === null) return null;
   return new Set(lista.split('\0').filter(Boolean).map((p) => p.toLowerCase()));
 }

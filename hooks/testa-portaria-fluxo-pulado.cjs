@@ -965,7 +965,7 @@ console.log("== O. multi-cliente (portaria-publicacao D1) ==");
     const velho = gravarEm(repo.main, "docs/plans/velho.gates.json", "{}\n");
     git(repo.main, ["add", "docs/plans/velho.gates.json"]);
     git(repo.main, ["commit", "-q", "-m", "velho"]);
-    if (variante === "plano" || variante === "outro") {
+    if (variante === "plano" || variante === "outro" || variante === "nao-commitado") {
       gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", JSON.stringify({
         plan: { file: "docs/plans/x-plan.md" }, design: { doc: "docs/plans/x-design.md" },
       }));
@@ -984,6 +984,18 @@ console.log("== O. multi-cliente (portaria-publicacao D1) ==");
     } else if (variante === "plano") {
       gravarEm(repo.main, "Cliente/docs/plans/x-plan.md", "plano 2\n");
       git(repo.main, ["add", "Cliente"]);
+    } else if (variante === "nao-commitado") {
+      // Commit vazio para a branch existir com HEAD != base; o plano muda so na arvore.
+      gravarEm(repo.main, "Cliente/outro.txt", "outro\n");
+      git(repo.main, ["add", "Cliente/outro.txt"]);
+      git(repo.main, ["commit", "-q", "-m", "outro"]);
+      gravarEm(repo.main, "Cliente/docs/plans/x-plan.md", "plano sem commit\n");
+      envelhecer(velho);
+      envelhecer(path.join(repo.main, "Cliente", "docs", "plans", "x.gates.json"));
+      const r = despachar(repo, repo.main, "rainforest-mind:executor");
+      caso(nome, r.status === esperado, `exit=${r.status} stderr=${r.stderr}`);
+      descartar(repo);
+      return;
     } else {
       gravarEm(repo.main, "Cliente/outro.txt", "outro\n");
       git(repo.main, ["add", "Cliente"]);
@@ -999,6 +1011,7 @@ console.log("== O. multi-cliente (portaria-publicacao D1) ==");
   comDiff("O7 .gates.json na base e a branch altera o plan.file declarado: exit 0", "plano", 0);
   comDiff("O8 .gates.json na base e a branch altera outro arquivo: exit 2", "outro", 2);
   comDiff("O9 .gates.json commitado na branch, sem refs/remotes/origin: exit 2", "sem-remoto", 2);
+  comDiff("O12 plan.file alterado sem commit nao prova a branch: exit 2", "nao-commitado", 2);
 }
 
 console.log("");
