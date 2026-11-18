@@ -818,6 +818,19 @@ const FLAGS_API_CAMPO = new Set(["-f", "-F", "--raw-field", "--field", "--input"
  * é o repositório; `{owner}`/`{repo}` (ou `:owner`/`:repo`) é o do cwd, como o
  * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
  */
+/**
+ * Issue #726, portaria-publicacao D2: no texto do comando de `gh api`, o segmento depois de
+ * `orgs/` e de `users/`, e os dois depois de `repos/`, viram um marcador neutro antes da
+ * conferência. Eles nomeiam a conta ou o repositório de destino, que já existe e não é publicado
+ * pela chamada. O resto do caminho continua conferido (`contents/<arquivo>` cria um arquivo com
+ * aquele nome), e campos, corpos de arquivo e corpos embutidos entram por fora, lidos do original.
+ */
+function neutralizarDestinoNoEndpoint(cmd) {
+  return cmd
+    .replace(/(\b(?:orgs|users)\/)[^/\s?#'"]+/gi, "$1<destino>")
+    .replace(/(\brepos\/)[^/\s?#'"]+\/[^/\s?#'"]+/gi, "$1<destino>/<destino>");
+}
+
 function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   // Uma passada só, como o pflag do `gh` lê (revisões de segurança de
   // 2026-11-16): flag curta se desagrupa (`-ifbody=x` é `-i` e `-f body=x`;
@@ -868,7 +881,7 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   } else ehEscrita = pares.some(([flag]) => FLAGS_API_CAMPO.has(flag));
   if (grupoIlegivel) ehEscrita = true;
   if (!ehEscrita) return null;
-  const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];
+  const textos = [{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal) }, ...corposEmbutidos(cmdOriginal)];
   const endpoint = posicionais[0] ?? null;
   let metodo = null;
   let hostname = false;

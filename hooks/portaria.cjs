@@ -1015,11 +1015,14 @@ function main() {
   const leve = trilhoComFluxo && (escreveDeclarado || escrevePorSinal)
     ? Boolean(leveDaBranch({ gitTop: raiz, branch: obterBranch(raiz) }))
     : false;
+  // portaria-publicacao D1.3: trilho protheus aberto para a branch libera o escritor mesmo com o trilho rainforest na raiz.
+  const protheusLibera = (trilho === "protheus" || escreveDeclarado || escrevePorSinal)
+    && protheusAberto({ gitTop: raiz, branch: obterBranch(raiz) });
   const estagioPermitido = trilho === "protheus"
-    ? protheusAberto({ gitTop: raiz, branch: obterBranch(raiz) })
-    : escrevePorSinal
+    ? protheusLibera
+    : protheusLibera || (escrevePorSinal
       ? Boolean(estResult)
-      : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio);
+      : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio));
   const bloqueiaFluxoPulado = trilhoComFluxo && (escreveDeclarado || escrevePorSinal) && !leve && !estagioPermitido;
 
 
@@ -1204,6 +1207,7 @@ function main() {
       `${abertura} ${condicao}: exige ${exige}; ` +
       `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
       diagnostico +
+      `\n  trilho protheus: .gates.json procurado em '${raizBarras}/docs/plans' e '${raizBarras}/*/docs/plans'` +
       `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou ${iniciarDaMensagem}; protheus: /protheus:trabalhar)` +
       saida2 +
       // Issue #442: o comando comeca por string entre aspas, que PowerShell so roda com `& `.

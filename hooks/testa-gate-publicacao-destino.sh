@@ -1084,6 +1084,16 @@ par707 "release -pn agrupado" "$R702P" 'gh release create v1 -pn termo702'
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo
+echo "== (#726) gh api: destino no endpoint =="
+# D2 do portaria-publicacao: o nome da conta ou do repositorio de destino no endpoint nao e
+# texto publicado; o resto do caminho, a query string e os campos continuam conferidos.
+confere702 "726 orgs/<termo>/teams passa" 0 "$PUB" Bash "$R702P" 'gh api orgs/termo702/teams -X POST -f name=x -f privacy=closed'
+confere702 "726 users/<termo> passa" 0 "$PUB" Bash "$R702P" 'gh api users/termo702/x -X POST -f a=b'
+confere702 "726 repos/<termo>/x publico passa" 0 "$PUB" Bash "$R702P" 'gh api repos/termo702/x/issues -X POST -f title=ok'
+confere702 "726 campo de org com termo barra" 2 "$PRIV" Bash "$R702P" 'gh api orgs/termo702/teams -X POST -f description=termo702'
+confere702 "726 contents/<termo> no publico barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/termo702.md -f message=ok -f content=eA=='
+confere702 "726 query string com termo barra" 2 "$PRIV" Bash "$R702P" "gh api 'orgs/x/teams?q=termo702' -X POST -f name=y"
+echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
