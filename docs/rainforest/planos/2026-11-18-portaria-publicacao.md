@@ -26,7 +26,7 @@ atende: D1
 arquivos: `hooks/lib/caminho-leve.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
 depende de: nenhuma
 busca:
-- catalogo | listar --raiz hooks/lib | estendo protheusAberto de hooks/lib/caminho-leve.cjs:114 e reaproveito gateAbreFluxo de hooks/lib/caminho-leve.cjs:107; nenhuma lib lista pastas de primeiro nível
+- catalogo | listar --raiz hooks/lib | estendo protheusAberto de hooks/lib/caminho-leve.cjs:182 e reaproveito gateAbreFluxo de hooks/lib/caminho-leve.cjs:107; nenhuma lib lista pastas de primeiro nível
 desfecho: estender
 O que fazer:
 - Função nova `function pastasDePlans(gitTop)` em `caminho-leve.cjs`: `fs.readdirSync(gitTop, { withFileTypes: true })` dentro de `try` (erro devolve `[]`), filtra `e.isDirectory() && !e.name.startsWith('.')` (symlink para pasta fica fora, porque `isDirectory()` é falso para ele) e devolve `path.join(gitTop, e.name, 'docs', 'plans')` de cada uma.
@@ -51,10 +51,10 @@ atende: D1
 arquivos: `hooks/lib/caminho-leve.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
 depende de: 1
 busca:
-- catalogo | listar --raiz hooks/lib | estendo protheusAberto de hooks/lib/caminho-leve.cjs:114; o merge-base com a padrão já existe em baseDoDiff de hooks/lib/achados-revisor.cjs:160, mas devolve só a base e roda no cwd; aqui roda em gitTop e precisa da lista de arquivos
+- catalogo | listar --raiz hooks/lib | estendo protheusAberto de hooks/lib/caminho-leve.cjs:182; o merge-base com a padrão já existe em baseDoDiff de hooks/lib/achados-revisor.cjs:160, mas devolve só a base e roda no cwd; aqui roda em gitTop e precisa da lista de arquivos
 desfecho: estender
 O que fazer:
-- `function arquivosDaBranch(gitTop)`: roda git por `spawnSync(caminhoExecutavel('git'), ['-C', gitTop, ...args], { encoding: 'utf8', stdio: 'pipe' })`. Padrão: `symbolic-ref --short refs/remotes/origin/HEAD` (stdout aparado, ex.: `origin/main`); sem ela, a primeira de `origin/main` e `origin/master` em que `rev-parse --verify --quiet refs/remotes/<nome>` sai 0. Base: `merge-base HEAD <padrão>`. Lista: `-c core.quotepath=false diff --name-only -z <base>` (compara a árvore de trabalho com a base: entra o commitado na branch e o modificado ainda não commitado). Devolve `new Set(<caminhos separados por \0, sem vazios, em minúsculas>)`. Qualquer passo com exit ≠ 0, ou padrão não achada, devolve `null`.
+- `function arquivosDaBranch(gitTop)`: roda git por `spawnSync(caminhoExecutavel('git'), ['-C', gitTop, ...args], { encoding: 'utf8', stdio: 'pipe' })`. Padrão: `symbolic-ref --short refs/remotes/origin/HEAD` (stdout aparado, ex.: `origin/main`); sem ela, a primeira de `origin/main` e `origin/master` em que `rev-parse --verify --quiet refs/remotes/<nome>` sai 0. Base: `merge-base HEAD <padrão>`. Lista: `-c core.quotepath=false diff --name-only -z <base> HEAD` (só o commitado na branch; emenda da revisão de segurança de 2026-11-18: mudança não commitada não prova a branch, caso O12). Devolve `new Set(<caminhos separados por \0, sem vazios, em minúsculas>)`. Qualquer passo com exit ≠ 0, ou padrão não achada, devolve `null`.
 - `function tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff)` → booleano. `baseDir` é a pasta que contém o `docs/plans` do arquivo (`path.dirname(path.dirname(dirPlans))`). Candidatos: o caminho do próprio `arq`; e, para cada valor texto não vazio entre `dados.plan.file`, `dados.design.doc`, `dados.plan` e `dados.design` (os dois últimos só quando são string; objeto sem o campo, número ou `null` é ignorado), `path.resolve(gitTop, v)` e `path.resolve(baseDir, v)`. Cada candidato vira `path.relative(gitTop, c).split(path.sep).join('/').toLowerCase()`; candidato que começa com `..` ou é absoluto depois disso é descartado. `const diff = lerDiff();` com `diff === null` devolve `false`; senão devolve se algum candidato está no `Set`.
 - Em `protheusAberto`, antes do laço: `let diffCache; const lerDiff = () => (diffCache === undefined ? (diffCache = arquivosDaBranch(gitTop)) : diffCache);` (o diff roda no máximo uma vez por chamada, e só quando um arquivo não abriu pelas formas de hoje). Logo depois da linha do `gateAbreFluxo`, a linha literal: `if (typeof dados.branch !== 'string' && tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff)) return true;`.
 - Bateria, casos O6 a O9. Montagem, nesta ordem, em `repo.main` (os comandos git pelo helper `git(repo.main, [...])` da bateria):
@@ -68,6 +68,7 @@ O que fazer:
   - O7: `.gates.json` na base, a branch só altera o `plan.file` (relativo à pasta do cliente) → exit 0.
   - O8: `.gates.json` na base, a branch altera outro arquivo → exit 2.
   - O9: como O6, sem `refs/remotes/origin/*` → exit 2.
+  - O12: `.gates.json` na base, a branch commita outro arquivo e o `plan.file` muda só na árvore, sem commit → exit 2.
 mutacao:
   arquivo: `hooks/lib/caminho-leve.cjs`
   de: `if (typeof dados.branch !== 'string' && tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff)) return true;`
@@ -105,16 +106,16 @@ mutacao:
   de: `: protheusLibera || (escrevePorSinal`
   para: `: (escrevePorSinal`
   bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
-  fixture: testa-portaria-fluxo-pulado.cjs, seção "O. multi-cliente", caso O5
+  fixture: testa-portaria-fluxo-pulado.cjs, seção "O. multi-cliente", casos O13 e O14 (O5 até a emenda da tarefa 6)
 prova-na-base: verde — o critério precisa da raiz com os dois trilhos que só a fixture da bateria monta
-pronto quando: com o payload de `Agent` da tarefa 1 e a raiz com `docs/rainforest/estado/` (o layout medido no repositório multi-cliente), provado por `node hooks/testa-portaria-fluxo-pulado.cjs` com `ok` em O5, O10 e O11 e o placar final `falhou: 0`, e por `node hooks/testa-aviso-fluxo.cjs` e `node hooks/testa-bloqueio-fluxo.cjs` com zero falhas.
+pronto quando: com o payload de `Agent` da tarefa 1 e a raiz com `docs/rainforest/estado/` (o layout medido no repositório multi-cliente), provado por `node hooks/testa-portaria-fluxo-pulado.cjs` com `ok` em O10, O11, O13 e O14 e o placar final `falhou: 0`, e por `node hooks/testa-aviso-fluxo.cjs` e `node hooks/testa-bloqueio-fluxo.cjs` com zero falhas.
 
 ### 4. `gh api`: conta e repositório de destino no endpoint não são conferidos contra a lista privada [tipo: implementar]
 atende: D2, D3
 arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
 depende de: nenhuma
 busca:
-- catalogo | listar --raiz hooks | estendo textosDoGhApi de hooks/gate-publicacao-destino.cjs:821; corposEmbutidos de hooks/gate-publicacao-destino.cjs:978 continua lendo o comando original
+- catalogo | listar --raiz hooks | estendo textosDoGhApi de hooks/gate-publicacao-destino.cjs:834; corposEmbutidos de hooks/gate-publicacao-destino.cjs:991 continua lendo o comando original
 desfecho: estender
 O que fazer:
 - Função nova, logo acima de `textosDoGhApi`:
@@ -143,10 +144,31 @@ mutacao:
 prova-na-base: verde — o critério precisa da lista privada sintética e do `gh` falso que a caixa de areia da bateria monta
 pronto quando: com o comando medido na #726 (`gh api orgs/<org>/teams -X POST -f name=x -f privacy=closed`) e o termo sintético `termo702` no lugar da org, provado por `bash hooks/testa-gate-publicacao-destino.sh` com `ok` nos seis casos `726` e `== resultado: N ok, 0 falha(s) ==` (os casos `707` continuam com o exit de antes).
 
+### 6. Com o trilho rainforest na raiz, só vínculo abre o trilho protheus [tipo: implementar]
+Emenda de 2026-11-18: a revisão de segurança do commit mostrou que `git worktree add` renova o mtime de todo arquivo. Num worktree novo, todo `.gates.json` de cliente parecia recente e liberaria qualquer escritor por cima do trilho rainforest. A D1.3 foi emendada no design (Q1 aceita pelo Luís).
+atende: D1
+arquivos: `hooks/lib/caminho-leve.cjs`, `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+depende de: 3
+busca:
+- catalogo | listar --raiz hooks/lib | estendo protheusAberto de hooks/lib/caminho-leve.cjs:182 com a opção exigeVinculo; a portaria a passa no main de hooks/portaria.cjs:683
+desfecho: estender
+O que fazer:
+- `protheusAberto({ gitTop, branch, agora, exigeVinculo = false })`: com `exigeVinculo`, um arquivo abre pelo próprio conteúdo só com `typeof dados.branch === 'string' && dados.branch === branch` (o mtime não conta). A via do diff (tarefa 2) vale igual.
+- Na portaria, a chamada de `protheusLibera` passa `exigeVinculo: trilho !== "protheus"`.
+- Bateria: O5 passa a esperar exit 2 (recente sem vínculo), O14 (`{"branch":"main"}` recente, trilho rainforest) → exit 0, O13 (`.gates.json` do cliente commitado na branch, trilho rainforest, remoto gravado como em O6) → exit 0.
+mutacao:
+  arquivo: `hooks/portaria.cjs`
+  de: `exigeVinculo: trilho !== "protheus"`
+  para: `exigeVinculo: false`
+  bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
+  fixture: testa-portaria-fluxo-pulado.cjs, seção "O. multi-cliente", caso O5
+prova-na-base: verde — o critério precisa da raiz com os dois trilhos que só a fixture da bateria monta
+pronto quando: com o payload de `Agent` da tarefa 1 e a raiz com `docs/rainforest/estado/`, provado por `node hooks/testa-portaria-fluxo-pulado.cjs` com `ok` em O5 (exit 2), O13 e O14 (exit 0) e `falhou: 0`.
+
 ### 5. Versão 2.17.1, CHANGELOG e README [tipo: docs]
 atende: D4
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 3, 4
+depende de: 4, 6
 mutacao: n/a
   motivo: troca de número de versão e texto de changelog, sem comportamento a inverter
 O que fazer: `"version": "2.17.1"` nos dois manifestos; no README, só o selo da linha 7 (URL e `alt`); no CHANGELOG, a seção `## 2.17.1 — 2026-11-18` acima da `## 2.17.0`.

@@ -1015,9 +1015,11 @@ function main() {
   const leve = trilhoComFluxo && (escreveDeclarado || escrevePorSinal)
     ? Boolean(leveDaBranch({ gitTop: raiz, branch: obterBranch(raiz) }))
     : false;
-  // portaria-publicacao D1.3: trilho protheus aberto para a branch libera o escritor mesmo com o trilho rainforest na raiz.
+  // portaria-publicacao D1.3: trilho protheus aberto para a branch libera o escritor mesmo com o
+  // trilho rainforest na raiz; ai so com vinculo (branch ou diff commitado), sem o mtime, que um
+  // `git worktree add` renova em todo arquivo (emenda de 2026-11-18).
   const protheusLibera = (trilho === "protheus" || escreveDeclarado || escrevePorSinal)
-    && protheusAberto({ gitTop: raiz, branch: obterBranch(raiz) });
+    && protheusAberto({ gitTop: raiz, branch: obterBranch(raiz), exigeVinculo: trilho !== "protheus" });
   const estagioPermitido = trilho === "protheus"
     ? protheusLibera
     : protheusLibera || (escrevePorSinal

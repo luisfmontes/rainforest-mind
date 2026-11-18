@@ -953,8 +953,26 @@ console.log("== O. multi-cliente (portaria-publicacao D1) ==");
       /\/\*\/docs\/plans/.test(r.stderr || ""), r.stderr);
     descartar(repo);
   };
-  comRainforest("O5 trilho rainforest na raiz e Cliente/docs/plans/x.gates.json recente: exit 0",
-    (repo) => gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n"), 0);
+  // Emenda da D1.3: com o trilho rainforest na raiz, o mtime nao conta (worktree novo renova todos).
+  comRainforest("O5 trilho rainforest na raiz e .gates.json do cliente recente sem vinculo: exit 2",
+    (repo) => gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n"), 2);
+  comRainforest("O14 trilho rainforest na raiz e .gates.json do cliente com a branch atual: exit 0",
+    (repo) => gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", JSON.stringify({ branch: "main" })), 0);
+  {
+    // O13: o .gates.json do cliente commitado na branch (o caso medido) libera.
+    const repo = novoRepo();
+    fs.mkdirSync(path.join(repo.main, "docs", "rainforest", "estado"), { recursive: true });
+    git(repo.main, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(repo.main, ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
+    git(repo.main, ["checkout", "-q", "-b", "refactor/cliente-x"]);
+    gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n");
+    git(repo.main, ["add", "Cliente"]);
+    git(repo.main, ["commit", "-q", "-m", "gates"]);
+    const r = despachar(repo, repo.main, "rainforest-mind:executor");
+    caso("O13 trilho rainforest na raiz e .gates.json do cliente commitado na branch: exit 0",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+    descartar(repo);
+  }
   comRainforest("O10 trilho rainforest na raiz e .gates.json do cliente de 2 dias: exit 2",
     (repo) => envelhecer(gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n")), 2, true);
   comRainforest("O11 trilho rainforest na raiz sem .gates.json nenhum: exit 2", null, 2);

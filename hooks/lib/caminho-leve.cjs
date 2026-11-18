@@ -176,9 +176,10 @@ function tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff) {
 
 /** Trilho protheus com fluxo aberto na `branch`: algum `.gates.json` de `<gitTop>/docs/plans` ou
  *  de `<gitTop>/<pasta>/docs/plans` decide aberto — pelo `gateAbreFluxo`, ou, sem campo `branch`,
- *  pelo diff da branch (portaria-publicacao D1). Pasta ou arquivo ilegível (ou JSON que não é
- *  objeto) é ignorado, não derruba a leitura. */
-function protheusAberto({ gitTop, branch, agora = Date.now() }) {
+ *  pelo diff da branch (portaria-publicacao D1). Com `exigeVinculo` (trilho rainforest na raiz,
+ *  D1.3 emendada), o mtime não conta: só `branch` igual à atual ou o diff commitado. Pasta ou
+ *  arquivo ilegível (ou JSON que não é objeto) é ignorado, não derruba a leitura. */
+function protheusAberto({ gitTop, branch, agora = Date.now(), exigeVinculo = false }) {
   const dirs = [path.join(gitTop, 'docs', 'plans'), ...pastasDePlans(gitTop)];
   let diffCache;
   const lerDiff = () => (diffCache === undefined ? (diffCache = arquivosDaBranch(gitTop)) : diffCache);
@@ -202,7 +203,10 @@ function protheusAberto({ gitTop, branch, agora = Date.now() }) {
         continue;
       }
       if (!dados || typeof dados !== 'object') continue;
-      if (gateAbreFluxo(dados, { branch, mtimeMs, agora })) return true;
+      const abrePeloArquivo = exigeVinculo
+        ? typeof dados.branch === 'string' && dados.branch === branch
+        : gateAbreFluxo(dados, { branch, mtimeMs, agora });
+      if (abrePeloArquivo) return true;
       if (typeof dados.branch !== 'string' && tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff)) return true;
     }
   }
