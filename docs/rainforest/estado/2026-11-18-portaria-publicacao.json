@@ -12,7 +12,14 @@
     "em": "2026-11-18"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-18-portaria-publicacao.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      4
+    ],
+    "em": "2026-11-18"
   },
   "executar": {
     "status": "pendente"
@@ -25,5 +32,14 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "O diff da branch (D1 parte 2) vale para .gates.json com campo branch?",
+      "escolha": "Nao: so para .gates.json sem branch; com branch, so a igualdade decide",
+      "porque": "o campo branch e o vinculo explicito do arquivo com uma branch (D10 do fluxo-pulado); o leitor cego apontou o refinamento",
+      "estagio": "plano",
+      "em": "2026-11-18T11:03:51.719Z"
+    }
+  ]
 }
