@@ -33,5 +33,14 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "D2: tirar da pergunta codigo inline e kebab, ou so a forma de caminho?",
+      "escolha": "So a forma de caminho/branch (barra)",
+      "porque": "codigo inline e kebab fora derrubavam o P1, o caso de origem; a #730 tem barra",
+      "estagio": "executar",
+      "em": "2026-11-24T18:08:33.855Z"
+    }
+  ]
 }
