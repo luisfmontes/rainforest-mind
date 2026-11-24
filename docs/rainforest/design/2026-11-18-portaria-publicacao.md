@@ -42,6 +42,8 @@ Pedido do Luís em 2026-11-18 ("olha uma issue que abriu ontem... bloqueou chama
 
 - Os bloqueios de 2026-11-16 no repositório de inovação: lá o `docs/plans` está na raiz. Pela observação `obs-2026-11-17-repo-protheus-usa-trilho-protheus-nao-estado-rainforest`, a sessão tinha usado o estado do rainforest em vez do trilho do protheus. A causa é outra.
 - O despacho de 2026-11-17 em que o classificador do modo automático não deu veredito porque um hook mudou a entrada do `Agent`. É um mecanismo diferente e não está medido.
+- **Resíduos aceitos (preexistentes, revisão 4, 2026-11-24):** termo da lista privada escondido de propósito no endpoint ou em campo de `gh api` por crase do PowerShell (`` ter`mo702 ``), por percent-encoding (`ter%6do702`) ou por expansão vazia do shell (`ter$()mo702`, `ter${x}mo702`) passa, na base e no HEAD. Exige ofuscação deliberada; a leitura do PowerShell segue a da base (`textosDoSegmentoGh`), e decodificar percent-encoding e expansão é outra mudança, com bateria própria.
+- **#732** fica aberta, citada no PR sem ser fechada: o caso dela (worktree novo, `.gates.json` recente sem `branch`, branch `fix/...` que não toca o plano) segue barrado pela D1.3 emendada, que exige vínculo com a branch. A revisão 2 confirmou.
 
 ## Varredura
 

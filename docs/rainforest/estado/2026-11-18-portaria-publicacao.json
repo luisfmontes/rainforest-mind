@@ -64,18 +64,18 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "ae9ac6d3f36496f1fc066ef835a05a37f185d4b9",
+      "head": "d3b509a312c6e601091084bbf03f7a85fd466374",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a92e42c6ad89cb554",
+        "agente_id": "a50293058ce6acc93",
         "veredito": "ok",
         "em": "2026-11-24",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a92e42c6ad89cb554.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a50293058ce6acc93.jsonl"
       }
     ],
     "achados": 0,
@@ -104,10 +104,22 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae20d889ecfbbcfb6.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a92e42c6ad89cb554",
+            "veredito": "ok",
+            "em": "2026-11-24",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a92e42c6ad89cb554.jsonl"
+          }
+        ]
       }
     ],
     "base": "368382c125b5838d77cccc46757f81e65b40b8ae",
-    "head": "ae9ac6d3f36496f1fc066ef835a05a37f185d4b9"
+    "head": "d3b509a312c6e601091084bbf03f7a85fd466374"
   },
   "verificar": {
     "status": "pendente",
