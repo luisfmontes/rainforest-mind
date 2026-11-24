@@ -65,8 +65,12 @@ function arg(nome) {
   return process.argv[i + 1];
 }
 
+// #731: o padrão do Node é 1 MiB. Diff de entrega com arquivo grande (um .glb de 2 MB) passava
+// disso, o spawnSync cortava com ENOBUFS e status null, e a integração recusava em 'diff'.
+const MAX_BUFFER_GIT = 1024 * 1024 * 1024;
+
 function git(args, cwd = CWD) {
-  return spawnSync(GIT, args, { cwd, encoding: 'utf8', stdio: 'pipe' });
+  return spawnSync(GIT, args, { cwd, encoding: 'utf8', stdio: 'pipe', maxBuffer: MAX_BUFFER_GIT });
 }
 
 function saidaGit(args, cwd = CWD) {
@@ -149,6 +153,8 @@ function main() {
     console.error(`RECUSADO: ${passo}`);
     if (res && res.stdout) process.stderr.write(res.stdout);
     if (res && res.stderr) process.stderr.write(res.stderr);
+    if (res && res.error) process.stderr.write(`erro do processo: ${res.error.code || ''} ${res.error.message}
+`);
     console.log(JSON.stringify({ tarefa: numero, resultado: 'recusado', passo, commit: null }));
     process.exit(2);
   };
