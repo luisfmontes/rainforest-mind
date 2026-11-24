@@ -252,6 +252,18 @@ igual "c1 chegou" "1" "$(grep -c '^// c1$' "$CX/src/alfa.cjs")"
 igual "c2 chegou" "1" "$(grep -c '^// c2$' "$CX/src/alfa.cjs")"
 igual "1 commit novo na branch" "1" "$(cd "$CX" && git rev-list --count "$HEAD_ANTES..HEAD")"
 
+echo "== #731: entrega com arquivo de mais de 1 MiB integra =="
+caixa_nova
+abrir_fluxo
+despachar grande
+{ printf '// '; head -c 1200000 /dev/urandom | base64 -w0; printf '
+'; } >> "$WT/src/alfa.cjs"
+agente_commita "alfa: arquivo grande"
+integrar 1
+igual "integrar tarefa 1 sai 0" "0" "$RC"
+igual "JSON diz aceito" "aceito" "$(echo "$SAIDA" | J 'j.resultado')"
+igual "1 commit novo na branch" "1" "$(cd "$CX" && git rev-list --count "$HEAD_ANTES..HEAD")"
+
 echo "== indice com stage previo recusa antes de trazer =="
 caixa_nova
 abrir_fluxo

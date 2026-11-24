@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.17.2 — 2026-11-24
+
+Três erros que apareciam no uso.
+
+- **A integração de tarefa aceita entrega com arquivo grande (#731).** Uma entrega com arquivo de 1 MB ou mais (um modelo `.glb`, um `.onnx`) era recusada no passo `diff` sem motivo na mensagem: o diff passava do limite de leitura de 1 MiB. O limite subiu para 1 GiB, e uma recusa por erro do processo agora mostra o erro (`ENOBUFS` e afins).
+- **O gate de pergunta com memória não barra mais pela branch citada (#730).** Uma pergunta que só repetia o nome de uma branch ou caminho (`refactor/<cliente>-<demanda>`) casava termos com a memória do projeto e barrava o fim de turno ("Stop hook error"), sem que a memória respondesse a pergunta. Palavra com barra (caminho, branch) deixa de contar como assunto. Nome de arquivo sem barra, como `.rainforest-gate-off`, continua contando.
+- **O gate de publicação nomeia o remoto público e respeita push desligado (#723).** Num fork com `origin` privado e `upstream` público, a mensagem dizia só "visibilidade pública"; agora diz qual remoto é público (`o remoto 'upstream' (dono/repo) é público`). E um remoto com o push desligado (`git remote set-url --push upstream no_push`) deixa de contar, porque um push não chega a ele.
+
 ## 2.17.1 — 2026-11-18
 
 Dois bloqueios falsos a menos, sem abrir o que cada gate protege.

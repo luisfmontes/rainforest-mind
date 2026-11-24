@@ -27,6 +27,8 @@
  *   P21 marcador `+ Q1 ` (bullet +): exit 2
  *   P22 `Veja o item Q1 do plano?` no meio de uma linha que começa com texto: exit 0
  *   P24 `2026. Q1 ` (ano no começo da linha): exit 0; P24b `12. Q1 ` (item de dois dígitos): exit 2
+ *   P25 pergunta que só repete a branch em código inline, memória que só compartilha os termos dela: exit 0 (#730)
+ *   P26 o mesmo com a branch solta, em forma de caminho: exit 0 (#730)
  *
  * Os exit 0 de P5 a P9 são contrastados com o P1 do mesmo jeito: a mesma montagem, só
  * a condição muda, então um exit 0 sem o mecanismo não passa por acidente.
@@ -387,6 +389,24 @@ teste('P24b contraste: `12. Q1 ` (item numerado de dois dígitos): exit 2', () =
   const c = cenario({ transcrito: transcritoComMarcador('12. Q1 Desligar o gate:') });
   const r = rodar(c);
   assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+// #730: a pergunta só repete a branch; a memória do projeto compartilha os termos dela e não
+// responde o que se decide (apagar o worktree antigo).
+const MEMORIA_730 = { name: 'project-abacate-modelo-padrao', description: 'design do modelo padrao do abacate e quem assumiu a implementacao' };
+
+teste('P25 pergunta que só repete a branch em código inline: exit 0', () => {
+  const texto = 'Q2: Posso apagar o worktree e a branch antigos `refactor/abacate-modelo-padrao`? Recomendo apagar.';
+  const c = cenarioMemoria({ texto, ...MEMORIA_730 });
+  const r = rodar(c);
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P26 pergunta que só repete a branch solta (forma de caminho): exit 0', () => {
+  const texto = 'Q2: Posso apagar o worktree e a branch antigos refactor/abacate-modelo-padrao? Recomendo apagar.';
+  const c = cenarioMemoria({ texto, ...MEMORIA_730 });
+  const r = rodar(c);
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
 for (const d of tmpdirs) {

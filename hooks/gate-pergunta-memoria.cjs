@@ -61,6 +61,18 @@ function termosDe(texto) {
   return new Set(brutos.filter((t) => !PALAVRAS_VAZIAS.has(t)));
 }
 
+// #730 (D2 de 2026-11-24-zerar-issues-16, emendada): palavra com forma de caminho ou branch (uma
+// barra entre letras ou dígitos, com ou sem crase) nomeia o objeto, não o que se decide. Uma
+// pergunta que só repetia a branch `refactor/<cliente>-<demanda>` casava 3 termos com a memória
+// do projeto, que não respondia a pergunta. Código inline e nome kebab sem barra ficam: o
+// `.rainforest-gate-off` do caso de origem (P1) é nome de arquivo E o assunto da memória.
+// Sai só da pergunta; a memória fica inteira.
+const RE_FORMA_DE_CAMINHO = /[\p{L}\p{N}]\/[\p{L}\p{N}]/u;
+
+function semNomesDeObjeto(texto) {
+  return String(texto || '').split(/\s+/).filter((p) => !RE_FORMA_DE_CAMINHO.test(p)).join(' ');
+}
+
 // Mesma fronteira do gate-turno-prometido: o turno começa na última linha `user` que não é
 // tool_result, e o último bloco `text` do assistant depois dela (sidechain fora) é o que vale.
 function ultimoTextoDoTurno(linhas) {
@@ -220,7 +232,7 @@ function main() {
 
   const acertos = [];
   for (const p of perguntas(ultimo)) {
-    const m = melhorMemoria(termosDe(p.texto), lista);
+    const m = melhorMemoria(termosDe(semNomesDeObjeto(p.texto)), lista);
     if (m) acertos.push(`Q${p.n}: a memória tem ${m.arquivo} — ${m.resumo}`);
   }
 
