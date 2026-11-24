@@ -1142,6 +1142,17 @@ git -C "$R723" remote set-url --push upstream "https://github.com/test/pub723.gi
 roda723
 if [ "$RC723" = 2 ]; then ok=$((ok+1)); echo "  ok   723 upstream com push para o público barra"
 else falhou=$((falhou+1)); echo "  FALHA 723 upstream com push para o público barra: exit $RC723"; fi
+# Revisao 1: push desligado nao abre a declaracao de privado (declaradaPrivada olha o fetch).
+R723D="$RAIZ/decl723"
+git init -q "$R723D"; git -C "$R723D" config user.email t@t; git -C "$R723D" config user.name t; git -C "$R723D" config commit.gpgsign false
+echo "x" > "$R723D/f.txt"; git -C "$R723D" add f.txt; git -C "$R723D" commit -qm x
+git -C "$R723D" remote add origin "https://github.com/test/pubdecl723.git"
+git -C "$R723D" remote set-url --push origin no_push
+mkdir -p "$R723D/.rainforest"; printf '{"visibilidade-repo":"privada"}\n' > "$R723D/.rainforest/config.json"
+P723D=$(PAY_CWD="$(esc "$R723D")" pay Write "$(esc "$R723D/d.md")" "nota sobre termo702")
+S723D=$(printf '%s' "$P723D" | env HOME="$H702" RFM_ROOT="$D702" RAINFOREST_GATE_SEM_REDE=1 node "$GATE" 2>&1); RC723D=$?
+if [ "$RC723D" = 2 ]; then ok=$((ok+1)); echo "  ok   723 push desligado nao abre a declaracao de privado"
+else falhou=$((falhou+1)); echo "  FALHA 723 push desligado nao abre a declaracao de privado: exit $RC723D"; printf '%s\n' "$S723D" | head -5; fi
 echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="

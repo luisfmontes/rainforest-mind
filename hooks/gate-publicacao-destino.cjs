@@ -150,11 +150,15 @@ function visibilidadeDoRepo(gitTop) {
  * nao conta; o de fetch sozinho nao publica. Sem nenhuma URL de push do GitHub,
  * a visibilidade fica "desconhecida" e barra como antes.
  */
-function remotosDoGitHub(gitTop) {
+function remotosDoGitHub(gitTop, { tambemFetch = false } = {}) {
   const nomes = (git(gitTop, ["remote"]) || "").split(/\r?\n/).map((n) => n.trim()).filter(Boolean);
   const achados = [];
   for (const nome of nomes) {
     const urls = (git(gitTop, ["remote", "get-url", "--push", "--all", nome]) || "").split(/\r?\n/).map((u) => u.trim()).filter(Boolean);
+    // Revisão 1 da zerar-issues-16: quem pergunta "há remoto GitHub?" para aceitar ou não a
+    // declaração de privado (`declaradaPrivada`) olha também o fetch. Sem isto, desligar o push
+    // liberava o termo pela declaração, e nenhum gate confere o `git push` depois.
+    if (tambemFetch) urls.push(...(git(gitTop, ["remote", "get-url", "--all", nome]) || "").split(/\r?\n/).map((u) => u.trim()).filter(Boolean));
     for (const url of urls) {
       // `ssh://` aceita porta (`:22`, `:443`) e o host `ssh.github.com` (SSH pela 443).
       const m = url.match(/(?:https:\/\/(?:[^@/\s]+@)?(?:www\.)?github\.com[:/]|ssh:\/\/git@(?:ssh\.|www\.)?github\.com(?::\d+)?\/|git@(?:www\.)?github\.com:)([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
@@ -535,7 +539,7 @@ function declaradaPrivada(gitTop) {
     // todo repositorio sem resposta do `gh`, e a declaracao e por repositorio (D22).
     // E so para remoto FORA do GitHub: com remoto GitHub, `desconhecida` e o `gh`
     // fora do ar, e a declaracao liberaria termo privado num repo que pode ser publico.
-    if (repositoriosDoGitHub(gitTop).length > 0) return false;
+    if (remotosDoGitHub(gitTop, { tambemFetch: true }).length > 0) return false;
     const r = require("./lib/config.cjs").resolverConfig({ projeto: gitTop });
     return r.valores["visibilidade-repo"] === "privada" && String(r.origem["visibilidade-repo"]).startsWith("projeto");
   } catch { return false; }
@@ -550,7 +554,7 @@ function bloqueia(achados, arquivo, agente, gitTop, preambulo) {
   // chamador CONTINUA: sair aqui deixaria os seguintes sem exame.
   if (achados.length === 0) return;
   if (preambulo) process.stderr.write(preambulo);
-  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, repositoriosDoGitHub(gitTop).length > 0, gitTop));
+  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, remotosDoGitHub(gitTop, { tambemFetch: true }).length > 0, gitTop));
   process.exit(2);
 }
 

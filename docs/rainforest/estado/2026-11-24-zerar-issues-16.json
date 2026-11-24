@@ -22,7 +22,7 @@
     "em": "2026-11-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-24",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -53,13 +53,32 @@
     "em": "2026-11-24"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "d53f6e342821752232cdb333adcf90a7bec8eceb",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a6f8c3c22605d00fa",
+        "veredito": "ok",
+        "em": "2026-11-24",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a6f8c3c22605d00fa.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "368382c125b5838d77cccc46757f81e65b40b8ae",
+    "head": "d53f6e342821752232cdb333adcf90a7bec8eceb",
+    "em": "2026-11-24"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-24"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-24"
   },
   "decididos": [
     {
@@ -68,6 +87,13 @@
       "porque": "codigo inline e kebab fora derrubavam o P1, o caso de origem; a #730 tem barra",
       "estagio": "executar",
       "em": "2026-11-24T18:08:33.855Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-11-24",
+      "de": "revisar",
+      "motivo": "revisao 1 [media]: declaradaPrivada passou a aceitar a declaracao com push desligado; D3 dizia que barra como hoje"
     }
   ]
 }
