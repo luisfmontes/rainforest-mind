@@ -1,0 +1,28 @@
+{
+  "slug": "2026-11-24-zerar-issues-16",
+  "titulo": "Rodada 16: gate-pergunta-memoria, integrar-tarefa e mensagem do gate de publicacao",
+  "criado_em": "2026-11-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-24-zerar-issues-16.md",
+    "em": "2026-11-24"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
