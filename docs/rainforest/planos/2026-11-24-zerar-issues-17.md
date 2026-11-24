@@ -19,7 +19,7 @@ arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/t
 depende de: nenhuma
 busca:
 - catalogo | fimDaLinhaLogica em hooks/lib/heredoc.cjs:31 | reuso; é a função que corpoDeHeredoc já usa para o início do corpo
-desfecho: reusar
+desfecho: estender
 O que fazer:
 - Em `hooks/lib/heredoc.cjs`, antes de `mascararCorposDeHeredoc`, `function inicioDoCorpo(fora, i)` com `const fl = fimDaLinhaLogica(fora, i);` e `return fl === -1 ? fora.length : fl + 1;`, e comentário citando a #724 (a máscara e `corpoDeHeredoc` tinham de concordar sobre onde o corpo começa).
 - Nos dois ramos de `mascararCorposDeHeredoc` (dado e `scriptNaoShell`), as duas linhas `const quebra = fora.indexOf("\n", i);` + `const inicio = ...` viram `const inicio = inicioDoCorpo(fora, i);`.
@@ -100,7 +100,7 @@ arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`
 depende de: 3
 busca:
 - catalogo | listar --raiz hooks/lib | nada equivalente: nenhuma lib segue cópia de arquivo em comando
-desfecho: criar
+desfecho: construir
 O que fazer:
 - `function nomeBase(t)`: tira aspas das pontas (`replace(/^["']+|["']+$/g, "")`) e devolve `split(/[\\/]/).pop()`, a mesma conta de hoje; `executoresDoAlvo` e `alvosDaLinha` passam a usá-la.
 - `function expandirAlvosPorCopia(toks, alvos)`: até 10 voltas, enquanto o `Set` cresce, para cada trecho cortado por `trechoEm` (da tarefa 3), com os posicionais contados como em `comandoDoTrecho` (flag = começa com `-`, pulada sem valor; redirecionamento e alvo fora): comando `cp`, `mv`, `ln` ou `install` com dois ou mais posicionais, algum de origem (todos menos o último) com nome-base em `alvos` → acrescenta o nome-base do último (vazio, como em `d/`, não entra); comando `cat` com posicional em `alvos` e redirecionamento `>`/`>>` no trecho → acrescenta o nome-base do alvo do redirecionamento.
