@@ -87,8 +87,12 @@
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-24"
+    "status": "ok",
+    "em": "2026-11-24",
+    "comando": "bash scripts/testa-integrar-tarefa.sh; node hooks/testa-gate-pergunta-memoria.cjs; bash hooks/testa-gate-publicacao-destino.sh",
+    "saida": "ok: 81 falhou: 0; ok: 25 falhou: 0 skipped: 0; == resultado: 310 ok, 0 falha(s) ==; 2.17.2 nos dois manifestos e ## 2.17.2 no CHANGELOG",
+    "sensor_externo": "bash hooks/testa-gate-publicacao-destino.sh",
+    "head": "038599971383024c27ad6f87d271e52bd057be0b"
   },
   "fechar": {
     "status": "pendente",
