@@ -48,6 +48,11 @@ function tokensComAspas(cmd, opcoes = {}) {
   let inicioTok = 0;
   const empurra = (fim) => {
     const t = { v: atual, q: citado, aspa: primeiraAspa };
+    // Posição do token no texto recebido (#726, revisão 2 do portaria-publicacao): quem precisa
+    // da forma CRUA lê `cmd.slice(t.ini, t.fim)`. Não enumeráveis, para não mudar o que compara
+    // ou serializa tokens.
+    Object.defineProperty(t, "ini", { value: inicioTok });
+    Object.defineProperty(t, "fim", { value: fim });
     if (modos.size > 1) {
       t.mista = true;
       // Também a palavra mista com contrabarra: sem a opção `contrabarra`, `"gh"\`

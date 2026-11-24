@@ -1,0 +1,70 @@
+Data: 2026-11-18
+Termos: protheusAberto, gates.json, textosDoGhApi, termos-proibidos
+
+$ gh issue list --state all --search "protheusAberto" --limit 200 --json number,title,state
+[{"number":728,"state":"OPEN","title":"Portaria não acha o .gates.json do trilho protheus na pasta do cliente (repo multi-cliente)"}]
+
+
+$ gh issue list --state all --search "gates.json" --limit 200 --json number,title,state
+[{"number":728,"state":"OPEN","title":"Portaria não acha o .gates.json do trilho protheus na pasta do cliente (repo multi-cliente)"},{"number":632,"state":"CLOSED","title":"testa-rodar-longo.sh intermitente no CI Windows: filho do vigia morto sobrevive ao caso final"},{"number":396,"state":"CLOSED","title":"Aviso de fluxo no primeiro Write/Edit de código da sessão"}]
+
+
+$ gh issue list --state all --search "textosDoGhApi" --limit 200 --json number,title,state
+[{"number":726,"state":"OPEN","title":"gate-publicacao barra gh api orgs/<org> quando o nome da org esta na lista privada"}]
+
+
+$ gh issue list --state all --search "termos-proibidos" --limit 200 --json number,title,state
+[{"number":726,"state":"OPEN","title":"gate-publicacao barra gh api orgs/<org> quando o nome da org esta na lista privada"},{"number":702,"state":"CLOSED","title":"gate-publicacao não confere o corpo de gh issue/pr em repositório público"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"}]
+
+
+$ gh pr list --state all --search "protheusAberto" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "gates.json" --limit 200 --json number,title,state
+[{"number":440,"state":"MERGED","title":"Fluxo pulado vira bloqueio com caminho leve declarado (1.50.0)"}]
+
+
+$ gh pr list --state all --search "textosDoGhApi" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "termos-proibidos" --limit 200 --json number,title,state
+[{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"}]
+
+
+$ git ls-remote --heads origin | grep -F "protheusAberto"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gates.json"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "textosDoGhApi"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "termos-proibidos"
+(vazio)
+
+$ git log --all --grep="protheusAberto" --oneline
+(vazio)
+
+$ git log --all --grep="gates.json" --oneline
+55c2e990 Protheus: fluxo aberto pelo campo branch do .gates.json (#430, D10)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+42da4f49 O estado vira versionado, e o prazo de sexta volta a chegar na abertura
+e1fd7004 O estado vira versionado, e o prazo de sexta volta a chegar na abertura
+7a0369d5 A esteira de sete estagios, e o /grill vira /brainstorm
+60252094 A esteira de sete estagios, e o /grill vira /brainstorm
+cfd62bfc A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+deb1411b A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+
+$ git log --all --grep="textosDoGhApi" --oneline
+1a87ee94 Gate de publicação confere gh api, gh release e gh gist (2.16.1) (#720)
+
+$ git log --all --grep="termos-proibidos" --oneline
+454bce8f5 Trava contra termo que nao tem forma: lista privada fora da arvore
+
+$ cat <dados>/ideias.jsonl
+{"id":"obs-gates-nao-e-fonte-de-teste","titulo":"gates.json nao e fonte de verdade de teste"}
+
+

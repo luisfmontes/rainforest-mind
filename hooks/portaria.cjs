@@ -26,7 +26,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { leveDaBranch, protheusAberto } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
+const { leveDaBranch, protheusAberto, temPastaDePlans } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
 
 /**
  * Agentes que pertencem ao Claude Code, não a este repositório. Podem ser
@@ -1015,11 +1015,16 @@ function main() {
   const leve = trilhoComFluxo && (escreveDeclarado || escrevePorSinal)
     ? Boolean(leveDaBranch({ gitTop: raiz, branch: obterBranch(raiz) }))
     : false;
+  // portaria-publicacao D1.3: trilho protheus aberto para a branch libera o escritor mesmo com o
+  // trilho rainforest na raiz; ai so com vinculo (branch ou diff commitado), sem o mtime, que um
+  // `git worktree add` renova em todo arquivo (emenda de 2026-11-18).
+  const protheusLibera = (trilho === "protheus" || escreveDeclarado || escrevePorSinal)
+    && protheusAberto({ gitTop: raiz, branch: obterBranch(raiz), exigeVinculo: trilho !== "protheus" });
   const estagioPermitido = trilho === "protheus"
-    ? protheusAberto({ gitTop: raiz, branch: obterBranch(raiz) })
-    : escrevePorSinal
+    ? protheusLibera
+    : protheusLibera || (escrevePorSinal
       ? Boolean(estResult)
-      : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio);
+      : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio));
   const bloqueiaFluxoPulado = trilhoComFluxo && (escreveDeclarado || escrevePorSinal) && !leve && !estagioPermitido;
 
 
@@ -1204,6 +1209,9 @@ function main() {
       `${abertura} ${condicao}: exige ${exige}; ` +
       `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
       diagnostico +
+      (temPastaDePlans(raiz)
+        ? `\n  trilho protheus: .gates.json procurado em '${raizBarras}/docs/plans' e '${raizBarras}/*/docs/plans'`
+        : "") +
       `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou ${iniciarDaMensagem}; protheus: /protheus:trabalhar)` +
       saida2 +
       // Issue #442: o comando comeca por string entre aspas, que PowerShell so roda com `& `.

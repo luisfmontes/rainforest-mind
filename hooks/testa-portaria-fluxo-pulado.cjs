@@ -911,6 +911,142 @@ console.log("== G D3. escreve: false declarado com isolation, e nao declarado co
   descartar(repo);
 }
 
+// == O. repositorio multi-cliente: .gates.json na pasta do cliente (portaria-publicacao D1) ==
+console.log("== O. multi-cliente (portaria-publicacao D1) ==");
+{
+  const doisDias = (Date.now() - 2 * 24 * 3600 * 1000) / 1000;
+  const envelhecer = (arq) => fs.utimesSync(arq, doisDias, doisDias);
+  const gravarEm = (raiz, rel, texto) => {
+    const arq = path.join(raiz, ...rel.split("/"));
+    fs.mkdirSync(path.dirname(arq), { recursive: true });
+    fs.writeFileSync(arq, texto, "utf8");
+    return arq;
+  };
+  // Raiz com .gates.json velho: trilho protheus detectado, e fechado pela raiz.
+  const comRaizVelha = (repo) => envelhecer(gravarEm(repo.main, "docs/plans/velho.gates.json", "{}\n"));
+
+  // O1 a O4: D1 parte 1, a pasta de primeiro nivel.
+  const pasta = (nome, preparar, esperado, rel = "Cliente/docs/plans/x.gates.json", texto = "{}\n") => {
+    const repo = novoRepo();
+    comRaizVelha(repo);
+    const arq = gravarEm(repo.main, rel, texto);
+    if (preparar) preparar(arq);
+    const r = despachar(repo, repo.main, "rainforest-mind:executor");
+    caso(nome, r.status === esperado, `exit=${r.status} stderr=${r.stderr}`);
+    descartar(repo);
+  };
+  pasta("O1 Cliente/docs/plans/x.gates.json recente sem branch: exit 0", null, 0);
+  pasta("O2 Cliente/docs/plans/x.gates.json de 2 dias: exit 2", envelhecer, 2);
+  pasta("O3 Cliente/docs/plans/x.gates.json recente de outra branch: exit 2", null, 2,
+    "Cliente/docs/plans/x.gates.json", JSON.stringify({ branch: "outra-branch" }));
+  pasta("O4 .oculta/docs/plans/x.gates.json recente (pasta com ponto) nao abre: exit 2", null, 2,
+    ".oculta/docs/plans/x.gates.json");
+
+  // O5, O10, O11: D1 parte 3, a raiz com o trilho rainforest (o layout medido).
+  const comRainforest = (nome, preparar, esperado, confere) => {
+    const repo = novoRepo();
+    fs.mkdirSync(path.join(repo.main, "docs", "rainforest", "estado"), { recursive: true });
+    if (preparar) preparar(repo);
+    const r = despachar(repo, repo.main, "rainforest-mind:executor");
+    caso(nome, r.status === esperado, `exit=${r.status} stderr=${r.stderr}`);
+    if (confere) caso(`${nome.split(" ")[0]} stderr diz onde procurou o .gates.json`,
+      /\/\*\/docs\/plans/.test(r.stderr || ""), r.stderr);
+    descartar(repo);
+  };
+  // Emenda da D1.3: com o trilho rainforest na raiz, o mtime nao conta (worktree novo renova todos).
+  comRainforest("O5 trilho rainforest na raiz e .gates.json do cliente recente sem vinculo: exit 2",
+    (repo) => gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n"), 2);
+  comRainforest("O14 trilho rainforest na raiz e .gates.json do cliente com a branch atual: exit 0",
+    (repo) => gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", JSON.stringify({ branch: "main" })), 0);
+  {
+    // O13: o .gates.json do cliente commitado na branch (o caso medido) libera.
+    const repo = novoRepo();
+    fs.mkdirSync(path.join(repo.main, "docs", "rainforest", "estado"), { recursive: true });
+    git(repo.main, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(repo.main, ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
+    git(repo.main, ["checkout", "-q", "-b", "refactor/cliente-x"]);
+    gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n");
+    git(repo.main, ["add", "Cliente"]);
+    git(repo.main, ["commit", "-q", "-m", "gates"]);
+    const r = despachar(repo, repo.main, "rainforest-mind:executor");
+    caso("O13 trilho rainforest na raiz e .gates.json do cliente commitado na branch: exit 0",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+    descartar(repo);
+  }
+  comRainforest("O10 trilho rainforest na raiz e .gates.json do cliente de 2 dias: exit 2",
+    (repo) => envelhecer(gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n")), 2, true);
+  comRainforest("O11 trilho rainforest na raiz sem .gates.json nenhum: exit 2", null, 2);
+
+  // O6 a O9: D1 parte 2, o diff da branch contra o merge-base com a padrao do remoto.
+  const comDiff = (nome, variante, esperado) => {
+    const repo = novoRepo();
+    const velho = gravarEm(repo.main, "docs/plans/velho.gates.json", "{}\n");
+    git(repo.main, ["add", "docs/plans/velho.gates.json"]);
+    git(repo.main, ["commit", "-q", "-m", "velho"]);
+    if (variante === "plano" || variante === "outro" || variante === "nao-commitado" || variante === "renomeado") {
+      gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", JSON.stringify({
+        plan: { file: "docs/plans/x-plan.md" }, design: { doc: "docs/plans/x-design.md" },
+      }));
+      gravarEm(repo.main, "Cliente/docs/plans/x-plan.md", "plano\n");
+      git(repo.main, ["add", "Cliente"]);
+      git(repo.main, ["commit", "-q", "-m", "base-cliente"]);
+    }
+    if (variante !== "sem-remoto") {
+      git(repo.main, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+      // head-quebrado: origin/HEAD aponta para ref que nao existe; vale o fallback origin/main.
+      git(repo.main, ["symbolic-ref", "refs/remotes/origin/HEAD",
+        variante === "head-quebrado" ? "refs/remotes/origin/master" : "refs/remotes/origin/main"]);
+    }
+    git(repo.main, ["checkout", "-q", "-b", "refactor/cliente-x"]);
+    if (variante === "renomeado") {
+      git(repo.main, ["mv", "Cliente/docs/plans/x-plan.md", "Cliente/docs/plans/y-plan.md"]);
+    } else if (variante === "gates" || variante === "sem-remoto" || variante === "head-quebrado") {
+      gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n");
+      git(repo.main, ["add", "Cliente"]);
+    } else if (variante === "plano") {
+      gravarEm(repo.main, "Cliente/docs/plans/x-plan.md", "plano 2\n");
+      git(repo.main, ["add", "Cliente"]);
+    } else if (variante === "nao-commitado") {
+      // Commit vazio para a branch existir com HEAD != base; o plano muda so na arvore.
+      gravarEm(repo.main, "Cliente/outro.txt", "outro\n");
+      git(repo.main, ["add", "Cliente/outro.txt"]);
+      git(repo.main, ["commit", "-q", "-m", "outro"]);
+      gravarEm(repo.main, "Cliente/docs/plans/x-plan.md", "plano sem commit\n");
+      envelhecer(velho);
+      envelhecer(path.join(repo.main, "Cliente", "docs", "plans", "x.gates.json"));
+      const r = despachar(repo, repo.main, "rainforest-mind:executor");
+      caso(nome, r.status === esperado, `exit=${r.status} stderr=${r.stderr}`);
+      descartar(repo);
+      return;
+    } else {
+      gravarEm(repo.main, "Cliente/outro.txt", "outro\n");
+      git(repo.main, ["add", "Cliente"]);
+    }
+    git(repo.main, ["commit", "-q", "-m", "trabalho"]);
+    envelhecer(velho);
+    envelhecer(path.join(repo.main, "Cliente", "docs", "plans", "x.gates.json"));
+    const r = despachar(repo, repo.main, "rainforest-mind:executor");
+    caso(nome, r.status === esperado, `exit=${r.status} stderr=${r.stderr}`);
+    descartar(repo);
+  };
+  comDiff("O6 .gates.json do cliente de 2 dias commitado na branch: exit 0", "gates", 0);
+  comDiff("O7 .gates.json na base e a branch altera o plan.file declarado: exit 0", "plano", 0);
+  comDiff("O8 .gates.json na base e a branch altera outro arquivo: exit 2", "outro", 2);
+  comDiff("O9 .gates.json commitado na branch, sem refs/remotes/origin: exit 2", "sem-remoto", 2);
+  comDiff("O12 plan.file alterado sem commit nao prova a branch: exit 2", "nao-commitado", 2);
+  comDiff("O15 origin/HEAD para ref inexistente cai em origin/main: exit 0", "head-quebrado", 0);
+  comDiff("O16 plan.file renomeado na branch conta pelo nome antigo: exit 0", "renomeado", 0);
+  {
+    // O17: repositorio so com trilho rainforest: a recusa nao fala do trilho protheus.
+    const repo = novoRepo();
+    fs.mkdirSync(path.join(repo.main, "docs", "rainforest", "estado"), { recursive: true });
+    const r = despachar(repo, repo.main, "rainforest-mind:executor");
+    caso("O17 so trilho rainforest: recusa sai 2 sem a linha do trilho protheus",
+      r.status === 2 && !/trilho protheus:/.test(r.stderr || ""), `exit=${r.status} stderr=${r.stderr}`);
+    descartar(repo);
+  }
+}
+
 console.log("");
 console.log(`ok: ${ok}   falhou: ${falhou}   skipped: 0`);
 process.exit(falhou > 0 ? 1 : 0);

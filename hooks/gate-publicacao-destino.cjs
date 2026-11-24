@@ -811,6 +811,56 @@ const FLAGS_API_LONGAS_BOOLEANAS = new Set(["--include", "--paginate", "--silent
 const FLAGS_API_CAMPO = new Set(["-f", "-F", "--raw-field", "--field", "--input"]);
 
 /**
+ * Issue #726, portaria-publicacao D2: no ENDPOINT de `gh api`, o segmento depois de `orgs/` e
+ * de `users/`, e os dois depois de `repos/`, viram um marcador neutro antes da conferência. Eles
+ * nomeiam a conta ou o repositório de destino, que já existe e não é publicado pela chamada. O
+ * resto do caminho continua conferido (`contents/<arquivo>` cria um arquivo com aquele nome).
+ *
+ * Só o token do endpoint muda, na posição dele no comando (revisões de 2026-11-18 e 2026-11-24):
+ * o corpo que chega por pipe, `<<<` ou `echo > arquivo` só é conferido pelo texto do comando, e
+ * trocar em outro ponto apagava o termo de dentro dele. Ver `neutralizarDestinoNoEndpoint`.
+ */
+// Âncora no INÍCIO do endpoint (D2 emendada, revisão 1, achado 2): `orgs/`, `users/` e `repos/`
+// dentro do resto do caminho (`contents/docs/users/<x>.md`) são nome de arquivo publicado e
+// continuam conferidos. Antes, só `/`, `https://api.github.com/` ou `https://<host>/api/v3/`.
+const PREFIXO_ENDPOINT = String.raw`^((?:https?:\/\/[^\/\s]+(?:\/api\/v3)?)?\/*`;
+const RE_CONTA_NO_ENDPOINT = new RegExp(PREFIXO_ENDPOINT + String.raw`(?:orgs|users)\/)[^\/\s?#'"]+`, "i");
+const RE_REPO_NO_ENDPOINT = new RegExp(PREFIXO_ENDPOINT + String.raw`repos\/)[^\/\s?#'"]+\/[^\/\s?#'"]+`, "i");
+
+function neutralizarEndpoint(ep) {
+  return ep
+    .replace(RE_CONTA_NO_ENDPOINT, "$1<destino>")
+    .replace(RE_REPO_NO_ENDPOINT, "$1<destino>/<destino>");
+}
+
+/**
+ * A troca acontece na POSIÇÃO do token do endpoint, lida do tokenizador (`ini`/`fim`), nunca por
+ * busca de texto (revisões de segurança do 8d599a1a e do db2f583e, revisão 2 do fluxo): com o
+ * endpoint escrito com contrabarra ou aspa no meio (`orgs/ter\mo702/teams`), a busca caía num
+ * corpo igual por pipe e apagava o termo dele. Condições, todas obrigatórias; senão o comando
+ * fica como está (falha fechada):
+ * - a forma crua do token no segmento é o próprio valor, ou ele entre um par de aspas, e o valor
+ *   não tem nada que o shell reescreva (contrabarra, aspas, `$`, crase);
+ * - o segmento aparece uma única vez no comando, para a posição no segmento valer no comando.
+ */
+const RE_REESCRITO_PELO_SHELL = /[\\'"`$]/;
+
+function neutralizarDestinoNoEndpoint(cmd, endpoint, tokEndpoint, segmento) {
+  if (typeof endpoint !== "string" || endpoint === "" || typeof segmento !== "string") return cmd;
+  if (!tokEndpoint || !Number.isInteger(tokEndpoint.ini) || !Number.isInteger(tokEndpoint.fim)) return cmd;
+  if (RE_REESCRITO_PELO_SHELL.test(endpoint)) return cmd;
+  const cru = segmento.slice(tokEndpoint.ini, tokEndpoint.fim);
+  let desloc;
+  if (cru === endpoint) desloc = 0;
+  else if (cru === `'${endpoint}'` || cru === `"${endpoint}"`) desloc = 1;
+  else return cmd;
+  const s = cmd.indexOf(segmento);
+  if (s === -1 || cmd.indexOf(segmento, s + 1) !== -1) return cmd;
+  const i = s + tokEndpoint.ini + desloc;
+  return cmd.slice(0, i) + neutralizarEndpoint(endpoint) + cmd.slice(i + endpoint.length);
+}
+
+/**
  * #707 (D1, D3): textos e destino de `gh api` de escrita, ou null quando não
  * escreve (a régua da `apiEhEscrita` do gate de subagente, aplicada aqui sobre
  * os argumentos lidos como o pflag lê) ou
@@ -818,7 +868,7 @@ const FLAGS_API_CAMPO = new Set(["-f", "-F", "--raw-field", "--field", "--input"
  * é o repositório; `{owner}`/`{repo}` (ou `:owner`/`:repo`) é o do cwd, como o
  * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
  */
-function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
+function textosDoGhApi(toks, iApi, cmdOriginal, cwd, objs, segmento) {
   // Uma passada só, como o pflag do `gh` lê (revisões de segurança de
   // 2026-11-16): flag curta se desagrupa (`-ifbody=x` é `-i` e `-f body=x`;
   // `-f=body=x` perde o `=`), e flag que pede valor sem valor colado consome
@@ -828,10 +878,15 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   const brutos = toks.slice(iApi + 1);
   const pares = [];
   const posicionais = [];
+  let iEndpoint = -1;
   let grupoIlegivel = false;
   for (let i = 0; i < brutos.length; i += 1) {
     const t = brutos[i];
-    if (t === "--") { posicionais.push(...brutos.slice(i + 1)); break; }
+    if (t === "--") {
+      if (posicionais.length === 0 && i + 1 < brutos.length) iEndpoint = iApi + 2 + i;
+      posicionais.push(...brutos.slice(i + 1));
+      break;
+    }
     if (t.startsWith("--")) {
       const igual = t.indexOf("=");
       const flag = (igual === -1 ? t : t.slice(0, igual)).toLowerCase();
@@ -841,7 +896,11 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
       } else if (!FLAGS_API_LONGAS_BOOLEANAS.has(flag)) grupoIlegivel = true;
       continue;
     }
-    if (!/^-./.test(t)) { posicionais.push(t); continue; }
+    if (!/^-./.test(t)) {
+      if (posicionais.length === 0) iEndpoint = iApi + 1 + i;
+      posicionais.push(t);
+      continue;
+    }
     for (let k = 1; k < t.length; k += 1) {
       const flag = `-${t[k]}`;
       if (FLAGS_API_VALOR.has(flag)) {
@@ -868,8 +927,13 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   } else ehEscrita = pares.some(([flag]) => FLAGS_API_CAMPO.has(flag));
   if (grupoIlegivel) ehEscrita = true;
   if (!ehEscrita) return null;
-  const textos = [{ origem: "comando", texto: cmdOriginal }, ...corposEmbutidos(cmdOriginal)];
   const endpoint = posicionais[0] ?? null;
+  const textos = [{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint, objs && iEndpoint !== -1 ? objs[iEndpoint] : null, segmento) }, ...corposEmbutidos(cmdOriginal)];
+  // Revisão 3 (preexistente na base): o endpoint como o `gh` o recebe, já sem a contrabarra e as
+  // aspas do shell, também se confere. Sem isto, `contents/ter\mo702.md` publicava um arquivo com
+  // o termo no nome, porque o texto cru do comando não traz o termo literal. O destino (conta e
+  // repositório, D2) sai antes, como no comando; conta como "comando": só a lista de termos.
+  if (typeof endpoint === "string" && endpoint !== "") textos.push({ origem: "comando", texto: neutralizarEndpoint(endpoint) });
   let metodo = null;
   let hostname = false;
   let gistPublico = false;
@@ -1010,9 +1074,10 @@ function visibilidadeDoAlvo(ownerRepo) {
  */
 function textosDoSegmentoGh(segmento, cmdOriginal, cwd, ferramenta) {
   const { tokensComAspas } = require("./lib/tokens-comando.cjs");
-  let toksBase;
-  try { toksBase = tokensComAspas(segmento).map((t) => t.v); } catch { return null; }
-  const rBase = lerSegmentoGh(toksBase, null, cmdOriginal, cwd);
+  let objsBase;
+  try { objsBase = tokensComAspas(segmento); } catch { return null; }
+  const toksBase = objsBase.map((t) => t.v);
+  const rBase = lerSegmentoGh(toksBase, null, cmdOriginal, cwd, objsBase, segmento);
   // `gh issue`/`gh pr` e todo PowerShell seguem a leitura da base, intocada:
   // a régua de escape do bash, abaixo, vale só para as famílias novas da #707
   // (no PowerShell a contrabarra é literal, e caminho `.\corpo.md` não pode
@@ -1024,13 +1089,13 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd, ferramenta) {
   // caractere seguinte, aspa inclusive (`\-f`, `\'`, `rel\ease`, `a\pi`).
   let brutos;
   try { brutos = tokensComAspas(segmento, { contrabarra: true }); } catch { return rBase; }
-  const rBash = lerSegmentoGh(brutos.map((t) => t.v), brutos, cmdOriginal, cwd);
+  const rBash = lerSegmentoGh(brutos.map((t) => t.v), brutos, cmdOriginal, cwd, brutos, segmento);
   // Disfarce que vira `issue`/`pr` na leitura do bash (`iss\ue`) segue como na base.
   if (rBash && (rBash.familia === "issue" || rBash.familia === "pr")) return rBase;
   return rBash || rBase;
 }
 
-function lerSegmentoGh(toks, brutos, cmdOriginal, cwd) {
+function lerSegmentoGh(toks, brutos, cmdOriginal, cwd, objs = brutos, segmento = null) {
   const { normalizarExecutavel } = require("./lib/heredoc.cjs");
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
   if (iGh === -1) return null;
@@ -1067,7 +1132,7 @@ function lerSegmentoGh(toks, brutos, cmdOriginal, cwd) {
   // #707 (D1): `gh api` tem gramática própria (endpoint e campos), e é lido à parte.
   const iApi = toks.findIndex((t, k) => k > iGh && !t.startsWith("-"));
   if (iApi !== -1 && toks[iApi].toLowerCase() === "api") {
-    const ra = textosDoGhApi(toks, iApi, cmdOriginal, cwd);
+    const ra = textosDoGhApi(toks, iApi, cmdOriginal, cwd, objs, segmento);
     return ra && { ...ra, repoPrefixo, prefixoLimpo };
   }
   let repoValor = null;

@@ -1,0 +1,152 @@
+{
+  "slug": "2026-11-18-portaria-publicacao",
+  "titulo": "2026-11-18-portaria-publicacao",
+  "criado_em": "2026-11-18",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-11-18-portaria-publicacao.md",
+    "decisoes": 4,
+    "em": "2026-11-18"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-18-portaria-publicacao.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      4
+    ],
+    "em": "2026-11-18"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-24",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "comando": "node hooks/testa-portaria-fluxo-pulado.cjs; bash hooks/testa-gate-publicacao-destino.sh",
+    "saida": "ok: 116 falhou: 0 skipped: 0; == resultado: 330 ok, 0 falha(s) ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-fluxo-pulado.cjs secao O caso O1"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-fluxo-pulado.cjs secao O caso O16 (sem --no-renames)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-fluxo-pulado.cjs secao O casos O13 e O14"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh: 726 contents/docs/users (sem ancora); 726 endpoint com uma contrabarra (troca por busca: 3 vermelhos); 726 contents com contrabarra/aspa no nome (sem conferir endpoint: 2 vermelhos)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "troca de versao e texto de changelog"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-fluxo-pulado.cjs secao O caso O5"
+      }
+    ],
+    "em": "2026-11-24",
+    "reaberturas": 2
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "d3b509a312c6e601091084bbf03f7a85fd466374",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a50293058ce6acc93",
+        "veredito": "ok",
+        "em": "2026-11-24",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a50293058ce6acc93.jsonl"
+      }
+    ],
+    "achados": 0,
+    "em": "2026-11-24",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aa0b083631aa8253c",
+            "veredito": "reprovado",
+            "em": "2026-11-18",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-portaria-publicacao/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa0b083631aa8253c.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae20d889ecfbbcfb6",
+            "veredito": "reprovado",
+            "em": "2026-11-24",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae20d889ecfbbcfb6.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a92e42c6ad89cb554",
+            "veredito": "ok",
+            "em": "2026-11-24",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a92e42c6ad89cb554.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "368382c125b5838d77cccc46757f81e65b40b8ae",
+    "head": "d3b509a312c6e601091084bbf03f7a85fd466374"
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-24",
+    "comando": "node hooks/testa-portaria-fluxo-pulado.cjs; bash hooks/testa-gate-publicacao-destino.sh",
+    "saida": "ok: 116 falhou: 0; == resultado: 330 ok, 0 falha(s) ==; aviso-fluxo 10/0, bloqueio-fluxo 37/0; 2.17.1 nos dois manifestos, selo e CHANGELOG com #726 #728 #729; vizinhas da lib: fechar-issue 669/0, staging-total 199/0, mensagem-commit 93/0, cwd-efetivo 85/0",
+    "sensor_externo": "bash hooks/testa-gate-publicacao-destino.sh",
+    "head": "5dfc309948203d633014f239ffec17d330f77459"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-24"
+  },
+  "decididos": [
+    {
+      "pergunta": "O diff da branch (D1 parte 2) vale para .gates.json com campo branch?",
+      "escolha": "Nao: so para .gates.json sem branch; com branch, so a igualdade decide",
+      "porque": "o campo branch e o vinculo explicito do arquivo com uma branch (D10 do fluxo-pulado); o leitor cego apontou o refinamento",
+      "estagio": "plano",
+      "em": "2026-11-18T11:03:51.719Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-11-24",
+      "de": "revisar",
+      "motivo": "preexistente no arquivo da entrega (revisao 3): endpoint decodificado de gh api nao e conferido; contents/ter\\mo702.md passa"
+    }
+  ]
+}

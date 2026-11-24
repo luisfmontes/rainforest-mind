@@ -1084,6 +1084,41 @@ par707 "release -pn agrupado" "$R702P" 'gh release create v1 -pn termo702'
 confere702 "707 release view passa" 0 "$PUB" Bash "$R702P" 'gh release view v1'
 confere702 "707 api sem termo passa" 0 "$PUB" Bash "$R702P" 'gh api repos/dono/x/issues -f title=ok'
 echo
+echo "== (#726) gh api: destino no endpoint =="
+# D2 do portaria-publicacao: o nome da conta ou do repositorio de destino no endpoint nao e
+# texto publicado; o resto do caminho, a query string e os campos continuam conferidos.
+confere702 "726 orgs/<termo>/teams passa" 0 "$PUB" Bash "$R702P" 'gh api orgs/termo702/teams -X POST -f name=x -f privacy=closed'
+confere702 "726 users/<termo> passa" 0 "$PUB" Bash "$R702P" 'gh api users/termo702/x -X POST -f a=b'
+confere702 "726 repos/<termo>/x publico passa" 0 "$PUB" Bash "$R702P" 'gh api repos/termo702/x/issues -X POST -f title=ok'
+confere702 "726 campo de org com termo barra" 2 "$PRIV" Bash "$R702P" 'gh api orgs/termo702/teams -X POST -f description=termo702'
+confere702 "726 contents/<termo> no publico barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/termo702.md -f message=ok -f content=eA=='
+confere702 "726 query string com termo barra" 2 "$PRIV" Bash "$R702P" "gh api 'orgs/x/teams?q=termo702' -X POST -f name=y"
+# Revisao 1: so o token do endpoint se neutraliza; corpo por pipe, <<< e echo > arquivo seguem conferidos.
+confere702 "726 corpo por pipe com orgs/<termo> barra" 2 "$PUB" Bash "$R702P" "printf '{\"title\":\"ver orgs/termo702/projects/1\"}' | gh api -X POST repos/dono/x/issues --input -"
+confere702 "726 corpo por <<< com users/<termo> barra" 2 "$PUB" Bash "$R702P" "gh api -X POST repos/dono/x/issues --input - <<< '{\"title\":\"users/termo702\"}'"
+confere702 "726 echo > arquivo com repos/<termo>/y barra" 2 "$PUB" Bash "$R702P" "echo 'repos/termo702/y' > b726.json && gh api -X POST repos/dono/x/issues --input b726.json"
+confere702 "726 corpo anterior igual ao endpoint barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/termo702/teams -X POST --input -"
+# Revisao 1, achado 2: so o inicio do endpoint; orgs/users/repos dentro de contents/ e nome de arquivo.
+confere702 "726 contents/docs/users/<termo> barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/docs/users/termo702.md -f message=ok -f content=eA=='
+confere702 "726 contents/orgs/<termo>/README barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/orgs/termo702/README.md -f message=ok -f content=eA=='
+confere702 "726 contents/a/repos/<termo>/b barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/a/repos/termo702/b.md -f message=ok -f content=eA=='
+confere702 "726 URL completa de orgs/<termo> passa" 0 "$PUB" Bash "$R702P" 'gh api https://api.github.com/orgs/termo702/teams -X POST -f name=x'
+confere702 "726 /orgs/<termo> com barra inicial passa" 0 "$PUB" Bash "$R702P" 'gh api /orgs/termo702/teams -X POST -f name=x'
+# Revisao de seguranca do 8d599a1a: endpoint cuja forma crua difere do valor (aspa no meio,
+# contrabarra) nao se acha literal; a troca cairia no corpo igual. So token simples se neutraliza.
+confere702 "726 endpoint com aspa no meio e corpo igual barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/ter\"mo702\"/teams -X POST --input -"
+confere702 "726 endpoint com contrabarra e corpo igual barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/ter\\\\mo702/teams -X POST --input -"
+confere702 "726 endpoint entre aspas inteiro passa" 0 "$PUB" Bash "$R702P" "gh api 'orgs/termo702/teams' -X POST -f name=x"
+# Revisao 2: UMA contrabarra solta (no caso acima o valor guarda uma contrabarra; aqui o bash a tira).
+confere702 "726 endpoint com uma contrabarra e corpo igual barra" 2 "$PUB" Bash "$R702P" 'printf '"'"'orgs/termo702/teams'"'"' | gh api orgs/ter\mo702/teams -X POST --input -'
+confere702 "726 endpoint com uma contrabarra e corpo por <<< barra" 2 "$PUB" Bash "$R702P" 'gh api orgs/ter\mo702/teams -X POST --input - <<< '"'"'orgs/termo702/teams'"'"
+confere702 "726 endpoint depois de corpo sem termo por pipe passa" 0 "$PUB" Bash "$R702P" "printf 'x' | gh api orgs/termo702/teams -X POST --input -"
+# Revisao 3 (preexistente): o endpoint decodificado tambem se confere; o termo escondido por
+# contrabarra ou aspa no nome do arquivo publicado barra. O destino ofuscado continua passando.
+confere702 "726 contents com contrabarra no nome do arquivo barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/ter\mo702.md -f message=ok -f content=eA=='
+confere702 "726 contents com aspa no meio do nome do arquivo barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/ter"mo"702.md -f message=ok -f content=eA=='
+confere702 "726 org com contrabarra no destino passa" 0 "$PUB" Bash "$R702P" 'gh api orgs/ter\mo702/teams -X POST -f name=x'
+echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.17.1 — 2026-11-18
+
+Dois bloqueios falsos a menos, sem abrir o que cada gate protege.
+
+- **A portaria reconhece o trilho do protheus aberto na pasta do cliente (#728, #729).** Num repositório multi-cliente, o `.gates.json` do trabalho fica em `<cliente>/docs/plans/`, e a portaria só lia `<raiz>/docs/plans/`. Com isso, o `protheus-implementer` era barrado com o trilho aberto. Agora:
+  - ela lê também `<raiz>/<pasta>/docs/plans/*.gates.json`, para cada pasta de primeiro nível que não começa com `.`;
+  - um `.gates.json` sem campo `branch` também abre quando os commits da branch (contra o merge-base com a padrão do remoto) tocam o próprio arquivo ou o plano e o design que ele declara. Assim, um trabalho que passa mais de um dia sem mexer no `.gates.json` não volta a ser barrado. Mudança ainda não commitada não conta, e sem remoto ou sem merge-base essa via não abre;
+  - o trilho protheus aberto libera o agente que escreve mesmo quando a raiz também tem `docs/rainforest/estado/`. Nesse caso, só vale o `.gates.json` ligado à branch: campo `branch` igual à branch atual, ou presente nos commits dela. A regra de "modificado há menos de um dia" não vale aqui, porque um `git worktree add` renova a data de todo arquivo;
+  - a recusa diz onde procurou o `.gates.json`.
+- **`gh api` não confere mais o nome da conta ou do repositório de destino no endpoint (#726).** Em `gh api orgs/<org>/teams -X POST ...`, o nome da org na lista privada barrava a chamada, mas ele só identifica a conta que já existe. Quando o endpoint começa por `orgs/` ou `users/`, o segmento seguinte deixa de ser conferido; quando começa por `repos/`, os dois seguintes. O resto do caminho continua conferido: `PUT repos/<dono>/<repo>/contents/<arquivo>` com um termo privado no nome do arquivo ainda barra, inclusive em `contents/docs/users/<termo>.md`. O corpo que chega por pipe ou por `<<<` também continua conferido. A query string, os campos (`-f`, `-F`) e os corpos de `--input` também continuam conferidos.
+
 ## 2.17.0 — 2026-11-17
 
 Quatro gates deixam de barrar formas que não escondiam nada. Antes, cada uma dessas formas aparecia como "hook error" e o modelo reescrevia o comando para contornar. Os números são da semana anterior, medidos nos transcripts das duas contas.

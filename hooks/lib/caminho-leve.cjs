@@ -109,31 +109,108 @@ function gateAbreFluxo(dados, { branch, mtimeMs, agora }) {
   return agora - mtimeMs < UM_DIA_MS;
 }
 
-/** Trilho protheus com fluxo aberto na `branch`: algum `docs/plans/*.gates.json` decide aberto.
- *  Arquivo ilegível (ou JSON que não é objeto) é ignorado, não derruba a leitura. */
-function protheusAberto({ gitTop, branch, agora = Date.now() }) {
-  const dirPlans = path.join(gitTop, 'docs', 'plans');
-  let arquivos;
+/** Diretórios `<gitTop>/<pasta>/docs/plans` das pastas de primeiro nível que não começam com
+ *  `.` (portaria-publicacao D1, parte 1): repositório multi-cliente guarda o plano e o
+ *  `.gates.json` na pasta do cliente. Pasta com ponto (`.claude/worktrees`, `.git`) fica fora,
+ *  para um worktree aninhado não abrir o trilho do principal; symlink para pasta também. */
+function pastasDePlans(gitTop) {
+  let entradas;
   try {
-    arquivos = fs.readdirSync(dirPlans);
+    entradas = fs.readdirSync(gitTop, { withFileTypes: true });
   } catch (_) {
-    return false;
+    return [];
   }
-  for (const f of arquivos) {
-    if (!f.endsWith('.gates.json')) continue;
-    const arq = path.join(dirPlans, f);
-    let dados;
-    let mtimeMs;
+  return entradas
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+    .map((e) => path.join(gitTop, e.name, 'docs', 'plans'));
+}
+
+function gitEm(gitTop, args) {
+  const r = spawnSync(caminhoExecutavel('git'), ['-C', gitTop, ...args], { encoding: 'utf8', stdio: 'pipe' });
+  return r.status === 0 ? r.stdout : null;
+}
+
+/** Arquivos que a branch mudou desde o merge-base com a padrão do remoto (D1, parte 2), só o
+ *  COMMITADO (`base..HEAD`): mudança não commitada não prova que o plano é da branch (revisão de
+ *  segurança de 2026-11-18). Set de caminhos relativos a gitTop, com `/` e em minúsculas. null
+ *  quando não dá para calcular (sem remoto, sem merge-base): aí o diff não libera nada. */
+function arquivosDaBranch(gitTop) {
+  // origin/HEAD pode apontar para ref que não existe mais: cada candidata se confere antes de usar.
+  const sym = gitEm(gitTop, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']);
+  const candidatas = [sym && sym.trim(), 'origin/main', 'origin/master'].filter(Boolean);
+  const padrao = candidatas.find((nome) =>
+    gitEm(gitTop, ['rev-parse', '--verify', '--quiet', `refs/remotes/${nome}`]) !== null) || null;
+  if (!padrao) return null;
+  const base = gitEm(gitTop, ['merge-base', 'HEAD', padrao]);
+  if (!base || !base.trim()) return null;
+  const lista = gitEm(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '--no-renames', '-z', base.trim(), 'HEAD']);
+  if (lista === null) return null;
+  return new Set(lista.split('\0').filter(Boolean).map((p) => p.toLowerCase()));
+}
+
+/** O `.gates.json` é desta branch quando o diff dela toca o próprio arquivo ou o plano/design que
+ *  ele declara (`plan.file`, `design.doc`, ou `plan`/`design` como texto). O caminho declarado se
+ *  lê relativo a gitTop e relativo à pasta que contém o `docs/plans` do arquivo (`baseDir`). */
+function tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff) {
+  const declarados = [
+    dados.plan && typeof dados.plan === 'object' ? dados.plan.file : null,
+    dados.design && typeof dados.design === 'object' ? dados.design.doc : null,
+    typeof dados.plan === 'string' ? dados.plan : null,
+    typeof dados.design === 'string' ? dados.design : null,
+  ].filter((v) => typeof v === 'string' && v.trim() !== '');
+  const absolutos = [arq];
+  for (const v of declarados) absolutos.push(path.resolve(gitTop, v), path.resolve(baseDir, v));
+  const candidatos = absolutos
+    .map((c) => path.relative(gitTop, c).split(path.sep).join('/').toLowerCase())
+    .filter((c) => c !== '' && !c.startsWith('..') && !path.isAbsolute(c));
+  const diff = lerDiff();
+  if (diff === null) return false;
+  return candidatos.some((c) => diff.has(c));
+}
+
+/** Trilho protheus com fluxo aberto na `branch`: algum `.gates.json` de `<gitTop>/docs/plans` ou
+ *  de `<gitTop>/<pasta>/docs/plans` decide aberto — pelo `gateAbreFluxo`, ou, sem campo `branch`,
+ *  pelo diff da branch (portaria-publicacao D1). Com `exigeVinculo` (trilho rainforest na raiz,
+ *  D1.3 emendada), o mtime não conta: só `branch` igual à atual ou o diff commitado. Pasta ou
+ *  arquivo ilegível (ou JSON que não é objeto) é ignorado, não derruba a leitura. */
+function protheusAberto({ gitTop, branch, agora = Date.now(), exigeVinculo = false }) {
+  const dirs = [path.join(gitTop, 'docs', 'plans'), ...pastasDePlans(gitTop)];
+  let diffCache;
+  const lerDiff = () => (diffCache === undefined ? (diffCache = arquivosDaBranch(gitTop)) : diffCache);
+  for (const dirPlans of dirs) {
+    let arquivos;
     try {
-      dados = JSON.parse(fs.readFileSync(arq, 'utf8'));
-      mtimeMs = fs.statSync(arq).mtimeMs;
+      arquivos = fs.readdirSync(dirPlans);
     } catch (_) {
       continue;
     }
-    if (!dados || typeof dados !== 'object') continue;
-    if (gateAbreFluxo(dados, { branch, mtimeMs, agora })) return true;
+    const baseDir = path.dirname(path.dirname(dirPlans));
+    for (const f of arquivos) {
+      if (!f.endsWith('.gates.json')) continue;
+      const arq = path.join(dirPlans, f);
+      let dados;
+      let mtimeMs;
+      try {
+        dados = JSON.parse(fs.readFileSync(arq, 'utf8'));
+        mtimeMs = fs.statSync(arq).mtimeMs;
+      } catch (_) {
+        continue;
+      }
+      if (!dados || typeof dados !== 'object') continue;
+      const abrePeloArquivo = exigeVinculo
+        ? typeof dados.branch === 'string' && dados.branch === branch
+        : gateAbreFluxo(dados, { branch, mtimeMs, agora });
+      if (abrePeloArquivo) return true;
+      if (typeof dados.branch !== 'string' && tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff)) return true;
+    }
   }
   return false;
 }
 
-module.exports = { leveDaBranch, leveValido, casaComBranch, soLeve, caminhoMapaProtheus, protheusAberto };
+/** Há alguma pasta `docs/plans` que `protheusAberto` leria? Só para a mensagem de recusa falar do
+ *  trilho protheus onde ele existe (revisão de 2026-11-18, achado 4). */
+function temPastaDePlans(gitTop) {
+  return [path.join(gitTop, 'docs', 'plans'), ...pastasDePlans(gitTop)].some((d) => fs.existsSync(d));
+}
+
+module.exports = { leveDaBranch, leveValido, casaComBranch, soLeve, caminhoMapaProtheus, protheusAberto, temPastaDePlans };
