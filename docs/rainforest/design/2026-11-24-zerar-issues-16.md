@@ -42,6 +42,10 @@ Pedido do Luís em 2026-11-24 ("preciso que resolva os erros que estão acontece
 
 - #722 e #724 (D4).
 - A memória que casa por nome de cliente em prosa (sem código nem forma de caminho): segue barrando quando passa do limiar.
+- **Resíduos aceitos da revisão 2 (2026-11-24, todos `[baixa]`):**
+  - *Preexistente:* a regex de URL do GitHub em `remotosDoGitHub` não reconhece barra final (`https://github.com/o/r/`), `git://`, `http://`, host em maiúscula nem porta explícita. Com um remoto assim e a declaração de privado, o termo passa, na base e no HEAD.
+  - `repositoriosDoGitHub` ficou sem chamador depois da emenda da D3 (todos usam `remotosDoGitHub`), com o docblock antigo.
+  - A sugestão de declarar privado na mensagem (`temRemotoGitHub`) não tem caso de teste próprio; o caso novo confere só o exit.
 
 ## Varredura
 
