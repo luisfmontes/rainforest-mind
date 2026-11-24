@@ -22,8 +22,8 @@
     "em": "2026-11-18"
   },
   "executar": {
-    "status": "ok",
-    "catraca_mutacao": "2026-11-18",
+    "status": "parcial",
+    "catraca_mutacao": "2026-11-24",
     "tarefas_ok": 6,
     "tarefas": 6,
     "comando": "node hooks/testa-portaria-fluxo-pulado.cjs; bash hooks/testa-gate-publicacao-destino.sh",
@@ -61,26 +61,52 @@
       }
     ],
     "em": "2026-11-24",
-    "reaberturas": 1
+    "reaberturas": 2,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-24"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "d95cd2aa9427beca5e6772644407c9a3c71bccb6",
+      "head": "d21be1f52f63da8a8af5b21464bad95f19f4e11b",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aa0b083631aa8253c",
+        "agente_id": "ae20d889ecfbbcfb6",
         "veredito": "reprovado",
-        "em": "2026-11-18",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-portaria-publicacao/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa0b083631aa8253c.jsonl"
+        "em": "2026-11-24",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae20d889ecfbbcfb6.jsonl"
       }
     ],
     "achados": 4,
-    "em": "2026-11-18",
-    "tentativas": 1
+    "em": "2026-11-24",
+    "tentativas": 2,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aa0b083631aa8253c",
+            "veredito": "reprovado",
+            "em": "2026-11-18",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-portaria-publicacao/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa0b083631aa8253c.jsonl"
+          }
+        ]
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "tarefa": "revisao rodada 2",
+        "desde": "2026-11-24",
+        "sessao": "285d3173-22aa-41e8-8529-320e13ff133f"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

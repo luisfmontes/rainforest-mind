@@ -114,7 +114,7 @@ pronto quando: com o payload de `Agent` da tarefa 1 e a raiz com `docs/rainfores
 
 ### 4. `gh api`: conta e repositório de destino no endpoint não são conferidos contra a lista privada [tipo: implementar]
 atende: D2, D3
-arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-publicacao-destino.sh`
 depende de: nenhuma
 busca:
 - catalogo | listar --raiz hooks | estendo textosDoGhApi de hooks/gate-publicacao-destino.cjs:834; corposEmbutidos de hooks/gate-publicacao-destino.cjs:991 continua lendo o comando original
@@ -132,6 +132,7 @@ O que fazer:
 - Em `textosDoGhApi`, a entrada do comando passa a ser `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint) }`. Nada mais no arquivo muda (D3).
 - **Emenda da revisão 1 (achado alta):** trocar no texto inteiro do comando apagava o termo de corpo por pipe, `<<<` ou `echo > arquivo`, que só se confere por esse texto. A troca passa a valer só no token do endpoint (`posicionais[0]`), na primeira ocorrência dele no comando, por `neutralizarEndpoint(ep)` (as duas regex acima). Endpoint que não aparece literal no comando deixa o comando como está. Casos novos, todos exit 2 com `"$PUB"`: `726 corpo por pipe com orgs/<termo> barra`, `726 corpo por <<< com users/<termo> barra`, `726 echo > arquivo com repos/<termo>/y barra`, `726 corpo anterior igual ao endpoint barra`.
 - **Emenda da revisão de segurança do `8d599a1a`:** a troca só vale quando o token do endpoint é simples (forma crua igual ao valor: sem `mista`, sem `raw`) e o texto dele aparece uma única vez no comando. Com aspa no meio (`orgs/ter"mo702"/teams`), o `indexOf` caía num corpo igual por pipe e apagava o termo dele. `textosDoGhApi` recebe os tokens com aspas (`objs`) e guarda o índice do endpoint. Casos novos: `726 endpoint com aspa no meio e corpo igual barra` e `726 endpoint com contrabarra e corpo igual barra` (exit 2), `726 endpoint entre aspas inteiro passa` (exit 0).
+- **Emenda da revisão 2 (achado 1, e as revisões de segurança do `db2f583e`):** com uma contrabarra solta (`orgs/termo702/teams`), o tokenizador tira a contrabarra sem marcar `mista` nem `raw`, e a guarda da emenda anterior passava. A troca passa a acontecer na posição do token: `tokensComAspas` (`hooks/lib/tokens-comando.cjs`) ganha `ini`/`fim` não enumeráveis; `neutralizarDestinoNoEndpoint(cmd, endpoint, tokEndpoint, segmento)` só troca quando a forma crua do token no segmento é o valor (ou ele entre um par de aspas), o valor não tem contrabarra, aspas, `$` nem crase, e o segmento aparece uma vez no comando; a posição é `indexOf(segmento) + ini`. Casos novos: `726 endpoint com uma contrabarra e corpo igual barra`, `726 endpoint com uma contrabarra e corpo por <<< barra` (exit 2) e `726 endpoint depois de corpo sem termo por pipe passa` (exit 0). O docblock de `textosDoGhApi` volta para cima da função (achado 3).
 - **Emenda da revisão 1 (achado 2, D2 emendada com Q1 aceita):** as duas regex ganham âncora no início do endpoint, com prefixo opcional `/`, `https://api.github.com/` ou `https://<host>/api/v3/` (constantes `RE_CONTA_NO_ENDPOINT` e `RE_REPO_NO_ENDPOINT`, sem flag `g`). Casos novos: `726 contents/docs/users/<termo> barra`, `726 contents/orgs/<termo>/README barra` e `726 contents/a/repos/<termo>/b barra` (exit 2, `"$PUB"`); `726 URL completa de orgs/<termo> passa` e `726 /orgs/<termo> com barra inicial passa` (exit 0, `"$PUB"`).
 - Bateria: seção nova logo antes do `echo` que precede `== resultado:`, com `echo "== (#726) gh api: destino no endpoint =="`, todos os casos com `confere702` direto, tipo `Bash`, `cwd` `"$R702P"`:
   - `726 orgs/<termo>/teams passa`: exit 0, `"$PUB"`, `gh api orgs/termo702/teams -X POST -f name=x -f privacy=closed`.
@@ -142,7 +143,7 @@ O que fazer:
   - `726 query string com termo barra`: exit 2, `"$PRIV"`, `gh api 'orgs/x/teams?q=termo702' -X POST -f name=y`.
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint, objs && iEndpoint !== -1 ? objs[iEndpoint] : null) }`
+  de: `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint, objs && iEndpoint !== -1 ? objs[iEndpoint] : null, segmento) }`
   para: `{ origem: "comando", texto: cmdOriginal }`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: testa-gate-publicacao-destino.sh, seção "(#726) gh api: destino no endpoint", caso "726 orgs/<termo>/teams passa"

@@ -1109,6 +1109,10 @@ confere702 "726 /orgs/<termo> com barra inicial passa" 0 "$PUB" Bash "$R702P" 'g
 confere702 "726 endpoint com aspa no meio e corpo igual barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/ter\"mo702\"/teams -X POST --input -"
 confere702 "726 endpoint com contrabarra e corpo igual barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/ter\\\\mo702/teams -X POST --input -"
 confere702 "726 endpoint entre aspas inteiro passa" 0 "$PUB" Bash "$R702P" "gh api 'orgs/termo702/teams' -X POST -f name=x"
+# Revisao 2: UMA contrabarra solta (no caso acima o valor guarda uma contrabarra; aqui o bash a tira).
+confere702 "726 endpoint com uma contrabarra e corpo igual barra" 2 "$PUB" Bash "$R702P" 'printf '"'"'orgs/termo702/teams'"'"' | gh api orgs/ter\mo702/teams -X POST --input -'
+confere702 "726 endpoint com uma contrabarra e corpo por <<< barra" 2 "$PUB" Bash "$R702P" 'gh api orgs/ter\mo702/teams -X POST --input - <<< '"'"'orgs/termo702/teams'"'"
+confere702 "726 endpoint depois de corpo sem termo por pipe passa" 0 "$PUB" Bash "$R702P" "printf 'x' | gh api orgs/termo702/teams -X POST --input -"
 echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
