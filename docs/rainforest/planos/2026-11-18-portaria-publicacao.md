@@ -131,6 +131,7 @@ O que fazer:
   com docblock citando a #726 e a D2. Os valores de campo, os corpos de `--input`/`@arquivo` e os corpos embutidos continuam entrando em `textos` pelos caminhos de hoje, lidos do original.
 - Em `textosDoGhApi`, a entrada do comando passa a ser `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint) }`. Nada mais no arquivo muda (D3).
 - **Emenda da revisão 1 (achado alta):** trocar no texto inteiro do comando apagava o termo de corpo por pipe, `<<<` ou `echo > arquivo`, que só se confere por esse texto. A troca passa a valer só no token do endpoint (`posicionais[0]`), na primeira ocorrência dele no comando, por `neutralizarEndpoint(ep)` (as duas regex acima). Endpoint que não aparece literal no comando deixa o comando como está. Casos novos, todos exit 2 com `"$PUB"`: `726 corpo por pipe com orgs/<termo> barra`, `726 corpo por <<< com users/<termo> barra`, `726 echo > arquivo com repos/<termo>/y barra`, `726 corpo anterior igual ao endpoint barra`.
+- **Emenda da revisão de segurança do `8d599a1a`:** a troca só vale quando o token do endpoint é simples (forma crua igual ao valor: sem `mista`, sem `raw`) e o texto dele aparece uma única vez no comando. Com aspa no meio (`orgs/ter"mo702"/teams`), o `indexOf` caía num corpo igual por pipe e apagava o termo dele. `textosDoGhApi` recebe os tokens com aspas (`objs`) e guarda o índice do endpoint. Casos novos: `726 endpoint com aspa no meio e corpo igual barra` e `726 endpoint com contrabarra e corpo igual barra` (exit 2), `726 endpoint entre aspas inteiro passa` (exit 0).
 - **Emenda da revisão 1 (achado 2, D2 emendada com Q1 aceita):** as duas regex ganham âncora no início do endpoint, com prefixo opcional `/`, `https://api.github.com/` ou `https://<host>/api/v3/` (constantes `RE_CONTA_NO_ENDPOINT` e `RE_REPO_NO_ENDPOINT`, sem flag `g`). Casos novos: `726 contents/docs/users/<termo> barra`, `726 contents/orgs/<termo>/README barra` e `726 contents/a/repos/<termo>/b barra` (exit 2, `"$PUB"`); `726 URL completa de orgs/<termo> passa` e `726 /orgs/<termo> com barra inicial passa` (exit 0, `"$PUB"`).
 - Bateria: seção nova logo antes do `echo` que precede `== resultado:`, com `echo "== (#726) gh api: destino no endpoint =="`, todos os casos com `confere702` direto, tipo `Bash`, `cwd` `"$R702P"`:
   - `726 orgs/<termo>/teams passa`: exit 0, `"$PUB"`, `gh api orgs/termo702/teams -X POST -f name=x -f privacy=closed`.
@@ -141,7 +142,7 @@ O que fazer:
   - `726 query string com termo barra`: exit 2, `"$PRIV"`, `gh api 'orgs/x/teams?q=termo702' -X POST -f name=y`.
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint) }`
+  de: `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint, objs && iEndpoint !== -1 ? objs[iEndpoint] : null) }`
   para: `{ origem: "comando", texto: cmdOriginal }`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: testa-gate-publicacao-destino.sh, seção "(#726) gh api: destino no endpoint", caso "726 orgs/<termo>/teams passa"
