@@ -11,7 +11,7 @@ Design: docs/rainforest/design/2026-11-24-zerar-issues-17.md
 
 ## Tarefas
 
-Todas tocam `hooks/lib/heredoc.cjs` e a mesma seção nova de `hooks/testa-gate-staging-total.sh`: seriais, na ordem. A seção nova, criada pela tarefa 1, fica logo antes de `echo "== resultado:` e abre com `echo "== rodada 17 (#724, #722): continuacao, stdin, copia, lista e operador colado =="`; as tarefas 2 a 5 acrescentam casos a ela. Todos os casos usam os ajudantes da bateria (`gate`, `b`, `hd`).
+A execução é na janela principal, não por executor haiku: é a lib de máscara que quatro gates compartilham, e o estágio revisar tem foco em segurança. Todas tocam `hooks/lib/heredoc.cjs` e a mesma seção nova de `hooks/testa-gate-staging-total.sh`: seriais, na ordem. A seção nova, criada pela tarefa 1, fica logo antes de `echo "== resultado:` e abre com `echo "== rodada 17 (#724, #722): continuacao, stdin, copia, lista e operador colado =="`; as tarefas 2 a 5 acrescentam casos a ela. Todos os casos usam os ajudantes da bateria (`gate`, `b`, `hd`).
 
 ### 1. A máscara começa depois da linha lógica (#724) [tipo: implementar]
 atende: D1
@@ -28,7 +28,7 @@ O que fazer:
   - `#724 continuacao com corpo de dado passa` → 0: `$(b "$(hd "cat <<'A' \\" "> nota.md" "git add -A" "A")")`.
 - `hooks/testa-gate-mensagem-commit.sh`, depois da seção `(m)`: `gate "#724 git commit pelado na continuacao da linha do heredoc -> exit 2" 2 "$(payload "$R1" Bash $'cat <<\x27A\x27 \\\n> /dev/null; git commit\nx\nA')"`.
 - `hooks/testa-gate-worktree.sh`, depois do caso `git commit -F msg.txt depois de heredoc com rm -rf "$X" no corpo passa`: `g580e '#724 mv na continuacao da linha do heredoc barra' 2 "$(printf '%s\n' "cat <<'A' \\" '> msg.txt; mv a.txt "$X/f"' 'x' 'A')"`.
-- `hooks/testa-gate-publicacao-destino.sh`, logo depois do caso `gh entre chaves em cwd privado barra (cwd incerto, falso positivo aceito)`, com `GH702="node $SANDBOX_BIN/gh-por-nome"` antes e o valor anterior restaurado depois: `confere702 "#724 GH_REPO na continuacao da linha do heredoc barra" 2 "" Bash "$R702P" $'cat <<\x27A\x27 \\\n> /dev/null; export GH_REPO=dono/publico; gh issue create --title termo702 --body x\nx\nA'`. Se a base já sair 2 por outro caminho (o caso não mediria a máscara), troca-se pela forma que a máscara afeta e o plano se emenda.
+- `hooks/testa-gate-publicacao-destino.sh`, logo depois do caso `gh entre chaves em cwd privado barra (cwd incerto, falso positivo aceito)` e antes da linha que restaura `GH702="node $SANDBOX_BIN/gh"` (o `GH702` ali já é `gh-por-nome`): `confere702 "#724 GH_REPO na continuacao da linha do heredoc barra" 2 "" Bash "$R702P" $'cat <<\x27A\x27 \\\n> /dev/null; export GH_REPO=dono/publico; gh issue create --title termo702 --body x\nx\nA'`. Se contra a lib da base o caso já sair 2 (não mediria a máscara), a execução para e reporta antes de seguir.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`
   de: `const fl = fimDaLinhaLogica(fora, i);`
@@ -46,15 +46,15 @@ busca:
 - catalogo | tokensComAspas em hooks/lib/tokens-comando.cjs | estendo; o tokenizador é de uso geral e não separa operador colado de propósito, então a separação fica local em heredoc.cjs
 desfecho: estender
 O que fazer:
-- Em `hooks/lib/heredoc.cjs`, `const RE_OPERADOR_COLADO = /([|;&(){}]+|\d*<|\d*>>?)/;` e `function tokensSeparados(texto)`: tokeniza com `tokensComAspas` (no `catch`, `split(/\s+/)` como hoje), aplica `.flatMap((t) => t.split(RE_OPERADOR_COLADO))` e descarta vazios. Comentário citando a D7.
+- Em `hooks/lib/heredoc.cjs`, `const RE_OPERADOR_COLADO = /([|;&(){}]+|\d*<|\d*>>?)/;` e `function tokensSeparados(texto)`: `let toks; try { toks = tokensComAspas(texto).map((t) => String(t.v)); } catch { toks = texto.split(/\s+/); }` e `return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);` (essa linha, literal, é o `de:` da mutação). Comentário citando a D7.
 - `executoresDoAlvo` usa `tokensSeparados(depois)` no lugar do `try { toks = tokensComAspas(...) } catch {...}`.
 - Casos na seção nova:
   - `operador colado: bash t.sh; true barra` → 2: `$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash t.sh; true")")`.
-  - `operador colado: node t.cjs;bash t.cjs barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "node t.cjs;bash t.cjs")")`.
+  - `operador colado: bash t.sh;true barra` → 2: `$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash t.sh;true")")`.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`
-  de: `.flatMap((t) => t.split(RE_OPERADOR_COLADO))`
-  para: `.slice()`
+  de: `return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);`
+  para: `return toks;`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 17", caso "operador colado: bash t.sh; true barra"
 prova-na-base: verde — casos novos desta tarefa; contra a lib da base `bash t.sh; true` sai 0 (sonda de 2026-11-24)
@@ -70,20 +70,21 @@ desfecho: estender
 O que fazer:
 - `function alvosDaLinha(cmd, i)`: o trecho comum hoje repetido nas duas funções (linha lógica do heredoc, regex dos alvos de `>`/`>>`, nome-base) devolve o `Set`.
 - `function ehRedirecionamentoDeEntrada(t)`: `/^\d*<$/.test(t)`.
-- `function comandoDoTrecho(toks, k)`: do operador (`/^[|;&(){}]+$/`) anterior a `k` até `k`, pula atribuições (`/^\w+=/`) e redirecionamentos com o alvo; devolve `{ nome: normalizarExecutavel(primeiro), posicionais }`, onde `posicionais` conta os tokens entre o comando e `k` que não são flag (`-`) nem redirecionamento ou alvo dele.
+- `const ehOperador = (t) => /^[|;&(){}]+$/.test(t);` e `function trechoEm(toks, k)`: devolve `[ini, fim]`, com `ini` = um depois do último operador antes de `k` (ou 0) e `fim` = o próximo operador a partir de `k` (ou `toks.length`). É o único cortador de trechos, usado também pela tarefa 4.
+- `function comandoDoTrecho(toks, ini, ate)`: percorre `toks[ini..ate)`, pula atribuições (`/^\w+=/`) e cada redirecionamento (`/^\d*[<>]/`) junto com o token seguinte (o alvo); o primeiro que sobra é o comando, e os seguintes que não começam com `-` contam como posicionais. Devolve `{ nome: normalizarExecutavel(comando) ou null, posicionais }`.
 - Em `executoresDoAlvo`, para cada token que casa um alvo, nesta ordem:
   1. `./x` como hoje;
-  2. `if (k > 0 && ehRedirecionamentoDeEntrada(toks[k - 1]))`: `comandoDoTrecho(toks, k - 1)`; executor de `EXECUTAM_ARQUIVO` com `posicionais === 0` entra; `continue`;
+  2. `if (k > 0 && ehRedirecionamentoDeEntrada(toks[k - 1]))`: `const [ini] = trechoEm(toks, k); const c = comandoDoTrecho(toks, ini, k - 1);` executor de `EXECUTAM_ARQUIVO` com `c.posicionais === 0` entra; `continue` sempre, entrando ou não;
   3. a varredura de hoje (anterior que não é flag);
-  4. se o comando do trecho é `cat`: o próximo operador depois de `k` é `|` (ou `|&`) e o comando do trecho seguinte é executor sem posicional → entra.
+  4. se `comandoDoTrecho(toks, ini, fim).nome === "cat"` (com `[ini, fim] = trechoEm(toks, k)`) e `toks[fim]` é `|` ou `|&`: `const [ini2, fim2] = trechoEm(toks, fim + 1)`, e `comandoDoTrecho(toks, ini2, fim2)` executor sem posicional → entra.
 - `alvoDoRedirecionamentoEhExecutadoDepois` vira `return executoresDoAlvo(cmd, i, fimDoHeredoc).length > 0;`, com o docblock dizendo que é a mesma régua (D4).
 - Casos na seção nova:
   - `#722 sh < t.cjs barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "sh < t.cjs")")`.
-  - `#722 sh <t.cjs colado barra` → 2 (mesmo corpo, `sh <t.cjs`).
-  - `#722 cat t.cjs | sh barra` → 2 (mesmo corpo, `cat t.cjs | sh`).
-  - `#722 node t.cjs; sh < t.cjs barra` → 2 (a forma da Issue).
+  - `#722 sh <t.cjs colado barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "sh <t.cjs")")`.
+  - `#722 cat t.cjs | sh barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "cat t.cjs | sh")")`.
+  - `#722 node t.cjs; sh < t.cjs barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "node t.cjs; sh < t.cjs")")`.
   - `python script.py < dados.txt passa` → 0: `$(b "$(hd "cat > dados.txt <<'EOF'" "git add -A" "EOF" "python script.py < dados.txt")")`.
-  - `cat dados.txt | node x.js passa` → 0 (corpo `git add -A` em `dados.txt`).
+  - `cat dados.txt | node x.js passa` → 0: `$(b "$(hd "cat > dados.txt <<'EOF'" "git add -A" "EOF" "cat dados.txt | node x.js")")`.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`
   de: `ehRedirecionamentoDeEntrada(toks[k - 1])`
@@ -101,14 +102,15 @@ busca:
 - catalogo | listar --raiz hooks/lib | nada equivalente: nenhuma lib segue cópia de arquivo em comando
 desfecho: criar
 O que fazer:
-- `function expandirAlvosPorCopia(toks, alvos)`: até 10 voltas, enquanto o `Set` cresce, para cada trecho (entre operadores): comando `cp`, `mv`, `ln` ou `install` com dois ou mais posicionais, algum de origem (todos menos o último) com nome-base em `alvos` → acrescenta o nome-base do último (vazio, como em `d/`, não entra); comando `cat` com posicional em `alvos` e redirecionamento `>`/`>>` no trecho → acrescenta o nome-base do alvo do redirecionamento.
+- `function nomeBase(t)`: tira aspas das pontas (`replace(/^["']+|["']+$/g, "")`) e devolve `split(/[\\/]/).pop()`, a mesma conta de hoje; `executoresDoAlvo` e `alvosDaLinha` passam a usá-la.
+- `function expandirAlvosPorCopia(toks, alvos)`: até 10 voltas, enquanto o `Set` cresce, para cada trecho cortado por `trechoEm` (da tarefa 3), com os posicionais contados como em `comandoDoTrecho` (flag = começa com `-`, pulada sem valor; redirecionamento e alvo fora): comando `cp`, `mv`, `ln` ou `install` com dois ou mais posicionais, algum de origem (todos menos o último) com nome-base em `alvos` → acrescenta o nome-base do último (vazio, como em `d/`, não entra); comando `cat` com posicional em `alvos` e redirecionamento `>`/`>>` no trecho → acrescenta o nome-base do alvo do redirecionamento.
 - Em `executoresDoAlvo`, `expandirAlvosPorCopia(toks, alvos);` logo depois de `tokensSeparados`.
-- Casos na seção nova (corpo `git add -A` gravado em `t.cjs`):
-  - `#722 cp t.cjs x.sh && bash x.sh barra` → 2.
-  - `#722 cat t.cjs > x.sh && bash x.sh barra` → 2.
-  - `#722 cp t.cjs a; mv a b.sh; bash b.sh barra` → 2.
-  - `#722 node t.cjs; cp t.cjs x.sh; bash x.sh barra` → 2 (a forma da Issue).
-  - `cp nota.md copia.md passa` → 0 (corpo `git add -A` em `nota.md`, sem executor).
+- Casos na seção nova, todos `$(b "$(hd "cat > <arq> <<'EOF'" "git add -A" "EOF" "<cauda>")")` com `<arq>` e `<cauda>`:
+  - `#722 cp t.cjs x.sh && bash x.sh barra` → 2: `t.cjs`, `cp t.cjs x.sh && bash x.sh`.
+  - `#722 cat t.cjs > x.sh && bash x.sh barra` → 2: `t.cjs`, `cat t.cjs > x.sh && bash x.sh`.
+  - `#722 cp t.cjs a; mv a b.sh; bash b.sh barra` → 2: `t.cjs`, `cp t.cjs a; mv a b.sh; bash b.sh`.
+  - `#722 node t.cjs; cp t.cjs x.sh; bash x.sh barra` → 2: `t.cjs`, `node t.cjs; cp t.cjs x.sh; bash x.sh`.
+  - `cp nota.md copia.md passa` → 0: `nota.md`, `cp nota.md copia.md`.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`
   de: `expandirAlvosPorCopia(toks, alvos);`
@@ -126,12 +128,12 @@ busca:
 - catalogo | mascaraSoGit em hooks/lib/heredoc.cjs:413 | estendo; é a única máscara de corpo não-shell
 desfecho: estender
 O que fazer:
-- `function trechosDeListaGit(linha)`: acha cada literal `'git'`, `"git"` ou `` `git` `` seguido de literais separados por espaço, vírgula ou colchete, com a mesma aspa abrindo e fechando cada um; devolve os intervalos `[ini, fim)`.
+- `function trechosDeListaGit(linha)`: acha cada literal `'git'`, `"git"` ou `` `git` `` (sem exigir `(` ou `[` antes) e o estende enquanto vier, depois de espaços, vírgulas e colchetes, outro literal completo de mesma aspa na abertura e no fechamento (sem quebra de linha nem aspa dentro); a sequência termina no primeiro caractere que não é isso. Devolve os intervalos `[ini, fim)`, `fim` logo depois da aspa que fecha o último literal.
 - Em `mascaraSoGit`, depois do laço de hoje: `for (const [a, z] of trechosDeListaGit(linha))`, cada posição do intervalo recebe o caractere original, trocado por espaço quando é aspa, vírgula ou colchete. Comprimento preservado.
 - Casos na seção nova:
-  - `#722 spawnSync('git',['add','-A']) executado por node barra` → 2.
-  - `#722 subprocess.run(["git", "add", "-A"]) executado por python barra` → 2.
-  - `spawnSync('git',['status']) executado por node passa` → 0.
+  - `#722 spawnSync('git',['add','-A']) executado por node barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "require('child_process').spawnSync('git',['add','-A'])" "EOF" "node t.cjs")")`.
+  - `#722 subprocess.run(["git", "add", "-A"]) executado por python barra` → 2: `$(b "$(hd "cat > t.py <<'EOF'" 'subprocess.run(["git", "add", "-A"])' "EOF" "python t.py")")`.
+  - `spawnSync('git',['status']) executado por node passa` → 0: o primeiro com `['status']`.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`
   de: `of trechosDeListaGit(linha)`
@@ -146,9 +148,9 @@ atende: D6
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
 depende de: 5
 O que fazer:
-- `version` `2.17.3` nas duas `plugin.json` e no selo do `README.md`.
+- `version` `2.17.3` nas duas `plugin.json` e nas duas ocorrências da linha do selo do `README.md` (URL e `alt`).
 - `## 2.17.3 — 2026-11-24` no topo do `CHANGELOG.md`, um item por Issue (#724, #722) e um para o operador colado, do ponto de vista de quem usa.
 mutacao: n/a
   motivo: troca de número de versão e texto de changelog, sem comportamento a inverter
 prova: `grep -q '"version": "2.17.3"' .claude-plugin/plugin.json`
-pronto quando: com o plugin instalado pela versão nova, provado por `grep -c '"version": "2.17.3"' .claude-plugin/plugin.json .codex-plugin/plugin.json` imprimindo 1 em cada, e `grep -c '^## 2.17.3' CHANGELOG.md` imprimindo 1.
+pronto quando: com os manifestos que o cache lê para instalar, provado por `grep -c '"version": "2.17.3"' .claude-plugin/plugin.json .codex-plugin/plugin.json` imprimindo 1 em cada, e `grep -c '^## 2.17.3' CHANGELOG.md` imprimindo 1.
