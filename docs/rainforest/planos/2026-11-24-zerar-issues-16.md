@@ -40,7 +40,7 @@ busca:
 - catalogo | termosDe em hooks/gate-pergunta-memoria.cjs:59 | estendo antes de termosDe; nenhuma lib tira código inline de texto
 desfecho: estender
 O que fazer:
-- Função `function semNomesDeObjeto(texto)` logo depois de `termosDe`, com comentário citando a #730 e a D2: troca cada `` `...` `` (sem quebra de linha dentro) por espaço; depois parte por espaço em branco e descarta a palavra que casa `/[\p{L}\p{N}]\/[\p{L}\p{N}]/u` (caminho, branch) ou `/[\p{L}\p{N}]-[\p{L}\p{N}]+-[\p{L}\p{N}]/u` (dois hífens ou mais); junta com espaço.
+- Função `function semNomesDeObjeto(texto)` logo depois de `termosDe`, com comentário citando a #730 e a D2 emendada: parte por espaço em branco, descarta a palavra que casa `RE_FORMA_DE_CAMINHO = /[\p{L}\p{N}]\/[\p{L}\p{N}]/u` (caminho, branch, com ou sem crase em volta) e junta com espaço. Emenda de 2026-11-24 (executar): código inline e kebab sem barra ficam, porque tirá-los derrubava o P1.
 - Em `main`, a chamada passa a ser `const m = melhorMemoria(termosDe(semNomesDeObjeto(p.texto)), lista);`. A extração da memória (`memorias`) não muda.
 - Bateria, dois casos novos antes do laço de limpeza, com `cenarioMemoria({ texto, name: 'project-abacate-modelo-padrao', description: 'design do modelo padrao do abacate e quem assumiu a implementacao' })`:
   - P25: `Q2: Posso apagar o worktree e a branch antigos \`refactor/abacate-modelo-padrao\`? Recomendo apagar.` → exit 0.
