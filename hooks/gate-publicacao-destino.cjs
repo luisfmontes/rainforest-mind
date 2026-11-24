@@ -843,14 +843,19 @@ function neutralizarEndpoint(ep) {
     .replace(RE_REPO_NO_ENDPOINT, "$1<destino>/<destino>");
 }
 
-function neutralizarDestinoNoEndpoint(cmd, endpoint) {
+function neutralizarDestinoNoEndpoint(cmd, endpoint, tokEndpoint) {
   if (typeof endpoint !== "string" || endpoint === "") return cmd;
+  // Revisão de segurança do 8d599a1a: só token SIMPLES, cuja forma crua é o próprio valor (sem
+  // aspa no meio, sem contrabarra), e só se o texto aparecer UMA vez no comando. Fora disso a
+  // primeira ocorrência pode ser um corpo igual, e o endpoint real, escrito de outra forma, não
+  // traz o termo literal: a troca apagaria o termo do corpo. Sem o token, nada se troca.
+  if (!tokEndpoint || tokEndpoint.mista || tokEndpoint.raw !== undefined || tokEndpoint.v !== endpoint) return cmd;
   const i = cmd.indexOf(endpoint);
-  if (i === -1) return cmd;
+  if (i === -1 || cmd.indexOf(endpoint, i + 1) !== -1) return cmd;
   return cmd.slice(0, i) + neutralizarEndpoint(endpoint) + cmd.slice(i + endpoint.length);
 }
 
-function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
+function textosDoGhApi(toks, iApi, cmdOriginal, cwd, objs) {
   // Uma passada só, como o pflag do `gh` lê (revisões de segurança de
   // 2026-11-16): flag curta se desagrupa (`-ifbody=x` é `-i` e `-f body=x`;
   // `-f=body=x` perde o `=`), e flag que pede valor sem valor colado consome
@@ -860,10 +865,15 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   const brutos = toks.slice(iApi + 1);
   const pares = [];
   const posicionais = [];
+  let iEndpoint = -1;
   let grupoIlegivel = false;
   for (let i = 0; i < brutos.length; i += 1) {
     const t = brutos[i];
-    if (t === "--") { posicionais.push(...brutos.slice(i + 1)); break; }
+    if (t === "--") {
+      if (posicionais.length === 0 && i + 1 < brutos.length) iEndpoint = iApi + 2 + i;
+      posicionais.push(...brutos.slice(i + 1));
+      break;
+    }
     if (t.startsWith("--")) {
       const igual = t.indexOf("=");
       const flag = (igual === -1 ? t : t.slice(0, igual)).toLowerCase();
@@ -873,7 +883,11 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
       } else if (!FLAGS_API_LONGAS_BOOLEANAS.has(flag)) grupoIlegivel = true;
       continue;
     }
-    if (!/^-./.test(t)) { posicionais.push(t); continue; }
+    if (!/^-./.test(t)) {
+      if (posicionais.length === 0) iEndpoint = iApi + 1 + i;
+      posicionais.push(t);
+      continue;
+    }
     for (let k = 1; k < t.length; k += 1) {
       const flag = `-${t[k]}`;
       if (FLAGS_API_VALOR.has(flag)) {
@@ -901,7 +915,7 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   if (grupoIlegivel) ehEscrita = true;
   if (!ehEscrita) return null;
   const endpoint = posicionais[0] ?? null;
-  const textos = [{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint) }, ...corposEmbutidos(cmdOriginal)];
+  const textos = [{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint, objs && iEndpoint !== -1 ? objs[iEndpoint] : null) }, ...corposEmbutidos(cmdOriginal)];
   let metodo = null;
   let hostname = false;
   let gistPublico = false;
@@ -1042,9 +1056,10 @@ function visibilidadeDoAlvo(ownerRepo) {
  */
 function textosDoSegmentoGh(segmento, cmdOriginal, cwd, ferramenta) {
   const { tokensComAspas } = require("./lib/tokens-comando.cjs");
-  let toksBase;
-  try { toksBase = tokensComAspas(segmento).map((t) => t.v); } catch { return null; }
-  const rBase = lerSegmentoGh(toksBase, null, cmdOriginal, cwd);
+  let objsBase;
+  try { objsBase = tokensComAspas(segmento); } catch { return null; }
+  const toksBase = objsBase.map((t) => t.v);
+  const rBase = lerSegmentoGh(toksBase, null, cmdOriginal, cwd, objsBase);
   // `gh issue`/`gh pr` e todo PowerShell seguem a leitura da base, intocada:
   // a régua de escape do bash, abaixo, vale só para as famílias novas da #707
   // (no PowerShell a contrabarra é literal, e caminho `.\corpo.md` não pode
@@ -1056,13 +1071,13 @@ function textosDoSegmentoGh(segmento, cmdOriginal, cwd, ferramenta) {
   // caractere seguinte, aspa inclusive (`\-f`, `\'`, `rel\ease`, `a\pi`).
   let brutos;
   try { brutos = tokensComAspas(segmento, { contrabarra: true }); } catch { return rBase; }
-  const rBash = lerSegmentoGh(brutos.map((t) => t.v), brutos, cmdOriginal, cwd);
+  const rBash = lerSegmentoGh(brutos.map((t) => t.v), brutos, cmdOriginal, cwd, brutos);
   // Disfarce que vira `issue`/`pr` na leitura do bash (`iss\ue`) segue como na base.
   if (rBash && (rBash.familia === "issue" || rBash.familia === "pr")) return rBase;
   return rBash || rBase;
 }
 
-function lerSegmentoGh(toks, brutos, cmdOriginal, cwd) {
+function lerSegmentoGh(toks, brutos, cmdOriginal, cwd, objs = brutos) {
   const { normalizarExecutavel } = require("./lib/heredoc.cjs");
   const iGh = toks.findIndex((t) => normalizarExecutavel(t) === "gh");
   if (iGh === -1) return null;
@@ -1099,7 +1114,7 @@ function lerSegmentoGh(toks, brutos, cmdOriginal, cwd) {
   // #707 (D1): `gh api` tem gramática própria (endpoint e campos), e é lido à parte.
   const iApi = toks.findIndex((t, k) => k > iGh && !t.startsWith("-"));
   if (iApi !== -1 && toks[iApi].toLowerCase() === "api") {
-    const ra = textosDoGhApi(toks, iApi, cmdOriginal, cwd);
+    const ra = textosDoGhApi(toks, iApi, cmdOriginal, cwd, objs);
     return ra && { ...ra, repoPrefixo, prefixoLimpo };
   }
   let repoValor = null;

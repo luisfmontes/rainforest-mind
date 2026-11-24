@@ -1104,6 +1104,11 @@ confere702 "726 contents/orgs/<termo>/README barra" 2 "$PUB" Bash "$R702P" 'gh a
 confere702 "726 contents/a/repos/<termo>/b barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/a/repos/termo702/b.md -f message=ok -f content=eA=='
 confere702 "726 URL completa de orgs/<termo> passa" 0 "$PUB" Bash "$R702P" 'gh api https://api.github.com/orgs/termo702/teams -X POST -f name=x'
 confere702 "726 /orgs/<termo> com barra inicial passa" 0 "$PUB" Bash "$R702P" 'gh api /orgs/termo702/teams -X POST -f name=x'
+# Revisao de seguranca do 8d599a1a: endpoint cuja forma crua difere do valor (aspa no meio,
+# contrabarra) nao se acha literal; a troca cairia no corpo igual. So token simples se neutraliza.
+confere702 "726 endpoint com aspa no meio e corpo igual barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/ter\"mo702\"/teams -X POST --input -"
+confere702 "726 endpoint com contrabarra e corpo igual barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/ter\\\\mo702/teams -X POST --input -"
+confere702 "726 endpoint entre aspas inteiro passa" 0 "$PUB" Bash "$R702P" "gh api 'orgs/termo702/teams' -X POST -f name=x"
 echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
