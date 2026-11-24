@@ -22,7 +22,7 @@
     "em": "2026-11-18"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-24",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -64,23 +64,22 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "d21be1f52f63da8a8af5b21464bad95f19f4e11b",
+      "head": "ae9ac6d3f36496f1fc066ef835a05a37f185d4b9",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ae20d889ecfbbcfb6",
-        "veredito": "reprovado",
+        "agente_id": "a92e42c6ad89cb554",
+        "veredito": "ok",
         "em": "2026-11-24",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae20d889ecfbbcfb6.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a92e42c6ad89cb554.jsonl"
       }
     ],
-    "achados": 4,
+    "achados": 0,
     "em": "2026-11-24",
-    "tentativas": 2,
     "voltas": [
       {
         "volta": 1,
@@ -93,22 +92,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-portaria-publicacao/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa0b083631aa8253c.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae20d889ecfbbcfb6",
+            "veredito": "reprovado",
+            "em": "2026-11-24",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae20d889ecfbbcfb6.jsonl"
+          }
+        ]
       }
     ],
-    "em_voo": [
-      {
-        "agente": "rainforest-mind:revisor",
-        "tarefa": "revisao rodada 2",
-        "desde": "2026-11-24",
-        "sessao": "285d3173-22aa-41e8-8529-320e13ff133f"
-      }
-    ]
+    "base": "368382c125b5838d77cccc46757f81e65b40b8ae",
+    "head": "ae9ac6d3f36496f1fc066ef835a05a37f185d4b9"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-24"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-24"
   },
   "decididos": [
     {
@@ -117,6 +124,13 @@
       "porque": "o campo branch e o vinculo explicito do arquivo com uma branch (D10 do fluxo-pulado); o leitor cego apontou o refinamento",
       "estagio": "plano",
       "em": "2026-11-18T11:03:51.719Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-11-24",
+      "de": "revisar",
+      "motivo": "preexistente no arquivo da entrega (revisao 3): endpoint decodificado de gh api nao e conferido; contents/ter\\mo702.md passa"
     }
   ]
 }

@@ -929,6 +929,11 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd, objs, segmento) {
   if (!ehEscrita) return null;
   const endpoint = posicionais[0] ?? null;
   const textos = [{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint, objs && iEndpoint !== -1 ? objs[iEndpoint] : null, segmento) }, ...corposEmbutidos(cmdOriginal)];
+  // Revisão 3 (preexistente na base): o endpoint como o `gh` o recebe, já sem a contrabarra e as
+  // aspas do shell, também se confere. Sem isto, `contents/ter\mo702.md` publicava um arquivo com
+  // o termo no nome, porque o texto cru do comando não traz o termo literal. O destino (conta e
+  // repositório, D2) sai antes, como no comando; conta como "comando": só a lista de termos.
+  if (typeof endpoint === "string" && endpoint !== "") textos.push({ origem: "comando", texto: neutralizarEndpoint(endpoint) });
   let metodo = null;
   let hostname = false;
   let gistPublico = false;

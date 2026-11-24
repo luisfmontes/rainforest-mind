@@ -1113,6 +1113,11 @@ confere702 "726 endpoint entre aspas inteiro passa" 0 "$PUB" Bash "$R702P" "gh a
 confere702 "726 endpoint com uma contrabarra e corpo igual barra" 2 "$PUB" Bash "$R702P" 'printf '"'"'orgs/termo702/teams'"'"' | gh api orgs/ter\mo702/teams -X POST --input -'
 confere702 "726 endpoint com uma contrabarra e corpo por <<< barra" 2 "$PUB" Bash "$R702P" 'gh api orgs/ter\mo702/teams -X POST --input - <<< '"'"'orgs/termo702/teams'"'"
 confere702 "726 endpoint depois de corpo sem termo por pipe passa" 0 "$PUB" Bash "$R702P" "printf 'x' | gh api orgs/termo702/teams -X POST --input -"
+# Revisao 3 (preexistente): o endpoint decodificado tambem se confere; o termo escondido por
+# contrabarra ou aspa no nome do arquivo publicado barra. O destino ofuscado continua passando.
+confere702 "726 contents com contrabarra no nome do arquivo barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/ter\mo702.md -f message=ok -f content=eA=='
+confere702 "726 contents com aspa no meio do nome do arquivo barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/ter"mo"702.md -f message=ok -f content=eA=='
+confere702 "726 org com contrabarra no destino passa" 0 "$PUB" Bash "$R702P" 'gh api orgs/ter\mo702/teams -X POST -f name=x'
 echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
