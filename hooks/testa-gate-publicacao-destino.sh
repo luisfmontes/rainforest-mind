@@ -416,7 +416,9 @@ if (invocFile) {
   fs.appendFileSync(invocFile, JSON.stringify(process.argv.slice(2)) + '\n', 'utf8');
 }
 if (process.argv[2] === 'repo' && process.argv[3] === 'view') {
-  const response = process.env.GH_RESPONSE || '{"isPrivate":false}';
+  // #723: GH_RESPONSES dá uma resposta por dono/repo; o resto cai em GH_RESPONSE.
+  const mapa = process.env.GH_RESPONSES ? JSON.parse(process.env.GH_RESPONSES) : {};
+  const response = mapa[process.argv[4]] || process.env.GH_RESPONSE || '{"isPrivate":false}';
   if (process.env.GH_EXIT_CODE) process.exit(parseInt(process.env.GH_EXIT_CODE));
   console.log(response);
   process.exit(0);
@@ -1118,6 +1120,28 @@ confere702 "726 endpoint depois de corpo sem termo por pipe passa" 0 "$PUB" Bash
 confere702 "726 contents com contrabarra no nome do arquivo barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/ter\mo702.md -f message=ok -f content=eA=='
 confere702 "726 contents com aspa no meio do nome do arquivo barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/ter"mo"702.md -f message=ok -f content=eA=='
 confere702 "726 org com contrabarra no destino passa" 0 "$PUB" Bash "$R702P" 'gh api orgs/ter\mo702/teams -X POST -f name=x'
+echo
+
+echo "== (#723) remoto público nomeado e push desligado =="
+R723="$RAIZ/fork723"
+git init -q "$R723"; git -C "$R723" config user.email t@t; git -C "$R723" config user.name t; git -C "$R723" config commit.gpgsign false
+echo "x" > "$R723/f.txt"; git -C "$R723" add f.txt; git -C "$R723" commit -qm x
+git -C "$R723" remote add origin "https://github.com/test/priv723.git"
+git -C "$R723" remote add upstream "https://github.com/test/pub723.git"
+P723=$(PAY_CWD="$(esc "$R723")" pay Write "$(esc "$R723/d.txt")" "contato: $JID_REAL")
+RESP723='{"test/priv723":"{\"isPrivate\":true}","test/pub723":"{\"isPrivate\":false}"}'
+roda723() { S723=$(printf '%s' "$P723" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSES="$RESP723" RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC723=$?; }
+roda723
+if [ "$RC723" = 2 ] && printf '%s' "$S723" | grep -qF "o remoto 'upstream' (test/pub723) é público"; then ok=$((ok+1)); echo "  ok   723 mensagem nomeia o upstream"
+else falhou=$((falhou+1)); echo "  FALHA 723 mensagem nomeia o upstream: exit $RC723"; printf '%s\n' "$S723" | grep -i "reposit" | head -3; fi
+git -C "$R723" remote set-url --push upstream no_push
+roda723
+if [ "$RC723" = 0 ]; then ok=$((ok+1)); echo "  ok   723 upstream com push no_push passa"
+else falhou=$((falhou+1)); echo "  FALHA 723 upstream com push no_push passa: exit $RC723"; fi
+git -C "$R723" remote set-url --push upstream "https://github.com/test/pub723.git"
+roda723
+if [ "$RC723" = 2 ]; then ok=$((ok+1)); echo "  ok   723 upstream com push para o público barra"
+else falhou=$((falhou+1)); echo "  FALHA 723 upstream com push para o público barra: exit $RC723"; fi
 echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="

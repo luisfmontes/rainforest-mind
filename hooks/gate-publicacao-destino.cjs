@@ -97,6 +97,9 @@ function gravarCache(cache) {
 // decidir e para escrever a mensagem -- e sem isto o `gh` seria invocado duas
 // vezes na mesma gravacao.
 const visibilidadeMemorizada = new Map();
+// #723: os remotos que fizeram a visibilidade sair "publica", para a mensagem nomeá-los.
+// Chave `gitTop`, valor `[{ nome, ownerRepo }]`, uma entrada por remoto.
+const publicosMemorizados = new Map();
 
 /**
  * Visibilidade do remoto de destino: "privada", "publica" ou "desconhecida".
@@ -141,35 +144,55 @@ function visibilidadeDoRepo(gitTop) {
  * consultava o repositorio errado, o segredo entrava no commit, e
  * `git push fork main` publicava. Branch nova sem upstream e o caso comum, nao
  * o raro. Falha fechada: basta um remoto publico para bloquear.
+ *
+ * #723: conta a URL de PUSH (`get-url --push --all`). Remoto com push desligado
+ * (`no_push`) ou apontando para fora do GitHub nao esta ao alcance de um push, e
+ * nao conta; o de fetch sozinho nao publica. Sem nenhuma URL de push do GitHub,
+ * a visibilidade fica "desconhecida" e barra como antes.
  */
-function repositoriosDoGitHub(gitTop) {
+function remotosDoGitHub(gitTop) {
   const nomes = (git(gitTop, ["remote"]) || "").split(/\r?\n/).map((n) => n.trim()).filter(Boolean);
   const achados = [];
   for (const nome of nomes) {
-    const url = git(gitTop, ["remote", "get-url", nome]);
-    if (!url) continue;
-    // `ssh://` aceita porta (`:22`, `:443`) e o host `ssh.github.com` (SSH pela 443).
-    const m = url.match(/(?:https:\/\/(?:[^@/\s]+@)?(?:www\.)?github\.com[:/]|ssh:\/\/git@(?:ssh\.|www\.)?github\.com(?::\d+)?\/|git@(?:www\.)?github\.com:)([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
-    if (!m) continue;
-    const ownerRepo = `${m[1]}/${m[2]}`;
-    if (!achados.includes(ownerRepo)) achados.push(ownerRepo);
+    const urls = (git(gitTop, ["remote", "get-url", "--push", "--all", nome]) || "").split(/\r?\n/).map((u) => u.trim()).filter(Boolean);
+    for (const url of urls) {
+      // `ssh://` aceita porta (`:22`, `:443`) e o host `ssh.github.com` (SSH pela 443).
+      const m = url.match(/(?:https:\/\/(?:[^@/\s]+@)?(?:www\.)?github\.com[:/]|ssh:\/\/git@(?:ssh\.|www\.)?github\.com(?::\d+)?\/|git@(?:www\.)?github\.com:)([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+      if (!m) continue;
+      const ownerRepo = `${m[1]}/${m[2]}`;
+      let a = achados.find((x) => x.ownerRepo === ownerRepo);
+      if (!a) achados.push(a = { ownerRepo, remotos: [] });
+      if (!a.remotos.includes(nome)) a.remotos.push(nome);
+    }
   }
   return achados;
+}
+
+/** `owner/repo` de todos os remotos do GitHub, sem repetir (ver `remotosDoGitHub`). */
+function repositoriosDoGitHub(gitTop) {
+  return remotosDoGitHub(gitTop).map((a) => a.ownerRepo);
 }
 
 function calcularVisibilidade(gitTop) {
   if (process.env.RAINFOREST_GATE_SEM_REDE === "1") return "desconhecida";
 
-  const repos = repositoriosDoGitHub(gitTop);
+  const repos = remotosDoGitHub(gitTop);
   if (repos.length === 0) return "desconhecida";
 
   // So libera quando TODOS sao privados. Um publico basta para bloquear, e um
   // desconhecido tambem -- a mesma falha fechada que o resto deste gate usa.
+  // #723: percorre todos, sem sair no primeiro publico, para a mensagem nomear
+  // cada remoto publico (o `gh` so roda aqui quando ja houve achado).
   let veredito = "privada";
-  for (const ownerRepo of repos) {
+  const publicos = [];
+  for (const { ownerRepo, remotos } of repos) {
     const v = visibilidadeDeUmRepo(ownerRepo);
-    if (v === "publica") return "publica";
+    if (v === "publica") for (const nome of remotos) publicos.push({ nome, ownerRepo });
     if (v === "desconhecida") veredito = "desconhecida";
+  }
+  if (publicos.length > 0) {
+    publicosMemorizados.set(gitTop, publicos);
+    return "publica";
   }
   return veredito;
 }
@@ -437,7 +460,7 @@ function soIntroduzidos(achados, textoNovo, textoAntigo) {
 /**
  * Formata a mensagem de bloqueio com os achados.
  */
-function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemotoGitHub) {
+function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemotoGitHub, gitTop) {
   let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
     `Arquivo: ${arquivo}\n` +
     `Razão: este arquivo é versionado (rastreado por git) e contém dados sensíveis.\n\n` +
@@ -450,7 +473,12 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemoto
   }
 
   let msgVisibilidade = "";
-  if (visibilidade === "publica") {
+  const publicos = (gitTop && publicosMemorizados.get(gitTop)) || [];
+  if (visibilidade === "publica" && publicos.length > 0) {
+    // #723: nomeia o remoto público, que pode não ser o do repositório em que se trabalha.
+    msgVisibilidade = `\n\nRepositório: visibilidade pública, apurada por 'gh repo view': ` +
+      publicos.map((p) => `o remoto '${p.nome}' (${p.ownerRepo}) é público`).join("; ") + `. `;
+  } else if (visibilidade === "publica") {
     msgVisibilidade = `\n\nRepositório: visibilidade pública, apurada por 'gh repo view'. `;
   } else if (visibilidade === "desconhecida") {
     msgVisibilidade = `\n\nRepositório: visibilidade desconhecida — bloqueado por precaução. `;
@@ -522,7 +550,7 @@ function bloqueia(achados, arquivo, agente, gitTop, preambulo) {
   // chamador CONTINUA: sair aqui deixaria os seguintes sem exame.
   if (achados.length === 0) return;
   if (preambulo) process.stderr.write(preambulo);
-  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, repositoriosDoGitHub(gitTop).length > 0));
+  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, repositoriosDoGitHub(gitTop).length > 0, gitTop));
   process.exit(2);
 }
 
