@@ -26,7 +26,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { leveDaBranch, protheusAberto } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
+const { leveDaBranch, protheusAberto, temPastaDePlans } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
 
 /**
  * Agentes que pertencem ao Claude Code, não a este repositório. Podem ser
@@ -1209,7 +1209,9 @@ function main() {
       `${abertura} ${condicao}: exige ${exige}; ` +
       `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
       diagnostico +
-      `\n  trilho protheus: .gates.json procurado em '${raizBarras}/docs/plans' e '${raizBarras}/*/docs/plans'` +
+      (temPastaDePlans(raiz)
+        ? `\n  trilho protheus: .gates.json procurado em '${raizBarras}/docs/plans' e '${raizBarras}/*/docs/plans'`
+        : "") +
       `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou ${iniciarDaMensagem}; protheus: /protheus:trabalhar)` +
       saida2 +
       // Issue #442: o comando comeca por string entre aspas, que PowerShell so roda com `& `.

@@ -1093,6 +1093,17 @@ confere702 "726 repos/<termo>/x publico passa" 0 "$PUB" Bash "$R702P" 'gh api re
 confere702 "726 campo de org com termo barra" 2 "$PRIV" Bash "$R702P" 'gh api orgs/termo702/teams -X POST -f description=termo702'
 confere702 "726 contents/<termo> no publico barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/termo702.md -f message=ok -f content=eA=='
 confere702 "726 query string com termo barra" 2 "$PRIV" Bash "$R702P" "gh api 'orgs/x/teams?q=termo702' -X POST -f name=y"
+# Revisao 1: so o token do endpoint se neutraliza; corpo por pipe, <<< e echo > arquivo seguem conferidos.
+confere702 "726 corpo por pipe com orgs/<termo> barra" 2 "$PUB" Bash "$R702P" "printf '{\"title\":\"ver orgs/termo702/projects/1\"}' | gh api -X POST repos/dono/x/issues --input -"
+confere702 "726 corpo por <<< com users/<termo> barra" 2 "$PUB" Bash "$R702P" "gh api -X POST repos/dono/x/issues --input - <<< '{\"title\":\"users/termo702\"}'"
+confere702 "726 echo > arquivo com repos/<termo>/y barra" 2 "$PUB" Bash "$R702P" "echo 'repos/termo702/y' > b726.json && gh api -X POST repos/dono/x/issues --input b726.json"
+confere702 "726 corpo anterior igual ao endpoint barra" 2 "$PUB" Bash "$R702P" "printf 'orgs/termo702/teams' | gh api orgs/termo702/teams -X POST --input -"
+# Revisao 1, achado 2: so o inicio do endpoint; orgs/users/repos dentro de contents/ e nome de arquivo.
+confere702 "726 contents/docs/users/<termo> barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/docs/users/termo702.md -f message=ok -f content=eA=='
+confere702 "726 contents/orgs/<termo>/README barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/orgs/termo702/README.md -f message=ok -f content=eA=='
+confere702 "726 contents/a/repos/<termo>/b barra" 2 "$PUB" Bash "$R702P" 'gh api -X PUT repos/dono/x/contents/a/repos/termo702/b.md -f message=ok -f content=eA=='
+confere702 "726 URL completa de orgs/<termo> passa" 0 "$PUB" Bash "$R702P" 'gh api https://api.github.com/orgs/termo702/teams -X POST -f name=x'
+confere702 "726 /orgs/<termo> com barra inicial passa" 0 "$PUB" Bash "$R702P" 'gh api /orgs/termo702/teams -X POST -f name=x'
 echo
 
 echo "== resultado: $ok ok, $falhou falha(s) =="

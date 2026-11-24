@@ -983,7 +983,7 @@ console.log("== O. multi-cliente (portaria-publicacao D1) ==");
     const velho = gravarEm(repo.main, "docs/plans/velho.gates.json", "{}\n");
     git(repo.main, ["add", "docs/plans/velho.gates.json"]);
     git(repo.main, ["commit", "-q", "-m", "velho"]);
-    if (variante === "plano" || variante === "outro" || variante === "nao-commitado") {
+    if (variante === "plano" || variante === "outro" || variante === "nao-commitado" || variante === "renomeado") {
       gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", JSON.stringify({
         plan: { file: "docs/plans/x-plan.md" }, design: { doc: "docs/plans/x-design.md" },
       }));
@@ -993,10 +993,14 @@ console.log("== O. multi-cliente (portaria-publicacao D1) ==");
     }
     if (variante !== "sem-remoto") {
       git(repo.main, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
-      git(repo.main, ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
+      // head-quebrado: origin/HEAD aponta para ref que nao existe; vale o fallback origin/main.
+      git(repo.main, ["symbolic-ref", "refs/remotes/origin/HEAD",
+        variante === "head-quebrado" ? "refs/remotes/origin/master" : "refs/remotes/origin/main"]);
     }
     git(repo.main, ["checkout", "-q", "-b", "refactor/cliente-x"]);
-    if (variante === "gates" || variante === "sem-remoto") {
+    if (variante === "renomeado") {
+      git(repo.main, ["mv", "Cliente/docs/plans/x-plan.md", "Cliente/docs/plans/y-plan.md"]);
+    } else if (variante === "gates" || variante === "sem-remoto" || variante === "head-quebrado") {
       gravarEm(repo.main, "Cliente/docs/plans/x.gates.json", "{}\n");
       git(repo.main, ["add", "Cliente"]);
     } else if (variante === "plano") {
@@ -1030,6 +1034,17 @@ console.log("== O. multi-cliente (portaria-publicacao D1) ==");
   comDiff("O8 .gates.json na base e a branch altera outro arquivo: exit 2", "outro", 2);
   comDiff("O9 .gates.json commitado na branch, sem refs/remotes/origin: exit 2", "sem-remoto", 2);
   comDiff("O12 plan.file alterado sem commit nao prova a branch: exit 2", "nao-commitado", 2);
+  comDiff("O15 origin/HEAD para ref inexistente cai em origin/main: exit 0", "head-quebrado", 0);
+  comDiff("O16 plan.file renomeado na branch conta pelo nome antigo: exit 0", "renomeado", 0);
+  {
+    // O17: repositorio so com trilho rainforest: a recusa nao fala do trilho protheus.
+    const repo = novoRepo();
+    fs.mkdirSync(path.join(repo.main, "docs", "rainforest", "estado"), { recursive: true });
+    const r = despachar(repo, repo.main, "rainforest-mind:executor");
+    caso("O17 so trilho rainforest: recusa sai 2 sem a linha do trilho protheus",
+      r.status === 2 && !/trilho protheus:/.test(r.stderr || ""), `exit=${r.status} stderr=${r.stderr}`);
+    descartar(repo);
+  }
 }
 
 console.log("");

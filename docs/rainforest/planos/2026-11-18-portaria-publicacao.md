@@ -69,6 +69,8 @@ O que fazer:
   - O8: `.gates.json` na base, a branch altera outro arquivo → exit 2.
   - O9: como O6, sem `refs/remotes/origin/*` → exit 2.
   - O12: `.gates.json` na base, a branch commita outro arquivo e o `plan.file` muda só na árvore, sem commit → exit 2.
+  - Emenda da revisão 1 (achado 3): cada candidata a padrão (`origin/HEAD`, `origin/main`, `origin/master`) se confere com `rev-parse --verify` antes de usar, e o diff leva `--no-renames`. O15: `origin/HEAD` aponta para `origin/master` inexistente, só `origin/main` existe → exit 0. O16: a branch faz `git mv` do `plan.file` declarado → exit 0.
+  - Emenda da revisão 1 (achado 4): a linha `trilho protheus:` da recusa só sai quando existe alguma pasta `docs/plans` que `protheusAberto` leria (`temPastaDePlans(gitTop)`, exportada de `caminho-leve.cjs`). O17: repositório só com trilho rainforest → exit 2 sem a linha.
 mutacao:
   arquivo: `hooks/lib/caminho-leve.cjs`
   de: `if (typeof dados.branch !== 'string' && tocadoPelaBranch(arq, dados, gitTop, baseDir, lerDiff)) return true;`
@@ -127,7 +129,9 @@ O que fazer:
   }
   ```
   com docblock citando a #726 e a D2. Os valores de campo, os corpos de `--input`/`@arquivo` e os corpos embutidos continuam entrando em `textos` pelos caminhos de hoje, lidos do original.
-- Em `textosDoGhApi`, a entrada do comando passa a ser `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal) }`. Nada mais no arquivo muda (D3).
+- Em `textosDoGhApi`, a entrada do comando passa a ser `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint) }`. Nada mais no arquivo muda (D3).
+- **Emenda da revisão 1 (achado alta):** trocar no texto inteiro do comando apagava o termo de corpo por pipe, `<<<` ou `echo > arquivo`, que só se confere por esse texto. A troca passa a valer só no token do endpoint (`posicionais[0]`), na primeira ocorrência dele no comando, por `neutralizarEndpoint(ep)` (as duas regex acima). Endpoint que não aparece literal no comando deixa o comando como está. Casos novos, todos exit 2 com `"$PUB"`: `726 corpo por pipe com orgs/<termo> barra`, `726 corpo por <<< com users/<termo> barra`, `726 echo > arquivo com repos/<termo>/y barra`, `726 corpo anterior igual ao endpoint barra`.
+- **Emenda da revisão 1 (achado 2, D2 emendada com Q1 aceita):** as duas regex ganham âncora no início do endpoint, com prefixo opcional `/`, `https://api.github.com/` ou `https://<host>/api/v3/` (constantes `RE_CONTA_NO_ENDPOINT` e `RE_REPO_NO_ENDPOINT`, sem flag `g`). Casos novos: `726 contents/docs/users/<termo> barra`, `726 contents/orgs/<termo>/README barra` e `726 contents/a/repos/<termo>/b barra` (exit 2, `"$PUB"`); `726 URL completa de orgs/<termo> passa` e `726 /orgs/<termo> com barra inicial passa` (exit 0, `"$PUB"`).
 - Bateria: seção nova logo antes do `echo` que precede `== resultado:`, com `echo "== (#726) gh api: destino no endpoint =="`, todos os casos com `confere702` direto, tipo `Bash`, `cwd` `"$R702P"`:
   - `726 orgs/<termo>/teams passa`: exit 0, `"$PUB"`, `gh api orgs/termo702/teams -X POST -f name=x -f privacy=closed`.
   - `726 users/<termo> passa`: exit 0, `"$PUB"`, `gh api users/termo702/x -X POST -f a=b`.
@@ -137,12 +141,12 @@ O que fazer:
   - `726 query string com termo barra`: exit 2, `"$PRIV"`, `gh api 'orgs/x/teams?q=termo702' -X POST -f name=y`.
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal) }`
+  de: `{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint) }`
   para: `{ origem: "comando", texto: cmdOriginal }`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: testa-gate-publicacao-destino.sh, seção "(#726) gh api: destino no endpoint", caso "726 orgs/<termo>/teams passa"
 prova-na-base: verde — o critério precisa da lista privada sintética e do `gh` falso que a caixa de areia da bateria monta
-pronto quando: com o comando medido na #726 (`gh api orgs/<org>/teams -X POST -f name=x -f privacy=closed`) e o termo sintético `termo702` no lugar da org, provado por `bash hooks/testa-gate-publicacao-destino.sh` com `ok` nos seis casos `726` e `== resultado: N ok, 0 falha(s) ==` (os casos `707` continuam com o exit de antes).
+pronto quando: com o comando medido na #726 (`gh api orgs/<org>/teams -X POST -f name=x -f privacy=closed`) e o termo sintético `termo702` no lugar da org, provado por `bash hooks/testa-gate-publicacao-destino.sh` com `ok` nos casos `726` (os seis originais e os quatro da emenda) e `== resultado: N ok, 0 falha(s) ==` (os casos `707` continuam com o exit de antes).
 
 ### 6. Com o trilho rainforest na raiz, só vínculo abre o trilho protheus [tipo: implementar]
 Emenda de 2026-11-18: a revisão de segurança do commit mostrou que `git worktree add` renova o mtime de todo arquivo. Num worktree novo, todo `.gates.json` de cliente parecia recente e liberaria qualquer escritor por cima do trilho rainforest. A D1.3 foi emendada no design (Q1 aceita pelo Luís).

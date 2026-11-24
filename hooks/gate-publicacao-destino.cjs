@@ -819,16 +819,35 @@ const FLAGS_API_CAMPO = new Set(["-f", "-F", "--raw-field", "--field", "--input"
  * `gh` resolve; `gists` com `public=true` é público; o resto é desconhecido.
  */
 /**
- * Issue #726, portaria-publicacao D2: no texto do comando de `gh api`, o segmento depois de
- * `orgs/` e de `users/`, e os dois depois de `repos/`, viram um marcador neutro antes da
- * conferência. Eles nomeiam a conta ou o repositório de destino, que já existe e não é publicado
- * pela chamada. O resto do caminho continua conferido (`contents/<arquivo>` cria um arquivo com
- * aquele nome), e campos, corpos de arquivo e corpos embutidos entram por fora, lidos do original.
+ * Issue #726, portaria-publicacao D2: no ENDPOINT de `gh api`, o segmento depois de `orgs/` e
+ * de `users/`, e os dois depois de `repos/`, viram um marcador neutro antes da conferência. Eles
+ * nomeiam a conta ou o repositório de destino, que já existe e não é publicado pela chamada. O
+ * resto do caminho continua conferido (`contents/<arquivo>` cria um arquivo com aquele nome).
+ *
+ * Só o token do endpoint muda, na primeira ocorrência dele no comando (revisão de 2026-11-18): o
+ * corpo que chega por pipe, `<<<` ou `echo > arquivo` só é conferido pelo texto do comando, e
+ * trocar no texto inteiro apagava o termo de dentro dele. Se a primeira ocorrência for um corpo
+ * anterior com o mesmo texto, o endpoint fica com o termo e barra: falha fechada. Endpoint que não
+ * aparece literal no comando (escape, aspas no meio) deixa o comando como está.
  */
-function neutralizarDestinoNoEndpoint(cmd) {
-  return cmd
-    .replace(/(\b(?:orgs|users)\/)[^/\s?#'"]+/gi, "$1<destino>")
-    .replace(/(\brepos\/)[^/\s?#'"]+\/[^/\s?#'"]+/gi, "$1<destino>/<destino>");
+// Âncora no INÍCIO do endpoint (D2 emendada, revisão 1, achado 2): `orgs/`, `users/` e `repos/`
+// dentro do resto do caminho (`contents/docs/users/<x>.md`) são nome de arquivo publicado e
+// continuam conferidos. Antes, só `/`, `https://api.github.com/` ou `https://<host>/api/v3/`.
+const PREFIXO_ENDPOINT = String.raw`^((?:https?:\/\/[^\/\s]+(?:\/api\/v3)?)?\/*`;
+const RE_CONTA_NO_ENDPOINT = new RegExp(PREFIXO_ENDPOINT + String.raw`(?:orgs|users)\/)[^\/\s?#'"]+`, "i");
+const RE_REPO_NO_ENDPOINT = new RegExp(PREFIXO_ENDPOINT + String.raw`repos\/)[^\/\s?#'"]+\/[^\/\s?#'"]+`, "i");
+
+function neutralizarEndpoint(ep) {
+  return ep
+    .replace(RE_CONTA_NO_ENDPOINT, "$1<destino>")
+    .replace(RE_REPO_NO_ENDPOINT, "$1<destino>/<destino>");
+}
+
+function neutralizarDestinoNoEndpoint(cmd, endpoint) {
+  if (typeof endpoint !== "string" || endpoint === "") return cmd;
+  const i = cmd.indexOf(endpoint);
+  if (i === -1) return cmd;
+  return cmd.slice(0, i) + neutralizarEndpoint(endpoint) + cmd.slice(i + endpoint.length);
 }
 
 function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
@@ -881,8 +900,8 @@ function textosDoGhApi(toks, iApi, cmdOriginal, cwd) {
   } else ehEscrita = pares.some(([flag]) => FLAGS_API_CAMPO.has(flag));
   if (grupoIlegivel) ehEscrita = true;
   if (!ehEscrita) return null;
-  const textos = [{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal) }, ...corposEmbutidos(cmdOriginal)];
   const endpoint = posicionais[0] ?? null;
+  const textos = [{ origem: "comando", texto: neutralizarDestinoNoEndpoint(cmdOriginal, endpoint) }, ...corposEmbutidos(cmdOriginal)];
   let metodo = null;
   let hostname = false;
   let gistPublico = false;

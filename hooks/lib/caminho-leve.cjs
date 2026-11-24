@@ -135,21 +135,15 @@ function gitEm(gitTop, args) {
  *  segurança de 2026-11-18). Set de caminhos relativos a gitTop, com `/` e em minúsculas. null
  *  quando não dá para calcular (sem remoto, sem merge-base): aí o diff não libera nada. */
 function arquivosDaBranch(gitTop) {
-  let padrao = null;
+  // origin/HEAD pode apontar para ref que não existe mais: cada candidata se confere antes de usar.
   const sym = gitEm(gitTop, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']);
-  if (sym && sym.trim()) padrao = sym.trim();
-  else {
-    for (const nome of ['origin/main', 'origin/master']) {
-      if (gitEm(gitTop, ['rev-parse', '--verify', '--quiet', `refs/remotes/${nome}`]) !== null) {
-        padrao = nome;
-        break;
-      }
-    }
-  }
+  const candidatas = [sym && sym.trim(), 'origin/main', 'origin/master'].filter(Boolean);
+  const padrao = candidatas.find((nome) =>
+    gitEm(gitTop, ['rev-parse', '--verify', '--quiet', `refs/remotes/${nome}`]) !== null) || null;
   if (!padrao) return null;
   const base = gitEm(gitTop, ['merge-base', 'HEAD', padrao]);
   if (!base || !base.trim()) return null;
-  const lista = gitEm(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '-z', base.trim(), 'HEAD']);
+  const lista = gitEm(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '--no-renames', '-z', base.trim(), 'HEAD']);
   if (lista === null) return null;
   return new Set(lista.split('\0').filter(Boolean).map((p) => p.toLowerCase()));
 }
@@ -213,4 +207,10 @@ function protheusAberto({ gitTop, branch, agora = Date.now(), exigeVinculo = fal
   return false;
 }
 
-module.exports = { leveDaBranch, leveValido, casaComBranch, soLeve, caminhoMapaProtheus, protheusAberto };
+/** Há alguma pasta `docs/plans` que `protheusAberto` leria? Só para a mensagem de recusa falar do
+ *  trilho protheus onde ele existe (revisão de 2026-11-18, achado 4). */
+function temPastaDePlans(gitTop) {
+  return [path.join(gitTop, 'docs', 'plans'), ...pastasDePlans(gitTop)].some((d) => fs.existsSync(d));
+}
+
+module.exports = { leveDaBranch, leveValido, casaComBranch, soLeve, caminhoMapaProtheus, protheusAberto, temPastaDePlans };

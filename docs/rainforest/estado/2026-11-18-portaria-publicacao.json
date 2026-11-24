@@ -22,7 +22,7 @@
     "em": "2026-11-18"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-18",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -60,10 +60,31 @@
         "fixture": "testa-portaria-fluxo-pulado.cjs secao O caso O5"
       }
     ],
-    "em": "2026-11-18"
+    "em": "2026-11-18",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-18"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "d95cd2aa9427beca5e6772644407c9a3c71bccb6",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa0b083631aa8253c",
+        "veredito": "reprovado",
+        "em": "2026-11-18",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-portaria-publicacao/87f2ccb3-0bc5-4e85-9c6d-4c777a97f6eb/subagents/agent-aa0b083631aa8253c.jsonl"
+      }
+    ],
+    "achados": 4,
+    "em": "2026-11-18",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
