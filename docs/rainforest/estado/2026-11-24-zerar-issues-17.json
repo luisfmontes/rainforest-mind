@@ -85,7 +85,7 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "90d1690c21f3bc12ca62a9925dd3a7b331629e97",
       "caminhos_sujos": []
@@ -143,7 +143,7 @@
     ]
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "em": "2026-11-25",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; grep -c version .claude-plugin/plugin.json .codex-plugin/plugin.json; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-24-zerar-issues-17",
     "saida": "288 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0 / 2.17.3 nas duas plugin.json e ## 2.17.3 no CHANGELOG / tarefas 1-5 e 7-11 vermelho, 6 pulada (n/a)",
@@ -152,7 +152,7 @@
   },
   "fechar": {
     "status": "pendente",
-    "em": "2026-11-24"
+    "em": "2026-11-25"
   },
   "decididos": [
     {
@@ -182,6 +182,11 @@
       "em": "2026-11-24",
       "de": "revisar",
       "motivo": "Revisao 1 (ok com 10 achados da mesma classe): flag com valor antes do alvo, cat < alvo > novo e pipe encadeado, execucao por caminho e por -c, alvo de tee/cat>x/>|, git.exe e lista com comentario, '-' depois de script, e os preexistentes fimDaLinhaLogica sem paridade/comentario/aspa, << falso em ${..}/)#/$'..', node - <<'A'"
+    },
+    {
+      "em": "2026-11-25",
+      "de": "verificar",
+      "motivo": "CI do PR #738: testa-dependencias-de-bateria barrou python3 no caso R1 da bateria; caso trocado para node"
     }
   ]
 }
