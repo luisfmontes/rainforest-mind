@@ -194,7 +194,7 @@ const CLASSE = { normal: 0, comentario: 1, neutro: 2, ansi: 3 };
 
 function colapsaContinuacaoDoDialeto(cmd, dialeto) {
   const esc = dialeto === "powershell" ? "`" : "\\";
-  let saida = "", aspa = null, crase = false, chaves = 0, dolares = 0;
+  let saida = "", aspa = null, crase = false, chaves = 0, dolares = 0, incerto = false;
   const classe = [];
   const emite = (s, k = CLASSE.normal) => {
     saida += s;
@@ -212,6 +212,13 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
       if (aspa === "#?" && c === "`" && dialeto === "bash") crase = !crase;
       if (aspa === "#?" && c === "}" && chaves > 0) chaves -= 1;
       emite(c, aspa === "#" ? CLASSE.comentario : CLASSE.neutro);
+      continue;
+    }
+    if (aspa === "#`") {
+      // comentário dentro de crase: o bash o fecha na crase, que fecha a substituição
+      if (c === "`") { aspa = null; crase = false; emite(c); continue; }
+      if (c === "\n") { aspa = null; incerto = true; emite(c); continue; }
+      emite(c, CLASSE.comentario);
       continue;
     }
     if (aspa === "<#") {
@@ -247,20 +254,28 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
     else if (c === "}" && chaves > 0) chaves -= 1;
     else if (c === "`" && dialeto === "bash") crase = !crase;
     else if (c === "<" && cmd[i + 1] === "#" && dialeto === "powershell") { aspa = "<#"; emite("<#", CLASSE.comentario); i += 1; continue; }
+    else if (c === "#" && !incerto && chaves > 0) {
+      // dentro de `${...}` o `#` é literal: não abre nada, e a aspa segue contando
+    }
     else if (c === "#" && abreComentario(saida, esc)) {
-      // Dentro de crase ou de `${...}` o `#` não passa do fechamento, e a leitura
-      // pode errar o fechamento (crase solta num corpo de heredoc executado, `${`
-      // que não abriu). Ali o resto da linha fica NEUTRO: aspa não conta, mas a
-      // fronteira separa. Não esconde comando, e nenhuma aspa engole a linha de
-      // baixo (revisão de segurança do commit a0b55385).
-      aspa = crase || chaves > 0 ? "#?" : "#";
-      emite(c, aspa === "#" ? CLASSE.comentario : CLASSE.neutro);
+      // Leitura exata enquanto crase e `${` fecham na mesma linha: dentro de crase o
+      // comentário fecha na crase; fora, na quebra. Quando uma quebra chega com
+      // crase ou `${` abertos (construção em várias linhas, ou crase solta num
+      // corpo de heredoc executado), a leitura pode ter errado o fechamento: dali
+      // em diante o `#` deixa o resto da linha NEUTRO (aspa não conta, a fronteira
+      // separa) e o comando sai `incerto`, para quem deduz o cwd não confiar num
+      // `cd` que pode ser texto entre aspas (revisões de segurança dos commits
+      // a0b55385 e bcd7e602).
+      if (incerto) { aspa = "#?"; emite(c, CLASSE.neutro); continue; }
+      aspa = crase ? "#`" : "#";
+      emite(c, CLASSE.comentario);
       continue;
     }
+    if (c === "\n" && (crase || chaves > 0)) incerto = true;
     emite(c);
     if (c === "$") dolares = dolaresAntes + 1;
   }
-  return { texto: saida, classe };
+  return { texto: saida, classe, incerto };
 }
 
 // `#` abre comentário no começo de palavra: começo do texto, ou depois de
@@ -305,8 +320,8 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   // segmentos casarem por TEXTO (ver docblock de `cwdDoSegmento` la).
   // O colapso é quem decide o que é comentário, trecho neutro e começo de `$'`;
   // aqui só se obedece a `classe`, para as duas leituras não divergirem.
-  let classe = [];
-  if (leEscape) ({ texto: cmd, classe } = colapsaContinuacaoDoDialeto(String(cmd), dialeto));
+  let classe = [], leituraIncerta = false;
+  if (leEscape) ({ texto: cmd, classe, incerto: leituraIncerta } = colapsaContinuacaoDoDialeto(String(cmd), dialeto));
   else cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "", aspa = null;
@@ -449,6 +464,9 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
     segmentos.push(atual);
   }
 
+  // Leitura incerta de crase ou `${` (ver `colapsaContinuacaoDoDialeto`): quem deduz
+  // cwd pelos segmentos trata a linha como incerta.
+  if (leituraIncerta) segmentos.incerto = true;
   return segmentos;
 }
 
@@ -829,7 +847,7 @@ function cwdPorSegmento(comando, cwdInicial, ehPowerShell = false) {
   // `estouro` (#530, D5): a linha inteira estourou o teto de expansao de chaves
   // em alguma palavra de comando. Fica verdadeiro a partir do segmento que
   // estourou, e quem chama barra.
-  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
+  const estado = { atual: cwdInicial, incerto: segmentos.incerto === true, pilhaPushd: [], estouro: false };
   const resultado = [];
 
   for (const seg of segmentos) {

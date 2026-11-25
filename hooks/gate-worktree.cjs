@@ -597,7 +597,7 @@ function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
   // e, ate a rodada 6, `SEPARADORES` nem reconhecia `&` simples como
   // separador (K1 do auditor, lote 3, 2026-09-03).
   const segmentos = segmentosComAspas(comando, ehPowerShell);
-  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
+  const estado = { atual: cwdInicial, incerto: segmentos.incerto === true, pilhaPushd: [] };
   const alvos = [];
 
   for (const seg of segmentos) {
@@ -1222,7 +1222,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
   let continuacaoIncerta = false;
   if (ehPowerShell) ({ texto: comando, incerto: continuacaoIncerta } = juntaContinuacoesPS(comando));
   const segmentos = segmentosComAspas(comando, ehPowerShell);
-  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
+  const estado = { atual: cwdInicial, incerto: segmentos.incerto === true, pilhaPushd: [], estouro: false };
   const alvos = [];
   // Todo cwd que a linha visita: a chamada .NET (D3) nao sabe em qual segmento
   // esta, entao um alvo relativo vale para cada um deles (conservador).

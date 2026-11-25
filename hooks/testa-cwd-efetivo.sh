@@ -655,6 +655,18 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
   test("(736m) crase solta deixa o # neutro: a aspa do comentario nao engole a linha de baixo", () => {
     eq(segmentosComAspas("echo `\necho hi # don" + Q + "t\nx").filter((s) => s.trim() === "x").length, 1, "crase solta");
   });
+  test("(736n) # em ${} e em crase nao fabrica segmento do texto entre aspas depois", () => {
+    eq(segmentosComAspas("echo ${x:-#}" + Q + "; cd x; " + Q).some((s) => /cd x/.test(s.trim()) && s.trim().startsWith("cd")), false, "${}");
+    eq(segmentosComAspas("echo `echo #`" + Q + "; cd x; " + Q).some((s) => s.trim().startsWith("cd")), false, "crase");
+  });
+  test("(736o) crase aberta na quebra deixa a linha incerta, e o cwd tambem", () => {
+    const s = segmentosComAspas("echo `echo\n# x `; cd hooks");
+    eq(s.incerto, true, "segmentos.incerto");
+    const hooksDir = path.resolve(path.dirname(process.argv[2]), "..");
+    const r = cwdPorSegmento("echo `echo\n# x `; cd lib", hooksDir);
+    eq(r[r.length - 1].incerto, true, "cwd incerto");
+    eq(segmentosComAspas("echo a; cd x").incerto, undefined, "linha comum nao e incerta");
+  });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
     eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");

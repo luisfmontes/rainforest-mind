@@ -717,6 +717,12 @@ gate "\$\${ e PID e chave literal: # comenta barra"       2 "$(b "$(hd "echo \$\
 gate "\$\$' e PID e aspa simples barra"                  2 "$(b "echo \$\$'a${BS}'; git add -A #'")"
 gate "crase solta no corpo de bash <<EOF barra"          2 "$(b "$(hd "bash <<'EOF'" "\`" "EOF" "echo hi # don't" "git add -A")")"
 gate "controle: \$\$\$'a\\'; git add -A' e ANSI-C passa" 0 "$(b "echo \$\$\$'a${BS}'; git add -A'")"
+# Revisao de seguranca do commit bcd7e602: leitura exata de # em ${} e em crase; neutro so na incerteza.
+gate "# em \${} e literal: aspa depois conta e passa"     0 "$(b "echo \${x:-#}'; git add -A; '")"
+gate "# em crase fecha na crase: aspa depois conta e passa" 0 "$(b "echo \`echo #\`'; git add -A; '")"
+gate "aspa dentro de \${} com # protege a chave barra"    2 "$(b "echo \${x:-# '}'}; git add -A")"
+gate "crase em duas linhas com # barra"                  2 "$(b "$(hd "echo \`echo" "# x \`; git add -A")")"
+gate "aspa no comentario dentro de crase barra"          2 "$(b "echo \`echo # a'\`; git add -A")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

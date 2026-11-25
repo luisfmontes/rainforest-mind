@@ -121,10 +121,31 @@ mutacao:
 prova-na-base: verde — casos novos; contra o commit a0b55385 `echo $${ # don't` + quebra + `git add -A`, `echo $$'a\'; git add -A #'` e a crase solta no corpo de `bash <<'EOF'` saem 0 (sonda de 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos da segunda revisão de segurança e 0 falhas.
 
+### 7. Leitura exata de `#` em `${}` e em crase, incerteza para o cwd (terceira revisão de segurança) [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/gate-worktree.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-cwd-efetivo.sh`
+depende de: 6
+busca:
+- catalogo | estado.incerto em hooks/lib/cwd-efetivo.cjs:resolverMovedor e hooks/gate-worktree.cjs:alvosBashEscrita | reuso; é o caminho conservador que já existe para `cd` não resolvível
+desfecho: estender
+O que fazer:
+- Em `colapsaContinuacaoDoDialeto`: `#` dentro de `${...}` (sem incerteza) é literal; `#` em começo de palavra dentro de crase abre o estado ``"#`"``, que fecha na crase (e zera `crase`) ou na quebra (e liga `incerto`); quebra fora de aspas com `crase || chaves > 0` liga `incerto`; com `incerto`, `#` em começo de palavra abre o neutro `#?`. O retorno ganha `incerto`.
+- `segmentosComAspas` põe `segmentos.incerto = true` quando o colapso devolve `incerto`; `cwdPorSegmento`, `alvosBash` e `alvosBashEscrita` começam o `estado` com `incerto: segmentos.incerto === true`.
+- Casos na seção nova, depois do comentário `# Revisao de seguranca do commit bcd7e602`: `echo ${x:-#}'; git add -A; '` (0), `` echo `echo #`'; git add -A; ' `` (0), `echo ${x:-# '}'}; git add -A` (2), crase em duas linhas com `#` (2), `` echo `echo # a'`; git add -A `` (2).
+- `hooks/testa-cwd-efetivo.sh`: `(736n)` e `(736o)`.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `    else if (c === "#" && !incerto && chaves > 0) {`
+  para: `    else if (false) {`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de ${} nao passa da chave barra"
+prova-na-base: verde — casos novos; contra o commit bcd7e602 `echo ${x:-#}'; cd x; '` fabrica o segmento `cd x` (achado da revisão automática, conferido no bash em 2026-11-25)
+pronto quando: `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-worktree.sh` com 0 falhas, e `ok` nos casos `(736n)` e `(736o)`.
+
 ### 4. Versão 2.17.4 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 6
+depende de: 7
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.
