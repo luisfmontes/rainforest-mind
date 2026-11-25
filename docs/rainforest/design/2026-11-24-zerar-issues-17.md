@@ -22,7 +22,8 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
 
 - **D2 — Executor por redirecionamento de entrada e por pipe de `cat` (#722, forma 3).** Em `executoresDoAlvo`, o alvo conta como executado também quando:
   1. vem logo depois de `<` (ou `0<`), separado ou colado (`sh < t.cjs`, `sh <t.cjs`, `< t.cjs sh`), e o comando do trecho é executor (`EXECUTAM_ARQUIVO`) sem argumento posicional (só flags e redirecionamentos);
-  2. é argumento de `cat` e o mesmo trecho segue, por `|`, para um executor sem argumento posicional (`cat t.cjs | sh`, `cat t.sh | bash -s`).
+  2. é argumento ou stdin de `cat` e o mesmo trecho segue, por `|`, para um executor que lê o stdin (`cat t.cjs | sh`, `cat < t.cjs | sh`, `cat t.sh | bash -s`).
+  - **Executor que lê o stdin mesmo com posicional (emenda da revisão de segurança automática, 2026-11-24):** shell com `-s` (`sh -s arg < t.cjs`: `arg` é argumento do script), `-` como arquivo (`node - arg`) e `/dev/stdin` como primeiro posicional (`bash /dev/stdin < t.sh`). O `-s` só vale para shell: em `python -s` é outra flag.
   - **Porquê:** shell e interpretadores leem script do stdin quando não recebem arquivo de script; `sh < arquivo` é a forma medida, e `cat arquivo | sh` é a mesma execução por outro caminho. Com argumento posicional (`python script.py < dados.txt`), o stdin é dado do script, e o heredoc continua dado.
   - **Redirecionamento não é argumento (emenda de 2026-11-24, executar):** em todo o reconhecimento de executor, `2>&1`, `>&2`, `<&0` e `&>arq` contam como redirecionamento, e o alvo de `>`, `>>`, `<`, `2>` não conta como argumento. Na base, `bash 2>/dev/null t.sh` e `bash 2>&1 t.sh` saíam 0: o token anterior ao alvo era `/dev/null` ou `1`.
   - **Modelo de ameaça:** fica fora o arquivo lido por variável (`sh < "$f"`) e por substituição (`sh <(cat t.cjs)`): o nome não aparece literal. *(suposição: `<(...)` é raro em comando de agente.)*

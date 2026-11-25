@@ -78,9 +78,10 @@ O que fazer:
 - D8: `executoresDoAlvo` tokeniza `cmd.slice(i, fimDaLinhaLogica)` + quebra + o texto depois do fechamento, para ler o executor na própria linha do heredoc.
 - Em `executoresDoAlvo`, para cada token que casa um alvo, nesta ordem:
   1. `./x` como hoje;
-  2. `if (k > ini && ehRedirecionamentoDeEntrada(toks[k - 1]))`: `executorDeStdin(lerTrecho(toks, ini, fim))` entra se não for null; `continue` sempre;
-  3. `executorAntes(toks, k, ini)`;
-  4. se `lerTrecho(toks, ini, fim).nome === "cat"` e `toks[fim]` é `|` ou `|&`: `executorDeStdin` do trecho seguinte (`trechoEm(toks, fim + 1)`).
+  2. `if (k > ini && ehRedirecionamentoDeEntrada(toks[k - 1]))`: `executorDeStdin(trecho, toks)` entra e encerra o token; senão
+  3. `executorAntes(toks, k, ini)` entra e encerra o token;
+  4. se o trecho é `cat` (alvo como argumento ou como stdin) e `toks[fim]` é `|` ou `|&`: `executorDeStdin` do trecho seguinte (`trechoEm(toks, fim + 1)`).
+- Emenda da revisão de segurança automática: `lerTrecho` devolve também `flags`; `executorDeStdin(trecho, toks)` aceita, além de sem posicional, `-` entre as flags, `-s` em shell (`SHELLS_COM_S`) e `/dev/stdin` como primeiro posicional.
 - `alvoDoRedirecionamentoEhExecutadoDepois` vira `return executoresDoAlvo(cmd, i, fimDoHeredoc).length > 0;`, com o docblock dizendo que é a mesma régua (D4).
 - Casos na seção nova:
   - `#722 sh < t.cjs barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "sh < t.cjs")")`.
@@ -89,7 +90,7 @@ O que fazer:
   - `#722 node t.cjs; sh < t.cjs barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "node t.cjs; sh < t.cjs")")`.
   - `python script.py < dados.txt passa` → 0: `$(b "$(hd "cat > dados.txt <<'EOF'" "git add -A" "EOF" "python script.py < dados.txt")")`.
   - `cat dados.txt | node x.js passa` → 0: `$(b "$(hd "cat > dados.txt <<'EOF'" "git add -A" "EOF" "cat dados.txt | node x.js")")`.
-  - Emenda do executar, mesmo molde (arquivo, cauda): `#722 < t.cjs sh barra` (`< t.cjs sh`), `#722 sh 2>&1 < t.cjs barra`, `#722 sudo sh < t.cjs barra`, `bash 2>&1 t.sh barra` e `bash 2>/dev/null t.sh barra` (arquivo `t.sh`) → 2; `sh x.sh < dados.txt passa` → 0.
+  - Emenda do executar, mesmo molde (arquivo, cauda): `#722 < t.cjs sh barra` (`< t.cjs sh`), `#722 sh 2>&1 < t.cjs barra`, `#722 sudo sh < t.cjs barra`, `bash 2>&1 t.sh barra` e `bash 2>/dev/null t.sh barra` (arquivo `t.sh`) → 2; `sh x.sh < dados.txt passa` → 0. Da revisão de segurança automática: `cat < t.cjs | sh`, `sh -s arg < t.cjs`, `bash /dev/stdin < t.sh` (arquivo `t.sh`) e `node - arg < t.cjs` (corpo `execSync('git add -A')`) → 2; `python -s script.py < dados.txt` → 0.
   - D8: `D8 node na linha do heredoc barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF' && node t.cjs" "execSync('git add -A')" "EOF")")`; `D8 gh --body-file na linha do heredoc passa` → 0: `$(b "$(hd "cat > n.md <<'EOF' && gh issue create --title t --body-file n.md" "git add -A" "EOF")")`.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`

@@ -342,11 +342,13 @@ function trechoEm(toks, k) {
  * Comando e argumentos posicionais de `toks[ini..fim)`: pula atribuicao (`X=1`),
  * redirecionamento (com o alvo dele) e prefixo que roda o comando seguinte (`sudo`,
  * `env`, `timeout 5`). Posicional = token que nao comeca com `-`. Devolve
- * `{ nome, posicionais }`, com `nome` normalizado (ou null) e os INDICES dos posicionais.
+ * `{ nome, posicionais, flags }`, com `nome` normalizado (ou null), os INDICES dos
+ * posicionais e as flags depois do comando.
  */
 function lerTrecho(toks, ini, fim) {
   let nome = null;
   const posicionais = [];
+  const flags = [];
   for (let j = ini; j < fim; j++) {
     const t = toks[j];
     if (RE_REDIR_COM_ALVO.test(t)) { j++; continue; }
@@ -358,14 +360,25 @@ function lerTrecho(toks, ini, fim) {
       nome = n;
       continue;
     }
-    if (!t.startsWith("-")) posicionais.push(j);
+    if (t.startsWith("-")) flags.push(t);
+    else posicionais.push(j);
   }
-  return { nome, posicionais };
+  return { nome, posicionais, flags };
 }
 
-// D2: executor que le o script do STDIN, sem arquivo de script proprio.
-function executorDeStdin(trecho) {
-  return trecho.nome && EXECUTAM_ARQUIVO.has(trecho.nome) && trecho.posicionais.length === 0 ? trecho.nome : null;
+const SHELLS_COM_S = new Set(["bash", "sh", "zsh", "ksh", "dash"]);
+
+// D2: executor que le o script do STDIN. Sem posicional (`sh`, `bash -x`), com `-s`
+// num shell (`sh -s arg`: os posicionais sao argumentos do script), ou com o
+// "arquivo" sendo o proprio stdin (`node -`, `bash /dev/stdin`). Com arquivo de
+// script proprio (`python script.py < dados.txt`), o stdin e dado do script.
+function executorDeStdin(trecho, toks) {
+  if (!trecho.nome || !EXECUTAM_ARQUIVO.has(trecho.nome)) return null;
+  if (trecho.posicionais.length === 0) return trecho.nome;
+  if (trecho.flags.includes("-")) return trecho.nome;
+  if (SHELLS_COM_S.has(trecho.nome) && trecho.flags.some((x) => /^-[a-z]*s[a-z]*$/i.test(x))) return trecho.nome;
+  if (toks[trecho.posicionais[0]] === "/dev/stdin") return trecho.nome;
+  return null;
 }
 
 /**
@@ -497,16 +510,19 @@ function executoresDoAlvo(cmd, i, fimDoHeredoc) {
     if (!base || !alvos.has(base)) continue;
     if (/^\.[\\/]/.test(t.replace(/^["']+/, ""))) { executores.push("./"); continue; }
     const [ini, fim] = trechoEm(toks, k);
+    const trecho = lerTrecho(toks, ini, fim);
     if (k > ini && ehRedirecionamentoDeEntrada(toks[k - 1])) {
-      const ex = executorDeStdin(lerTrecho(toks, ini, fim));
-      if (ex) executores.push(ex);
-      continue;
+      const ex = executorDeStdin(trecho, toks);
+      if (ex) { executores.push(ex); continue; }
+    } else {
+      const ex = executorAntes(toks, k, ini);
+      if (ex) { executores.push(ex); continue; }
     }
-    const ex = executorAntes(toks, k, ini);
-    if (ex) { executores.push(ex); continue; }
-    if (lerTrecho(toks, ini, fim).nome === "cat" && (toks[fim] === "|" || toks[fim] === "|&")) {
+    // D2: o conteudo segue por pipe, como argumento ou stdin do `cat`
+    // (`cat t.cjs | sh`, `cat < t.cjs | sh`).
+    if (trecho.nome === "cat" && (toks[fim] === "|" || toks[fim] === "|&")) {
       const [ini2, fim2] = trechoEm(toks, fim + 1);
-      const ex2 = executorDeStdin(lerTrecho(toks, ini2, fim2));
+      const ex2 = executorDeStdin(lerTrecho(toks, ini2, fim2), toks);
       if (ex2) executores.push(ex2);
     }
   }
