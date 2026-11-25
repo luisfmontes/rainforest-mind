@@ -568,6 +568,42 @@ gate "o MESMO corpo do regex executado por ./t.cjs BARRA (D6)"                  
 gate "corpo do regex executado por node t.cjs; bash t.cjs BARRA (D6)"           2 "$(b "$(hd "cat > t.cjs <<'EOF'" "$RX" "EOF" "node t.cjs; bash t.cjs")")"
 gate "heredoc SEM aspas com \$(git add -A) executado por node BARRA (D6)"        2 "$(b "$(hd "cat > t.cjs <<EOF" '$(git add -A)' "EOF" "node t.cjs")")"
 
+echo "== rodada 17 (#724, #722): continuacao, stdin, copia, lista e operador colado =="
+gate "#724 continuacao esconde git add -A barra"       2 "$(b "$(hd "cat <<'A' \\" "> /dev/null; git add -A" "x" "A")")"
+gate "#724 continuacao com corpo de dado passa"         0 "$(b "$(hd "cat <<'A' \\" "> nota.md" "git add -A" "A")")"
+# D7: operador colado ao nome do arquivo.
+gate "operador colado: bash t.sh; true barra"           2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash t.sh; true")")"
+gate "operador colado: bash t.sh;true barra"            2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash t.sh;true")")"
+gate "digito so e descritor no comeco: bash t2>log barra" 2 "$(b "$(hd "cat > t2 <<'EOF'" "git add -A" "EOF" "bash t2>log")")"
+# D2/D4: stdin, pipe de cat e redirecionamento antes do alvo.
+gate "#722 sh < t.cjs barra"                            2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "sh < t.cjs")")"
+gate "#722 sh <t.cjs colado barra"                      2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "sh <t.cjs")")"
+gate "#722 < t.cjs sh barra"                            2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "< t.cjs sh")")"
+gate "#722 sh 2>&1 < t.cjs barra"                       2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "sh 2>&1 < t.cjs")")"
+gate "#722 sudo sh < t.cjs barra"                       2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "sudo sh < t.cjs")")"
+gate "#722 cat t.cjs | sh barra"                        2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "cat t.cjs | sh")")"
+gate "#722 node t.cjs; sh < t.cjs barra"                2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "node t.cjs; sh < t.cjs")")"
+gate "bash 2>&1 t.sh barra"                             2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash 2>&1 t.sh")")"
+gate "bash 2>/dev/null t.sh barra"                      2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash 2>/dev/null t.sh")")"
+gate "python script.py < dados.txt passa"               0 "$(b "$(hd "cat > dados.txt <<'EOF'" "git add -A" "EOF" "python script.py < dados.txt")")"
+gate "cat dados.txt | node x.js passa"                  0 "$(b "$(hd "cat > dados.txt <<'EOF'" "git add -A" "EOF" "cat dados.txt | node x.js")")"
+gate "sh x.sh < dados.txt passa"                        0 "$(b "$(hd "cat > dados.txt <<'EOF'" "git add -A" "EOF" "sh x.sh < dados.txt")")"
+# D8: executor na propria linha do heredoc.
+gate "D8 node na linha do heredoc barra"                2 "$(b "$(hd "cat > t.cjs <<'EOF' && node t.cjs" "execSync('git add -A')" "EOF")")"
+gate "D8 gh --body-file na linha do heredoc passa"      0 "$(b "$(hd "cat > n.md <<'EOF' && gh issue create --title t --body-file n.md" "git add -A" "EOF")")"
+# D3: copia e renomeacao.
+gate "#722 cp t.cjs x.sh && bash x.sh barra"            2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "cp t.cjs x.sh && bash x.sh")")"
+gate "#722 cat t.cjs > x.sh && bash x.sh barra"         2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "cat t.cjs > x.sh && bash x.sh")")"
+gate "#722 cp t.cjs a; mv a b.sh; bash b.sh barra"      2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "cp t.cjs a; mv a b.sh; bash b.sh")")"
+gate "#722 node t.cjs; cp t.cjs x.sh; bash x.sh barra"  2 "$(b "$(hd "cat > t.cjs <<'EOF'" "git add -A" "EOF" "node t.cjs; cp t.cjs x.sh; bash x.sh")")"
+gate "D8 cp na linha do heredoc e bash depois barra"    2 "$(b "$(hd "cat > t.cjs <<'EOF' && cp t.cjs x.sh" "git add -A" "EOF" "bash x.sh")")"
+gate "cp nota.md copia.md passa"                        0 "$(b "$(hd "cat > nota.md <<'EOF'" "git add -A" "EOF" "cp nota.md copia.md")")"
+# D5: comando em lista de strings.
+gate "#722 spawnSync('git',['add','-A']) executado por node barra" 2 "$(b "$(hd "cat > t.cjs <<'EOF'" "require('child_process').spawnSync('git',['add','-A'])" "EOF" "node t.cjs")")"
+gate "#722 subprocess.run([\"git\", \"add\", \"-A\"]) executado por python barra" 2 "$(b "$(hd "cat > t.py <<'EOF'" 'subprocess.run(["git", "add", "-A"])' "EOF" "python t.py")")"
+gate "lista em varias linhas executada por node barra"  2 "$(b "$(hd "cat > t.cjs <<'EOF'" "spawnSync('git', [" "  'add', '-A'])" "EOF" "node t.cjs")")"
+gate "spawnSync('git',['status']) executado por node passa" 0 "$(b "$(hd "cat > t.cjs <<'EOF'" "require('child_process').spawnSync('git',['status'])" "EOF" "node t.cjs")")"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

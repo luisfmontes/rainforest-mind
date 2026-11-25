@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.17.3 — 2026-11-24
+
+Gates que deixavam passar staging em massa escondido em arquivo gravado por heredoc.
+
+- **A continuação de linha na abertura do heredoc não esconde mais comando (#724).** Em `cat <<'A' \` seguido, na linha de baixo, de `> /dev/null; git add -A`, a segunda linha é comando para o bash, mas os gates a liam como corpo do heredoc e a apagavam da análise. Vale para os quatro gates que leem heredoc: staging em massa, mensagem de commit, worktree e publicação.
+- **Arquivo gravado por heredoc e executado por outro caminho passa a ser analisado (#722).** O corpo era tratado como dado quando o arquivo chegava ao interpretador por stdin (`sh < t.cjs`, `< t.cjs sh`, `cat t.cjs | sh`), por cópia ou renomeação (`cp t.cjs x.sh && bash x.sh`, `cat t.cjs > x.sh`), com redirecionamento antes do nome (`bash 2>/dev/null t.sh`), ou na própria linha do heredoc (`cat > t.cjs <<'EOF' && node t.cjs`). `python script.py < dados.txt` continua dado: o stdin ali é entrada do script.
+- **`git` chamado em lista de strings é visto no script JavaScript ou Python (#722).** `spawnSync('git', ['add', '-A'])` e `subprocess.run(["git", "add", "-A"])` passam a barrar como o texto `git add -A`, também quando a lista quebra linha.
+- **Operador colado ao nome do arquivo não esconde o executor.** `bash t.sh; true` e `bash t.sh;true` saíam como se `t.sh` não fosse executado, porque o `;` colado fazia parte do nome.
+
 ## 2.17.2 — 2026-11-24
 
 Três erros que apareciam no uso.

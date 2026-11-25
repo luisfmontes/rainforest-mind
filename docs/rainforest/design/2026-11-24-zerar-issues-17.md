@@ -21,9 +21,10 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
   - **Modelo de ameaça:** protege contra comando escondido na continuação da linha que abre o heredoc, em todo gate que chama a máscara (`gate-staging-total`, `gate-mensagem-commit`, `gate-worktree`, `gate-publicacao-destino`). Fica fora: continuação ANTES do `<<` (`cat \` + quebra + `<<'A'`), em que a linha lógica começa numa linha física anterior; `corpoDeHeredoc` já trata o corpo a partir do `<<`, e a máscara não apaga nada antes dele.
 
 - **D2 — Executor por redirecionamento de entrada e por pipe de `cat` (#722, forma 3).** Em `executoresDoAlvo`, o alvo conta como executado também quando:
-  1. vem logo depois de `<` (ou `0<`), separado ou colado (`sh < t.cjs`, `sh <t.cjs`), e o comando dono do `<` é executor (`EXECUTAM_ARQUIVO`) sem argumento posicional antes do `<` (só flags);
+  1. vem logo depois de `<` (ou `0<`), separado ou colado (`sh < t.cjs`, `sh <t.cjs`, `< t.cjs sh`), e o comando do trecho é executor (`EXECUTAM_ARQUIVO`) sem argumento posicional (só flags e redirecionamentos);
   2. é argumento de `cat` e o mesmo trecho segue, por `|`, para um executor sem argumento posicional (`cat t.cjs | sh`, `cat t.sh | bash -s`).
   - **Porquê:** shell e interpretadores leem script do stdin quando não recebem arquivo de script; `sh < arquivo` é a forma medida, e `cat arquivo | sh` é a mesma execução por outro caminho. Com argumento posicional (`python script.py < dados.txt`), o stdin é dado do script, e o heredoc continua dado.
+  - **Redirecionamento não é argumento (emenda de 2026-11-24, executar):** em todo o reconhecimento de executor, `2>&1`, `>&2`, `<&0` e `&>arq` contam como redirecionamento, e o alvo de `>`, `>>`, `<`, `2>` não conta como argumento. Na base, `bash 2>/dev/null t.sh` e `bash 2>&1 t.sh` saíam 0: o token anterior ao alvo era `/dev/null` ou `1`.
   - **Modelo de ameaça:** fica fora o arquivo lido por variável (`sh < "$f"`) e por substituição (`sh <(cat t.cjs)`): o nome não aparece literal. *(suposição: `<(...)` é raro em comando de agente.)*
 
 - **D3 — O nome do alvo segue cópia e renomeação (#722, forma 4).** Antes de procurar executores, o conjunto de alvos cresce pelos comandos depois do heredoc: `cp`, `mv`, `ln`, `install` com um alvo entre os argumentos de origem acrescentam o nome-base do destino (último argumento que não é flag); `cat <alvo> > <novo>` e `cat <alvo> >> <novo>` acrescentam `<novo>`. Repete até não crescer (cadeia `cp a b; mv b c; bash c`), com teto de 10 voltas.
@@ -33,15 +34,19 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
 - **D4 — `alvoDoRedirecionamentoEhExecutadoDepois` passa a ser `executoresDoAlvo(...).length > 0`.** As duas funções repetem a mesma varredura; com D2 e D3 só na segunda, elas divergiriam e o corpo podia ser mascarado como dado (primeira diz "não executado") mesmo com executor achado pela segunda.
   - **Porquê:** uma régua só para "o arquivo deste heredoc é executado adiante".
 
-- **D5 — O corpo de script não-shell também mostra `git` em lista de strings (#722, forma 1).** Em `mascaraSoGit`, além do trecho `git ...` corrido, uma sequência de literais de string que começa pelo literal `'git'`/`"git"`/`` `git` `` e segue por literais separados por vírgula, colchete ou espaço fica visível com aspas, vírgulas e colchetes trocados por espaço (comprimento preservado): `spawnSync('git',['add','-A'])` vira `` git    add   -A `` para a análise de shell. Vale para JavaScript (`spawn`, `spawnSync`, `execFile`, `execFileSync`) e Python (`subprocess.run(["git","add","-A"])`).
+- **D5 — O corpo de script não-shell também mostra `git` em lista de strings (#722, forma 1).** Em `mascaraSoGit`, além do trecho `git ...` corrido, uma sequência de literais de string que começa pelo literal `'git'`/`"git"`/`` `git` `` e segue por literais separados por vírgula, colchete ou espaço fica visível com aspas, vírgulas e colchetes trocados por espaço (comprimento preservado). A sequência pode atravessar quebras de linha (`spawnSync('git', [` + quebra + `'add', '-A'])`, a forma que um formatador produz): dentro dela a quebra vira espaço, para a análise ler um comando só. Exemplo: `spawnSync('git',['add','-A'])` vira `` git    add   -A `` para a análise de shell. Vale para JavaScript (`spawn`, `spawnSync`, `execFile`, `execFileSync`) e Python (`subprocess.run(["git","add","-A"])`).
   - **Porquê:** é a forma idiomática de chamar processo sem shell nas duas linguagens; a busca por texto da D6 de `gates-sem-ruido` não a via.
   - **Modelo de ameaça:** fica fora o comando montado por concatenação ou variável (`['git', op, '-A']`), já fora pela D6 de `gates-sem-ruido`.
 
 - **D6 — Versão 2.17.3 (PATCH).** Consertos de cobertura de gate existente, sem contrato novo.
 
-- **D7 — Operador colado ao nome se separa antes da busca (forma 5).** Os tokens do trecho depois do heredoc passam por uma separação que parte cada token em `|`, `;`, `&`, `(`, `)`, `{`, `}`, `<` e `>` colados (`t.sh;` vira `t.sh` + `;`, `t.cjs|sh` vira `t.cjs` + `|` + `sh`, `<t.cjs` vira `<` + `t.cjs`). D2 e D3 usam a mesma lista.
+- **D7 — Operador colado ao nome se separa antes da busca (forma 5).** Os tokens do trecho depois do heredoc passam por uma separação que parte cada token em `|`, `;`, `&`, `(`, `)`, `{`, `}`, `<` e `>` colados (`t.sh;` vira `t.sh` + `;`, `t.cjs|sh` vira `t.cjs` + `|` + `sh`, `<t.cjs` vira `<` + `t.cjs`). O dígito de descritor só se separa no começo do token (`2>log` vira `2>` + `log`; `t2>log` vira `t2` + `>` + `log`, como no bash). A quebra de linha entre dois tokens vira separador de comando. D2 e D3 usam a mesma lista.
   - **Porquê:** o nome do arquivo e o operador colado são duas coisas para o bash; para a busca do alvo eram uma só.
   - **Modelo de ameaça:** separar também parte texto entre aspas que contém esses caracteres (`"a;b"`); o efeito é só achar executor a mais, o lado de barrar.
+
+- **D8 — Executor e cópia na própria linha do heredoc (emenda de 2026-11-24, executar).** A busca de executores e de cópias (D2, D3) lê também o resto da linha lógica que abre o heredoc, depois do delimitador: `cat > t.cjs <<'EOF' && node t.cjs` e `cat > t.cjs <<'EOF' && cp t.cjs x.sh` (com `bash x.sh` depois) saíam 0 na base, porque a busca só lia o texto depois do fechamento. `bash` na mesma linha já barrava por `linhaDoHeredocTemInterpretador`.
+  - **Porquê:** o `&&` roda depois do `cat` terminar de ler o corpo, então `node t.cjs` executa o arquivo já gravado.
+  - **Modelo de ameaça:** a mesma de D2 e D3.
 
 ## Avaliado e descartado
 

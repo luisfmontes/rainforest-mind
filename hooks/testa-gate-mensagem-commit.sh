@@ -161,6 +161,8 @@ echo
 echo "== (m) corpo de heredoc citando 'git commit' e dado, nao comando (Issue #263) =="
 CMD_HEREDOC_GIT=$'cat > issue.md <<\x27MD\x27\ntexto explicando o defeito\ngit commit\nMD'
 gate "heredoc com linha 'git commit' bare no corpo -> exit 0" 0 "$(payload "$R1" Bash "$CMD_HEREDOC_GIT")"
+# #724 (zerar-issues-17): a continuacao de linha da abertura do heredoc e comando, nao corpo.
+gate "#724 git commit pelado na continuacao da linha do heredoc -> exit 2" 2 "$(payload "$R1" Bash $'cat <<\x27A\x27 \\\n> /dev/null; git commit\nx\nA')"
 
 echo
 echo "== extra: mesma forma via ferramenta PowerShell (o hook vale para as duas) =="

@@ -901,6 +901,8 @@ confere702 "pr close -c limpo passa" 0 "$PUB" Bash "$R702" 'gh pr close 5 -c lim
 confere702 "pr review -c booleana com corpo limpo passa" 0 "$PUB" Bash "$R702" 'gh pr review 5 -c -b limpo'
 GH702="node $SANDBOX_BIN/gh-por-nome"
 confere702 "gh entre chaves em cwd privado barra (cwd incerto, falso positivo aceito)" 2 "" Bash "$R702P" '{ gh issue create --title termo702 --body x; }'
+# #724 (zerar-issues-17): GH_REPO na continuacao da linha que abre o heredoc nao some na mascara.
+confere702 "#724 GH_REPO na continuacao da linha do heredoc barra (controle: a mascara aqui so aperta)" 2 "" Bash "$R702P" $'cat <<\x27A\x27 \\\n> /dev/null; export GH_REPO=dono/publico; gh issue create --title termo702 --body x\nx\nA'
 GH702="node $SANDBOX_BIN/gh"
 
 # Revisao 2 e Q2 A do Luis (2026-11-13): o comando inteiro conta como texto

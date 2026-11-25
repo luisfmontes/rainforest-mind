@@ -18,7 +18,8 @@
     "em": "2026-11-24"
   },
   "executar": {
-    "status": "pendente"
+    "status": "pendente",
+    "catraca_mutacao": "2026-11-24"
   },
   "revisar": {
     "status": "pendente"
@@ -28,5 +29,21 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Sete furos achados na base antes da tarefa 3 (redirecionamento antes do comando, 2>&1 e 2>/dev/null antes do alvo, executor e cp na linha do heredoc, lista em varias linhas, digito colado ao nome): entram nesta rodada?",
+      "escolha": "Entram: emendas em D2, D5 e D7 e a D8 nova",
+      "porque": "Mesma classe e mesmo codigo das tarefas 2 a 5; deixar fora seria fechar #722 com formas equivalentes abertas, que o revisor de seguranca acharia primeiro",
+      "estagio": "executar",
+      "em": "2026-11-24T23:43:10.175Z"
+    },
+    {
+      "pergunta": "O caso #724 da bateria de publicacao ja sai 2 na base: troca de caso ou fica?",
+      "escolha": "Fica como controle de regressao, renomeado; os casos que medem a mascara sao os de staging, mensagem-commit e worktree",
+      "porque": "Em gate-publicacao-destino a mascara so alimenta mencoesDeGhRepo, que acrescenta destinos (so aperta); com a linha mascarada o segmento gh fica com cwd incerto e o gate ja barra. Nao ha forma em que a mascara da base abra esse gate",
+      "estagio": "executar",
+      "em": "2026-11-24T23:54:39.191Z"
+    }
+  ]
 }
