@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.17.4 — 2026-11-25
+
+Os gates passam a separar os comandos de uma linha como o shell separa.
+
+- **Escape, `$'...'` e comentário não escondem mais a linha de baixo (#736).** O separador de comandos que os gates compartilham (staging em massa, mensagem de commit, worktree, fechar issue, bateria sem timeout) lia uma aspa aberta onde o shell não abre e deixava fora da análise tudo o que vinha depois. Os casos medidos executam a linha escondida: `echo $'\' <<'A''` seguido de `git add -A` na linha de baixo, `echo \' ; git add -A`, `echo hi # don't` com o comando na linha de baixo, e comentário terminado em contrabarra. No PowerShell, a crase escapando a aspa e o comentário com aspa davam no mesmo.
+- **Dois bloqueios indevidos somem.** `echo $'a\'; git add -A'` e `echo "a\"; git add -A ; echo b"` deixam de barrar: o `git` está dentro da string e o bash não o executa.
+- **Limite conhecido.** O texto de `bash -c '...'` chamado pela ferramenta PowerShell continua lido do jeito antigo. Quem tira as aspas dele segue as regras do bash, não as do PowerShell (`''` dentro de aspas simples), e a leitura nova sobre esse texto esconderia comandos que a antiga via.
+
 ## 2.17.3 — 2026-11-24
 
 Gates que deixavam passar staging em massa escondido em arquivo gravado por heredoc.

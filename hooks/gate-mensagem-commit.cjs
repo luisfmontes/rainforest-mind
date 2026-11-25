@@ -71,7 +71,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
+const { segmentosComAspas, dialetoDoWrapper } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
@@ -121,7 +121,8 @@ function analisaGitCommit(toks) {
  * (substituicao de comando, variavel) — tratado como "nao achei nada aqui",
  * nao como bloqueio: este gate e sobre FORMA de mensagem, nao sobre evasao.
  */
-function analisaSegmentoCommit(segTexto, ferramenta) {
+// #736 (D3): o interno do wrapper se segmenta no dialeto do wrapper.
+function analisaSegmentoCommit(segTexto, ferramenta, dialeto = ferramenta === "PowerShell" ? "powershell" : "bash") {
   const toks = tokensComAspas(segTexto);
   const g = analisaGitCommit(toks);
   if (g) return g;
@@ -129,8 +130,9 @@ function analisaSegmentoCommit(segTexto, ferramenta) {
   if (pos === null) return null;
   const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos), { ferramenta });
   if (ilegivel || interno === null) return null;
-  for (const sub of segmentosComAspas(interno)) {
-    const r = analisaSegmentoCommit(sub, ferramenta);
+  const dInterno = dialetoDoWrapper(toks[pos].v, dialeto);
+  for (const sub of segmentosComAspas(interno, dInterno === "powershell", { dialeto: dInterno })) {
+    const r = analisaSegmentoCommit(sub, ferramenta, dInterno);
     if (r) return r;
   }
   return null;
@@ -138,7 +140,7 @@ function analisaSegmentoCommit(segTexto, ferramenta) {
 
 /** Acha o primeiro `git commit` em qualquer segmento do comando bruto. */
 function achaGitCommit(cmd, ferramenta) {
-  for (const seg of segmentosComAspas(cmd)) {
+  for (const seg of segmentosComAspas(cmd, ferramenta === "PowerShell")) {
     const g = analisaSegmentoCommit(seg, ferramenta);
     if (g) return g;
   }

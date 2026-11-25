@@ -601,6 +601,50 @@ console.log("== (#530) palavra de comando reconstruida: aspas, escape, ANSI-C e 
 }
 
 console.log();
+console.log("== #736: escape, $'...' e comentario no segmentador ==");
+{
+  const { segmentosComAspas, dialetoDoWrapper } = require(process.argv[2]);
+  const B = String.fromCharCode(92);
+  const Q = "'";
+  test("(736a) echo \\' ; git add -A -> o segundo segmento e o git (escape fora de aspas)", () => {
+    const s = segmentosComAspas(`echo ${B}${Q} ; git add -A`);
+    eq(s.length, 2, "dois segmentos");
+    eq(s[1], " git add -A", "o git fica no segundo, com o texto intacto");
+  });
+  test("(736b) echo $'a\\'; git add -A' -> 1 segmento (a contrabarra escapa a aspa ANSI-C)", () => {
+    eq(segmentosComAspas(`echo $${Q}a${B}${Q}; git add -A${Q}`).length, 1, "ANSI-C inteira");
+  });
+  test("(736c) leitura sem-escape mantem a de antes: echo \\' ; x -> 1 segmento", () => {
+    eq(segmentosComAspas(`echo ${B}${Q} ; x`, false, { dialeto: "sem-escape" }).length, 1, "sem escape, a aspa abre");
+  });
+  test("(736d) comentario com aspa fecha na quebra: 2 segmentos", () => {
+    const s = segmentosComAspas(`echo hi # don${Q}t\ngit add -A`);
+    eq(s.length, 2, "dois segmentos");
+    eq(s[1], "git add -A", "o git na linha de baixo");
+  });
+  test("(736e) comentario com contrabarra no fim nao junta as linhas", () => {
+    eq(segmentosComAspas(`echo hi #x${B}\ngit add -A`)[1], "git add -A", "a quebra fecha o comentario");
+  });
+  test("(736f) continuacao fora de comentario continua juntando", () => {
+    eq(segmentosComAspas(`echo a${B}\nb; c`).length, 2, "echo ab ; c");
+  });
+  test("(736g) a#b, $# e ${#x} nao abrem comentario", () => {
+    eq(segmentosComAspas(`echo a#b${Q}; x${Q}`).length, 1, "a#b");
+    eq(segmentosComAspas(`echo $#${Q}; x${Q}`).length, 1, "$#");
+  });
+  test("(736h) PowerShell: crase escapa, contrabarra e $' sao literais", () => {
+    eq(segmentosComAspas("echo `" + Q + "; x", true).length, 2, "crase");
+    eq(segmentosComAspas(`echo $${Q}a${B}${Q}; x`, true).length, 2, "$' nao e aspa");
+  });
+  test("(736i) dialetoDoWrapper: so o bash por fora le escape no interno", () => {
+    eq(dialetoDoWrapper("bash", "bash"), "bash", "bash -c pelo bash");
+    eq(dialetoDoWrapper("/usr/bin/pwsh.exe", "bash"), "powershell", "pwsh pelo bash");
+    eq(dialetoDoWrapper("cmd", "bash"), "sem-escape", "cmd");
+    eq(dialetoDoWrapper("bash", "powershell"), "sem-escape", "bash -c pelo PowerShell");
+  });
+}
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

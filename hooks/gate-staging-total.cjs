@@ -58,7 +58,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
+const { cwdPorSegmento, segmentosComAspas, dialetoDoWrapper } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
@@ -100,8 +100,8 @@ function git(dir, args, { cru = false } = {}) {
  * cada um cortaria a linha num lugar diferente perto de `;`/`&&` dentro de
  * aspas. Antes era `cmd.split(/\|\||&&|[;|\n]/)`, sem respeitar aspas.
  */
-function segmentos(cmd) {
-  return segmentosComAspas(cmd);
+function segmentos(cmd, ehPowerShell) {
+  return segmentosComAspas(cmd, ehPowerShell);
 }
 
 /**
@@ -170,7 +170,9 @@ function analisaGit(toksComAspas) {
 // `hooks/lib/heredoc.cjs` (importada acima) para `gate-mensagem-commit.cjs`
 // poder reusar a mesma mascara sem duplicar a logica.
 
-function analisaSegmentoGit(segTexto, ferramenta) {
+// #736 (D3): `dialeto` e o do texto do segmento (o da ferramenta no topo, o do
+// wrapper no texto desempacotado), e segmenta o interno com o dialeto do wrapper.
+function analisaSegmentoGit(segTexto, ferramenta, dialeto = ferramenta === "PowerShell" ? "powershell" : "bash") {
   const g = analisaGit(tokensComAspas(segTexto));
   if (g) return g;
   const toks = tokensComAspas(segTexto);
@@ -179,8 +181,9 @@ function analisaSegmentoGit(segTexto, ferramenta) {
   const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos), { ferramenta });
   if (ilegivel) return { incerto: true };
   if (interno !== null) {
-    for (const sub of segmentosComAspas(interno)) {
-      const r = analisaSegmentoGit(sub, ferramenta);
+    const dInterno = dialetoDoWrapper(toks[pos].v, dialeto);
+    for (const sub of segmentosComAspas(interno, dInterno === "powershell", { dialeto: dInterno })) {
+      const r = analisaSegmentoGit(sub, ferramenta, dInterno);
       if (r && (r.incerto || motivoDe(r))) return r;
     }
   }
@@ -335,7 +338,8 @@ function main() {
   let ultimoDirC = null;
   // D1 (zerar-issues-4): remover corpos de heredoc nao-interpretador ANTES de segmentar
   const cmdParaAnalise = mascararCorposDeHeredoc(cmd, { scriptNaoShell: true });
-  const segs = segmentos(cmdParaAnalise);
+  const ehPowerShell = ev.tool_name === "PowerShell";
+  const segs = segmentos(cmdParaAnalise, ehPowerShell);
   for (let idx = 0; idx < segs.length; idx += 1) {
     const g = analisaSegmentoGit(segs[idx], ev.tool_name);
     if (!g) continue;
@@ -361,7 +365,7 @@ function main() {
   // `git -C`, e `-C` e explicito. `incerto` (cd variavel, subshell, `~` no
   // comeco, `popd` sem `pushd`) = conservadorismo: usa o cwd inicial, evitando
   // decidir por adivinhacao.
-  const porSegmento = cwdPorSegmento(cmdParaAnalise, cwdDoEvento);
+  const porSegmento = cwdPorSegmento(cmdParaAnalise, cwdDoEvento, ehPowerShell);
   const doSegmento = porSegmento[indiceSegmento] || { cwd: cwdDoEvento, incerto: true };
   const dir = dirC || (doSegmento.incerto ? cwdDoEvento : doSegmento.cwd);
   const gitDir = git(dir, ["rev-parse", "--git-dir"]);

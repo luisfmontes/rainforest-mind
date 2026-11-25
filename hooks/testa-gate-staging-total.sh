@@ -674,6 +674,35 @@ pos_ansi="$(node -e "const h=require(process.argv[1]);const c=process.argv[2];pr
 if [ "$pos_ansi" = "[16]" ]; then ok=$((ok+1)); echo "  ok   R3b lib: \$'...' dentro de \${...} e ANSI-C ($pos_ansi)"
 else falhou=$((falhou+1)); echo "  FALHA R3b lib: \$'...' dentro de \${...} e ANSI-C: esperava [16], veio $pos_ansi"; fi
 
+echo "== rodada 18 (#736): escape, \$'...' e comentario no segmentador =="
+# D1: escape e $'...' do bash. Cada "barra" abaixo sai 0 na base e o bash roda a linha escondida.
+gate "#736 \$'\\' engole o heredoc barra"                2 "$(b "$(hd "echo \$'${BS}' <<'A''" "git add -A" "A")")"
+gate "#736 \$'\\' dentro de \${} barra"                   2 "$(b "$(hd "echo \${x:-\$'${BS}'}<<${BS}'A${BS}''}" "git add -A" "A")")"
+gate "escape fora de aspas: echo \\' ; git add -A barra" 2 "$(b "echo ${BS}' ; git add -A")"
+gate "controle: echo \\\$'a\\'; git add -A barra"         2 "$(b "echo ${BS}\$'a${BS}'; git add -A")"
+gate "controle: echo \"\$'\"; git add -A barra"           2 "$(b "echo \"\$'\"; git add -A")"
+gate "controle: echo 'a; git add -A' passa"              0 "$(b "echo 'a; git add -A'")"
+gate "controle: echo \$'a; git add -A' passa"            0 "$(b "echo \$'a; git add -A'")"
+gate "falso positivo da base: echo \$'a\\'; git add -A' passa" 0 "$(b "echo \$'a${BS}'; git add -A'")"
+gate "falso positivo da base: echo \"a\\\"; git add -A\" passa" 0 "$(b "echo \"a${BS}\"; git add -A ; echo b\"")"
+# D2: comentario e continuacao de linha.
+gate "comentario com aspa: echo hi # don't barra"        2 "$(b "$(hd "echo hi # don't" "git add -A")")"
+gate "comentario com aspa dupla barra"                   2 "$(b "$(hd 'echo hi # say "x' "git add -A")")"
+gate "comentario com contrabarra no fim barra"           2 "$(b "$(hd "echo hi #x${BS}" "git add -A")")"
+gate "bash -c com comentario e aspa barra"               2 "$(b "$(hd "bash -c \"echo hi # don't" "git add -A\"")")"
+gate "controle: echo a#b'; git add -A' passa"            0 "$(b "echo a#b'; git add -A'")"
+gate "controle: echo \$#'; git add -A' passa"            0 "$(b "echo \$#'; git add -A'")"
+gate "controle: git add a.txt # sem -A barra"            2 "$(b "git add a.txt # sem -A")"
+gate "controle: git status # add -A' x passa"            0 "$(b "git status # add -A' x")"
+# D3: o dialeto chega ao segmentador.
+gate "PowerShell comentario com aspa barra"              2 "$(p "$(hd "echo hi # don't" "git add -A")")"
+gate "PowerShell crase escapa a aspa barra"              2 "$(p "echo \`'; git add -A")"
+gate "PowerShell \$'a\\' nao e aspa barra"                2 "$(p "echo \$'a${BS}'; git add -A")"
+gate "PowerShell bash -c com aspa dobrada barra"         2 "$(p "bash -c 'echo ${BS}''; git add -A'")"
+gate "pwsh -Command com crase pelo bash barra"           2 "$(b "pwsh -Command \"echo ${BS}\`'; git add -A\"")"
+gate "falso positivo da base: PowerShell \"a\`\"; ...\" passa" 0 "$(p "echo \"a\`\"; git add -A\"")"
+gate "falso positivo da base: cmd /c \"echo a\\\" & ...\" passa" 0 "$(b "cmd /c \"echo a${BS}\" & git add -A\"")"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

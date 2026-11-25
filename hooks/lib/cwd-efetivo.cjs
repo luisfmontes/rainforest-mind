@@ -153,25 +153,137 @@ function fimDaExpansaoDeChaves(cmd, i) {
   return -1;
 }
 
+// Dialeto do texto de dentro de um wrapper de string (#736, D3 da zerar-issues-18).
+// Só quando quem chamou é bash: o desempacotador (`desempacotarWrapperDeString`)
+// tira as aspas pelas regras do bash, então o texto de dentro só é fiel quando a
+// linha de fora é bash. Aí `bash -c`/`eval` seguem o bash, `pwsh -Command`/`iex`/`&`
+// o PowerShell, e o resto (`cmd /c`, nome desconhecido) a leitura sem escape de
+// antes do #736. Com o PowerShell por fora, o texto vem desaspado pelo bash
+// (`'a''b'` vira `ab`, não `a'b`) e ler escape nele esconderia o que a leitura
+// antiga via (`bash -c 'echo \''; git add -A'`): fica a leitura sem escape.
+const WRAPPER_BASH = new Set(["bash", "sh", "zsh", "ksh", "dash", "ash", "eval"]);
+const WRAPPER_POWERSHELL = new Set(["pwsh", "powershell", "iex", "invoke-expression", "&"]);
+function dialetoDoWrapper(nome, dialetoDeFora) {
+  if (dialetoDeFora !== "bash") return "sem-escape";
+  const n = String(nome || "").replace(/^.*[\\/]/, "").toLowerCase().replace(/\.exe$/, "");
+  if (WRAPPER_BASH.has(n)) return "bash";
+  if (WRAPPER_POWERSHELL.has(n)) return "powershell";
+  return "sem-escape";
+}
+
+/**
+ * Continuação de linha como o dialeto lê (#736, D1 e D2 da zerar-issues-18):
+ * no bash, contrabarra ímpar + quebra some fora de aspas e em aspas duplas; no
+ * PowerShell, a crase + quebra. Não junta dentro de aspas simples, de `$'...'`
+ * (bash) nem de comentário: ali a contrabarra é literal e a quebra fecha o
+ * comentário (`echo hi #x\` + quebra + `git add -A` roda o `git`). O texto
+ * fora das continuações sai intacto, para os segmentos continuarem casando por
+ * texto com os de `gate-fechar-issue.cjs`.
+ */
+function colapsaContinuacaoDoDialeto(cmd, dialeto) {
+  const esc = dialeto === "powershell" ? "`" : "\\";
+  let saida = "", aspa = null;
+  for (let i = 0; i < cmd.length; i += 1) {
+    const c = cmd[i];
+    if (aspa === "#") {
+      if (c === "\n") aspa = null;
+      saida += c;
+      continue;
+    }
+    if (aspa === "'") { if (c === "'") aspa = null; saida += c; continue; }
+    if (aspa === "$'") {
+      if (c === "\\" && i + 1 < cmd.length) { saida += c + cmd[i + 1]; i += 1; continue; }
+      if (c === "'") aspa = null;
+      saida += c;
+      continue;
+    }
+    if (c === esc && i + 1 < cmd.length) {
+      const prox = cmd[i + 1];
+      if (prox === "\n") { i += 1; continue; }
+      if (prox === "\r" && cmd[i + 2] === "\n") { i += 2; continue; }
+      saida += c + prox;
+      i += 1;
+      continue;
+    }
+    if (aspa === '"') { if (c === '"') aspa = null; saida += c; continue; }
+    if (c === '"' || c === "'") aspa = c;
+    else if (c === "$" && cmd[i + 1] === "'" && dialeto === "bash") { aspa = "$'"; saida += "$'"; i += 1; continue; }
+    else if (c === "#" && inicioDePalavra(cmd, i, esc)) aspa = "#";
+    saida += c;
+  }
+  return saida;
+}
+
+// `#` abre comentário no começo de palavra: começo do texto, ou depois de
+// espaço ou operador (`;`, `&`, `|`, `(`, `)`, `<`, `>`) que não foi escapado.
+// `a#b`, `$#`, `${#x}` e `=#` não abrem.
+function inicioDePalavra(cmd, i, esc) {
+  if (i === 0) return true;
+  if (!/[\s;&|()<>]/.test(cmd[i - 1])) return false;
+  // Corrida ímpar do caractere de escape antes do delimitador: ele foi escapado.
+  let k = i - 2, n = 0;
+  while (k >= 0 && cmd[k] === esc) { n += 1; k -= 1; }
+  return n % 2 === 0;
+}
+
 /**
  * Quebra a linha de comando em segmentos respeitando aspas.
  *
  * Similares a `tokensComAspas`, mas opera sobre separadores de comando
  * (`;`, `&&`, `||`, `|`) em vez de espaçamento de tokens.
  * Aspas simples e duplas protegem separadores do inside.
+ *
+ * #736 (zerar-issues-18): lê escape, `$'...'` e comentário como o dialeto
+ * (`opcoes.dialeto`: "bash", "powershell" ou "sem-escape"; sem ele, "powershell" com
+ * `ehPowerShell` e "bash" sem). No bash, contrabarra escapa o caractere seguinte
+ * fora de aspas e em aspas duplas, e `$'...'` é aspa em que a contrabarra escapa
+ * a própria aspa; no PowerShell, a crase faz o papel da contrabarra e `$'` não é
+ * aspa. Nos dois, `#` em começo de palavra abre comentário até a quebra, e aspa
+ * dentro dele não conta. Antes, `echo $'\' <<'A''` + quebra + `git add -A` e
+ * `echo hi # don't` + quebra + `git add -A` liam uma aspa aberta e engoliam a
+ * linha de baixo, que o shell executa. O "sem-escape" mantém a leitura antiga, sem
+ * escape nem comentário. O texto de cada segmento continua um trecho do comando:
+ * só a fronteira muda.
  */
-function segmentosComAspas(cmd, ehPowerShell = false) {
-  // Tarefa 13 (#309, revisao 2): mesmo colapso de continuacao de linha que
-  // `segmentosParaGate` (gate-fechar-issue.cjs) aplica — as duas funcoes
-  // dividem `\n` cru da MESMA forma (fronteira incondicional), entao as
-  // duas precisam do mesmo preprocessamento para os segmentos casarem por
-  // TEXTO (ver docblock de `cwdDoSegmento` em gate-fechar-issue.cjs).
-  cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
+function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
+  const dialeto = opcoes.dialeto || (ehPowerShell ? "powershell" : "bash");
+  // "sem-escape": a leitura de antes do #736 (continuação do bash, sem escape nem comentário).
+  const leEscape = dialeto !== "sem-escape";
+  const esc = dialeto === "powershell" ? "`" : "\\";
+  // Tarefa 13 (#309, revisao 2): o colapso de continuacao de linha vem antes da
+  // segmentacao, como em `segmentosParaGate` (gate-fechar-issue.cjs), para os
+  // segmentos casarem por TEXTO (ver docblock de `cwdDoSegmento` la).
+  cmd = leEscape ? colapsaContinuacaoDoDialeto(String(cmd), dialeto) : colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "", aspa = null;
 
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
+
+    if (!leEscape) {
+      // sem leitura de escape: direto para a cadeia de aspas e fronteiras abaixo
+    } else if (aspa === "#") {
+      if (c !== "\n") { atual += c; continue; }
+      aspa = null; // a quebra fecha o comentário e segue para a fronteira abaixo
+    } else if (aspa === "$'") {
+      if (c === "\\" && i + 1 < cmd.length) { atual += c + cmd[i + 1]; i += 1; continue; }
+      if (c === "'") aspa = null;
+      atual += c;
+      continue;
+    } else if (c === esc && aspa !== "'" && i + 1 < cmd.length) {
+      atual += c + cmd[i + 1];
+      i += 1;
+      continue;
+    } else if (!aspa && c === "$" && cmd[i + 1] === "'" && dialeto === "bash") {
+      aspa = "$'";
+      atual += "$'";
+      i += 1;
+      continue;
+    } else if (!aspa && c === "#" && inicioDePalavra(cmd, i, esc)) {
+      aspa = "#";
+      atual += c;
+      continue;
+    }
 
     if (aspa) {
       // Dentro de aspas: só sair da aspa ou adicionar caractere
@@ -767,6 +879,7 @@ module.exports = {
   toplevelConfinado,
   normalizarMsys,
   segmentosComAspas,
+  dialetoDoWrapper,
   extrairUltimoDirGit,
   contemSubshellOuGrupo,
   CD,
