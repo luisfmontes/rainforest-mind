@@ -18,7 +18,7 @@
     "em": "2026-11-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-24",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh",
     "saida": "== resultado: 233 ok, 0 falha(s) == / == resultado: 94 ok, 0 falha(s) == / == resultado: 917 ok, 0 falha(s) == / == resultado: 335 ok, 0 falha(s) ==",
@@ -59,13 +59,32 @@
     "em": "2026-11-24"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "6cea5864047471c23061e74e55740101b18a689d",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aaaf17da4079e4a6e",
+        "veredito": "ok",
+        "em": "2026-11-24",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-aaaf17da4079e4a6e.jsonl"
+      }
+    ],
+    "achados": 10,
+    "base": "3b1ecacfcece3a9e51ae2b56c6501db6daac429d",
+    "head": "6cea5864047471c23061e74e55740101b18a689d",
+    "em": "2026-11-24"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-24"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-24"
   },
   "decididos": [
     {
@@ -81,6 +100,13 @@
       "porque": "Em gate-publicacao-destino a mascara so alimenta mencoesDeGhRepo, que acrescenta destinos (so aperta); com a linha mascarada o segmento gh fica com cwd incerto e o gate ja barra. Nao ha forma em que a mascara da base abra esse gate",
       "estagio": "executar",
       "em": "2026-11-24T23:54:39.191Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-11-24",
+      "de": "revisar",
+      "motivo": "Revisao 1 (ok com 10 achados da mesma classe): flag com valor antes do alvo, cat < alvo > novo e pipe encadeado, execucao por caminho e por -c, alvo de tee/cat>x/>|, git.exe e lista com comentario, '-' depois de script, e os preexistentes fimDaLinhaLogica sem paridade/comentario/aspa, << falso em ${..}/)#/$'..', node - <<'A'"
     }
   ]
 }

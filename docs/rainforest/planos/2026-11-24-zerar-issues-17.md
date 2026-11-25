@@ -48,7 +48,7 @@ busca:
 - catalogo | tokensComAspas em hooks/lib/tokens-comando.cjs | estendo; o tokenizador é de uso geral e não separa operador colado de propósito, então a separação fica local em heredoc.cjs
 desfecho: estender
 O que fazer:
-- Emenda do executar (D7 emendada): `const RE_OPERADOR_COLADO = /(^\d+[<>]&\d*-?|[<>]&\d*-?|&>>?|^\d+>>?|^\d+<|>>?|<|[|;&(){}]+)/;` (dígito de descritor só no começo do token; `2>&1`, `>&2` e `&>` inteiros), `RE_REDIR_COM_ALVO = /^(?:\d*(?:<|>>?)|&>>?)$/`, `RE_REDIR_FECHADO = /^\d*[<>]&\d*-?$/` e `ehOperador`. `function tokensSeparados(texto)`: tira `\`+quebra, tokeniza com `tokensComAspas` e põe `;` entre dois tokens que têm quebra de linha entre eles (pelos offsets `ini`/`fim`); no `catch`, quebra vira ` ; ` e `split(/\s+/)`; e `return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);` (essa linha, literal, é o `de:` da mutação). Comentário citando a D7.
+- Emenda do executar (D7 emendada): `const RE_OPERADOR_COLADO = /(^\d+[<>]&\d*-?|[<>]&\d*-?|&>>?|^\d+>>?|^\d+<|>>?|<|[|;&(){}]+)/;` (dígito de descritor só no começo do token; `2>&1`, `>&2` e `&>` inteiros), `RE_REDIR_COM_ALVO = /^(?:\d*(?:<|>>?)|&>>?)$/`, `RE_REDIR_FECHADO = /^\d*[<>]&\d*-?$/` e `ehOperador`. `function tokensSeparados(texto)`: tira `\`+quebra, tokeniza com `tokensComAspas` e põe `;` entre dois tokens que têm quebra de linha entre eles (pelos offsets `ini`/`fim`); no `catch`, quebra vira ` ; ` e `split(/\s+/)`; e `return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);` (essa linha, literal, é o `de:` da mutação). Revisão 1: `<<`, `<<-`, `<<<` e `>|` também se separam inteiros. Comentário citando a D7.
 - `executoresDoAlvo` usa `tokensSeparados(depois)` no lugar do `try { toks = tokensComAspas(...) } catch {...}`.
 - Casos na seção nova:
   - `operador colado: bash t.sh; true barra` → 2: `$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash t.sh; true")")`.
@@ -81,6 +81,7 @@ O que fazer:
   2. `if (k > ini && ehRedirecionamentoDeEntrada(toks[k - 1]))`: `executorDeStdin(trecho, toks)` entra e encerra o token; senão
   3. `executorAntes(toks, k, ini)` entra e encerra o token;
   4. se o trecho é `cat` (alvo como argumento ou como stdin) e `toks[fim]` é `|` ou `|&`: `executorDeStdin` do trecho seguinte (`trechoEm(toks, fim + 1)`).
+- Revisão 1: `FLAGS_COM_VALOR` (`-o`, `+o`, `-O`, `+O`, `-W`, `-X`, `-r`, `--require`, `--import`, `--loader`, `-I` e afins) pula o valor em `lerTrecho` e em `executorAntes`; `executorAntes` aceita também o alvo como primeiro posicional de executor; `executoresDaPipeline(toks, fim)` segue `|`/`|&` e `( )`/`{ }` até um executor de stdin, a partir de qualquer trecho que lê o alvo (`trechoLeAlvo`: argumento ou `<`); `-` só é script antes de qualquer posicional (`stdinComoScript`); `deno run`/`bun run` pulam o subcomando. Casos `R1` de flag com valor, pipe encadeado e `-` de dado.
 - Emenda da revisão de segurança automática: `lerTrecho` devolve também `flags`; `executorDeStdin(trecho, toks)` aceita, além de sem posicional, `-` entre as flags, `-s` em shell (`SHELLS_COM_S`) e `/dev/stdin` como primeiro posicional.
 - `alvoDoRedirecionamentoEhExecutadoDepois` vira `return executoresDoAlvo(cmd, i, fimDoHeredoc).length > 0;`, com o docblock dizendo que é a mesma régua (D4).
 - Casos na seção nova:
@@ -110,6 +111,7 @@ busca:
 desfecho: construir
 O que fazer:
 - `function nomeBase(t)`: tira aspas das pontas (`replace(/^["']+|["']+$/g, "")`) e devolve `split(/[\\/]/).pop()`, a mesma conta de hoje; `executoresDoAlvo` e `alvosDaLinha` passam a usá-la.
+- Revisão 1: `cat` que lê o alvo pelo stdin (`cat < t.sh > x.sh`) também copia (`trechoLeAlvo`). Caso `R1 cat < t.sh > x.sh; bash x.sh`.
 - `function expandirAlvosPorCopia(toks, alvos)`: até 10 voltas, enquanto o `Set` cresce, para cada trecho cortado por `trechoEm` (da tarefa 3), com os posicionais de `lerTrecho` (flag = começa com `-`, pulada sem valor; redirecionamento e alvo fora): comando `cp`, `mv`, `ln` ou `install` com dois ou mais posicionais, algum de origem (todos menos o último) com nome-base em `alvos` → acrescenta o nome-base do último (vazio, como em `d/`, não entra); comando `cat` com posicional em `alvos` e redirecionamento `>`/`>>` no trecho → acrescenta o nome-base do alvo do redirecionamento.
 - Em `executoresDoAlvo`, `expandirAlvosPorCopia(toks, alvos);` logo depois de `tokensSeparados`.
 - Casos na seção nova, todos `$(b "$(hd "cat > <arq> <<'EOF'" "git add -A" "EOF" "<cauda>")")` com `<arq>` e `<cauda>`:
@@ -137,6 +139,7 @@ busca:
 desfecho: estender
 O que fazer:
 - `function trechosDeListaGit(texto)` (emenda do executar: sobre o corpo inteiro, não por linha): acha cada literal `'git'`, `"git"` ou `` `git` `` (sem exigir `(` ou `[` antes) e o estende enquanto vier, depois de espaços (quebra de linha inclusive), vírgulas e colchetes, outro literal completo de mesma aspa na abertura e no fechamento (sem quebra de linha nem aspa dentro); a sequência termina no primeiro caractere que não é isso. Devolve os intervalos `[ini, fim)`, `fim` logo depois da aspa que fecha o último literal.
+- Revisão 1: o literal inicial aceita caminho e `.exe` (`/(['"`])((?:[^'"`\n]*[\\/])?git(?:\.exe)?)\1/gi`), os separadores aceitam chave, parêntese, comentário de bloco e chave de objeto, e `trechosDeListaGit` devolve `{ ini, fim, conteudos }`: só o miolo dos literais fica visível. Casos `R1 git.exe`, `R1 comentario`, `R1 Deno.Command`.
 - `mascaraSoGit` passa a trabalhar sobre o corpo inteiro (a regex de hoje já para em quebra de linha). Depois do laço de hoje: `for (const [a, z] of trechosDeListaGit(trecho))`, cada posição do intervalo recebe o caractere original, trocado por espaço quando é aspa, vírgula, colchete ou quebra de linha. Comprimento preservado.
 - Casos na seção nova:
   - `#722 spawnSync('git',['add','-A']) executado por node barra` → 2: `$(b "$(hd "cat > t.cjs <<'EOF'" "require('child_process').spawnSync('git',['add','-A'])" "EOF" "node t.cjs")")`.
@@ -152,10 +155,90 @@ mutacao:
 prova-na-base: verde — casos novos desta tarefa; contra a lib da base o spawn em array sai 0 (sonda de 2026-11-24)
 pronto quando: com o corpo real da #722 (`require('child_process').spawnSync('git',['add','-A'])` + `node t.cjs`), provado por `bash hooks/testa-gate-staging-total.sh` com `ok` nos quatro casos da tarefa e 0 falhas.
 
+### 7. Execução por caminho e por texto de `-c`/`eval`; alvos de `tee` e `>` colado (revisão 1) [tipo: implementar]
+atende: D9
+arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`
+depende de: 5
+busca:
+- catalogo | lerTrecho e alvosDaLinha em hooks/lib/heredoc.cjs | estendo; lerTrecho passa a devolver nomeIdx
+desfecho: estender
+O que fazer:
+- `lerTrecho` devolve `nomeIdx` (índice do token do comando). Em `executoresDoAlvo`, `if (trecho.nomeIdx === k && /[\\/]/.test(t))` empurra `"./"`.
+- `abrirTextoDeComando(toks)`: token com espaço depois de `-c` (`/^-\w*c\w*$/`) ou de `eval` vira `;` + `tokensSeparados(token)` + `;`. `executoresDoAlvo` aplica antes de `expandirAlvosPorCopia`.
+- `alvosDaLinha`: regex `/\d?>[>|]?\s*([^\s;|&<>()]+)/g` (sem exigir espaço antes) e os posicionais de `tee` da linha.
+- Casos `R1 $PWD/t.sh`, `R1 ../t.sh`, `R1 bash -c 'bash t.sh'`, `R1 tee t.sh <<EOF > /dev/null`, `R1 cat>t.sh<<EOF` e `R1 cat >| t.sh` → 2 na seção nova.
+mutacao:
+  arquivo: `hooks/lib/heredoc.cjs`
+  de: `trecho.nomeIdx === k`
+  para: `false`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 17", caso "R1 ../t.sh barra"
+prova-na-base: verde — casos novos da revisão 1; contra a lib do commit 6cea5864 saem 0 (25 falhas medidas com a lib anterior)
+pronto quando: com os comandos que o revisor mediu no bash real (`../t.sh`, `bash -c 'bash t.sh'`, `tee t.sh <<'A'`), provado por `bash hooks/testa-gate-staging-total.sh` com `ok` nos casos `R1` desta tarefa e 0 falhas.
+
+### 8. Linha lógica de verdade (revisão 1) [tipo: implementar]
+atende: D10
+arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`
+depende de: 7
+busca:
+- catalogo | fimDaLinhaLogica em hooks/lib/heredoc.cjs:31 | estendo; é a função que corpoDeHeredoc, a máscara e os leitores de alvo usam
+desfecho: estender
+O que fazer:
+- `fimDaLinhaLogica(cmd, i)` vira varredura de `i` em diante: aspa simples (sem escape), contrabarra fora dela pula o caractere seguinte (quebra inclusive), aspa dupla, `$'...'` com `\` escapando, profundidade de `$(`, e `#` em início de palavra (`/[\s;|&()]/` antes) que encerra a linha na próxima quebra se não estiver dentro de `$(`. Devolve a primeira quebra fora de tudo isso, ou `-1`.
+- Casos `R1 contrabarra escapada fecha a linha`, `R1 contrabarra em comentario nao continua` e `R1 aspa multilinha na abertura` → 2. O caso `#724` e o `continuacao normal | bash` de antes seguem barrando.
+mutacao:
+  arquivo: `hooks/lib/heredoc.cjs`
+  de: `if (sub === 0) return q;`
+  para: `if (sub === 0) {}`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 17", caso "R1 contrabarra em comentario nao continua barra"
+prova-na-base: verde — casos novos da revisão 1; contra a lib do commit 6cea5864 saem 0
+pronto quando: com as três aberturas que o revisor rodou no bash real, provado por `bash hooks/testa-gate-staging-total.sh` com `ok` nos três casos e 0 falhas.
+
+### 9. `<<` que não é operador (revisão 1) [tipo: implementar]
+atende: D11
+arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`
+depende de: 8
+busca:
+- catalogo | posicoesDeOperadorHeredoc em hooks/lib/heredoc.cjs | estendo
+desfecho: estender
+O que fazer:
+- Em `posicoesDeOperadorHeredoc`, fora de aspas: `$'` pula até a `'` não escapada; `${` pula até a `}` que fecha (contando chaves); e `)` entra na lista de caracteres que abrem comentário antes de `#`.
+- Casos `R1 ${x:-<<'A'} nao abre heredoc` e `R1 (true)#<<'A' e comentario` → 2.
+mutacao:
+  arquivo: `hooks/lib/heredoc.cjs`
+  de: `" \t\n;|&()".includes(antes)`
+  para: `" \t\n;|&(".includes(antes)`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 17", caso "R1 (true)#<<'A' e comentario barra"
+prova-na-base: verde — casos novos da revisão 1; contra a lib do commit 6cea5864 saem 0
+pronto quando: com as duas linhas que o revisor rodou no bash real, provado por `bash hooks/testa-gate-staging-total.sh` com `ok` nos dois casos e 0 falhas.
+
+### 10. Heredoc no stdin de interpretador não-shell (revisão 1) [tipo: implementar]
+atende: D12
+arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`
+depende de: 9
+busca:
+- catalogo | executorDeStdin e mascararCorposDeHeredoc em hooks/lib/heredoc.cjs | componho; o reconhecimento é o executorDeStdin da tarefa 3 aplicado ao trecho do próprio <<
+desfecho: compor
+O que fazer:
+- `RE_OPERADOR_COLADO` e `RE_REDIR_COM_ALVO` passam a tratar `<<`, `<<-` e `<<<` como redirecionamento com alvo.
+- `interpretadorNaoShellDoHeredoc(cmd, i)`: tokeniza a linha lógica, acha o token `<<` de `i` (o último da linha até `i`), e devolve `executorDeStdin` do trecho dele se for de `INTERPRETADORES_NAO_SHELL`, senão null.
+- Em `mascararCorposDeHeredoc`, `dado` ganha `&& !(opcoes.scriptNaoShell === true && interpretadorNaoShellDoHeredoc(fora, i))`, e o ramo `scriptNaoShell` soma esse interpretador aos executores.
+- Casos `R1 node - <<'A' com execSync` e `R1 python - <<'A' com os.system` → 2; `R1 node - <<'A' com regex sem git` e `R1 python script.py <<'A' com dado` → 0.
+mutacao:
+  arquivo: `hooks/lib/heredoc.cjs`
+  de: `!(opcoes.scriptNaoShell === true && interpretadorNaoShellDoHeredoc(fora, i))`
+  para: `true`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 17", caso "R1 node - <<'A' com execSync barra"
+prova-na-base: verde — casos novos da revisão 1; contra a lib do commit 6cea5864 saem 0
+pronto quando: com o `node - <<'A'` que o revisor rodou no bash real, provado por `bash hooks/testa-gate-staging-total.sh` com `ok` nos quatro casos e 0 falhas.
+
 ### 6. Versão 2.17.3 [tipo: docs]
 atende: D6
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
-depende de: 5
+depende de: 10
 O que fazer:
 - `version` `2.17.3` nas duas `plugin.json` e nas duas ocorrências da linha do selo do `README.md` (URL e `alt`).
 - `## 2.17.3 — 2026-11-24` no topo do `CHANGELOG.md`, um item por Issue (#724, #722) e um para o operador colado, do ponto de vista de quem usa.
