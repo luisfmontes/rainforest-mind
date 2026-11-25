@@ -304,9 +304,12 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
 // linha (`echo a >#x`), e na dúvida a leitura que separa é a que não esconde.
 function abreComentario(antes, esc) {
   if (antes === "") return true;
-  // Espaço é só o do bash (espaço, tab, quebra): CR, NBSP e BOM são letra para ele,
-  // e o \s do JavaScript os aceitava (revisão do fluxo, achado 2).
-  if (!/[ \t\n;&|(]/.test(antes[antes.length - 1])) return false;
+  // O espaço depende do dialeto (revisão do fluxo, achado 2, medido em 2026-11-25):
+  // no bash é só espaço, tab e quebra (CR, NBSP e BOM são letra); no PowerShell é o
+  // \s do JavaScript mais U+0085, menos o BOM (NBSP, FF, VT, U+2003 e U+3000 contam).
+  const ch = antes[antes.length - 1];
+  const espaco = esc === "`" ? (/[\s\u0085]/.test(ch) && ch !== "﻿") : /[ \t\n]/.test(ch);
+  if (!espaco && !/[;&|(]/.test(ch)) return false;
   // Corrida ímpar do caractere de escape antes do delimitador: ele foi escapado.
   let k = antes.length - 2, n = 0;
   while (k >= 0 && antes[k] === esc) { n += 1; k -= 1; }
@@ -371,8 +374,11 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
       // Separador escapado no alvo de um redirecionamento (`<<\; git add -A`,
       // `>out\; git add -A`): o redirecionamento pode vir antes do comando, e o
       // shell roda o que vem depois. O texto depois do escape vira segmento também,
-      // e a linha sai incerta (revisão do fluxo, achado 1).
-      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>][<>&|]*[ \t]*[^ \t\n<>]*$/.test(atual)) {
+      // e a linha sai incerta (revisão do fluxo, achado 1). Falha fechado: basta haver
+      // `<` ou `>` antes, em qualquer ponto da linha, porque o alvo pode ter aspa ou
+      // `$( )` com espaço (`> "a b"\; git add -A`, `>$(echo a b)\; git add -A`), e
+      // `$( )` e chave já viraram fronteira de segmento aqui.
+      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>]/.test(cmd.slice(0, i)) && cmd.slice(i + 2).trim()) {
         extras.push(i + 2);
       }
       atual += c + cmd[i + 1];

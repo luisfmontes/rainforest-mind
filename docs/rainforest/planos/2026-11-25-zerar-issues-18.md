@@ -172,14 +172,15 @@ busca:
 - catalogo | colapsaContinuacaoDoDialeto, abreComentario e segmentosComAspas em hooks/lib/cwd-efetivo.cjs | estendo; são as funções das tarefas 1 a 8
 desfecho: estender
 O que fazer:
-- Em `segmentosComAspas`, separador (`;`, `&`, `|`) escapado no alvo de um redirecionamento (`<<\;`, `2>\;`, `>out\;`, `<< \;`): o texto depois do escape vira segmento também, e a linha sai incerta.
-- `abreComentario` aceita só o espaço do bash (espaço, tab, quebra), no lugar do `\s` do JavaScript (CR, NBSP, BOM e FF são letra para o bash).
+- Em `segmentosComAspas`, separador (`;`, `&`, `|`) escapado com `<` ou `>` em qualquer ponto antes dele na linha (`<<\;`, `2>\;`, `>out\;`, `> "a b"\;`, `>$(echo a b)\;`): o texto depois do escape vira segmento também, e a linha sai incerta. Falha fechado, porque o alvo pode ter aspa ou `$( )` com espaço.
+- `abreComentario` aceita o espaço do dialeto: no bash só espaço, tab e quebra (CR, NBSP, BOM e FF são letra); no PowerShell o `\s` do JavaScript mais U+0085, menos o BOM (medido em 2026-11-25).
+- Emenda da revisão automática do commit bf7dfb13: casos depois do comentário `# Revisao de seguranca do commit bf7dfb13`.
 - `$((` e `((` no começo de token empilham `"(("`, que `))` desempilha; dentro dele o `#` é literal.
 - PowerShell: `<#` só abre comentário de bloco no começo de token (`abreComentario`).
 - Casos depois do comentário `# Revisao do fluxo (revisor, rodada 18)` (14 que barram, 5 controles), `(736s)` a `(736u)` em `testa-cwd-efetivo.sh`, e dois `#736` em `testa-gate-mensagem-commit.sh`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>][<>&|]*[ \t]*[^ \t\n<>]*$/.test(atual)) {`
+  de: `      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>]/.test(cmd.slice(0, i)) && cmd.slice(i + 2).trim()) {`
   para: `      if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "<<\\; antes do comando barra"

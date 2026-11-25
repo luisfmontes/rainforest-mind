@@ -686,6 +686,7 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(s.some((t) => t.trim() === "cd x"), true, "o cd aparece");
     eq(s.incerto, true, "incerta");
     eq(segmentosComAspas("find . -exec echo {} " + B + "; -print").incerto, undefined, "find -exec nao e incerto");
+    eq(segmentosComAspas(">$(echo a b)" + B + "; cd x").some((t) => t.trim() === "cd x"), true, "alvo $( ) com espaco");
   });
   test("(736t) # em aritmetica e literal; CR e NBSP nao abrem comentario", () => {
     eq(segmentosComAspas("echo $((1 # x)) | x").some((t) => t.trim() === "x"), true, "$(( ))");
@@ -695,6 +696,8 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
   });
   test("(736u) PowerShell: <# no meio da palavra nao abre comentario", () => {
     eq(segmentosComAspas("echo a<#; x", true).some((t) => t.trim() === "x"), true, "meio da palavra");
+    eq(segmentosComAspas("echo a # " + Q + "\nx", true).some((t) => t.trim() === "x"), true, "NBSP abre comentario no PowerShell");
+    eq(segmentosComAspas("echo a﻿# y; x", true).some((t) => t.trim() === "x"), true, "BOM nao abre no PowerShell");
   });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");

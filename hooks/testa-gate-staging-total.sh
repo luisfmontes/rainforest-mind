@@ -750,6 +750,11 @@ gate "controle: find -exec {} \\; -print passa"           0 "$(b "find . -name x
 gate "controle: \$((1+2)); git status passa"              0 "$(b "echo \$((1+2)); git status")"
 gate "controle: (( x = 1 )); git status passa"           0 "$(b "(( x = 1 )); git status")"
 gate "controle: >out\\ b passa"                           0 "$(b "echo a >out${BS} b")"
+# Revisao de seguranca do commit bf7dfb13: alvo de redirecionamento com espaco, espaco do PowerShell.
+gate "> \"a b\"\\; antes do comando barra"                  2 "$(b "> \"a b\"${BS}; git add -A")"
+gate ">\$(echo a b)\\; antes do comando barra"             2 "$(b ">\$(echo a b)${BS}; git add -A")"
+gate "PowerShell NBSP antes do # abre comentario barra"  2 "$(p "$(hd "echo a$(printf '\302\240')# don't" "git add -A" "echo 'x'")")"
+gate "PowerShell FF antes do # abre comentario barra"    2 "$(p "$(hd "echo a$(printf '\f')# don't" "git add -A" "echo 'x'")")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
