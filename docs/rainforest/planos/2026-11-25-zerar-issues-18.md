@@ -135,7 +135,7 @@ O que fazer:
 - `hooks/testa-cwd-efetivo.sh`: `(736n)` e `(736o)`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `    else if (c === "#" && !incerto && topo() === "{") {`
+  de: `    else if (c === "#" && !incerto && (topo() === "{" || topo() === "((")) {`
   para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de ${} nao passa da chave barra"
@@ -164,10 +164,32 @@ mutacao:
 prova-na-base: verde — casos novos; contra o commit 6f2abe19 a crase escapada no comentário e a crase dentro de `${}` saem 0 (achado da revisão automática, conferido no bash em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos `(736p)` e `(736q)` e 0 falhas.
 
+### 9. Redirecionamento antes do comando, espaço do bash, aritmética e `<#` no meio (revisão do fluxo) [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-mensagem-commit.sh`
+depende de: 8
+busca:
+- catalogo | colapsaContinuacaoDoDialeto, abreComentario e segmentosComAspas em hooks/lib/cwd-efetivo.cjs | estendo; são as funções das tarefas 1 a 8
+desfecho: estender
+O que fazer:
+- Em `segmentosComAspas`, separador (`;`, `&`, `|`) escapado no alvo de um redirecionamento (`<<\;`, `2>\;`, `>out\;`, `<< \;`): o texto depois do escape vira segmento também, e a linha sai incerta.
+- `abreComentario` aceita só o espaço do bash (espaço, tab, quebra), no lugar do `\s` do JavaScript (CR, NBSP, BOM e FF são letra para o bash).
+- `$((` e `((` no começo de token empilham `"(("`, que `))` desempilha; dentro dele o `#` é literal.
+- PowerShell: `<#` só abre comentário de bloco no começo de token (`abreComentario`).
+- Casos depois do comentário `# Revisao do fluxo (revisor, rodada 18)` (14 que barram, 5 controles), `(736s)` a `(736u)` em `testa-cwd-efetivo.sh`, e dois `#736` em `testa-gate-mensagem-commit.sh`.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>][<>&|]*[ \t]*[^ \t\n<>]*$/.test(atual)) {`
+  para: `      if (false) {`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "<<\\; antes do comando barra"
+prova-na-base: verde — casos novos; contra o commit a29d6af2 os 17 ataques da revisão saem 0 (medido com o gate do commit a29d6af2 em 2026-11-25; o bash roda o `git` em todos)
+pronto quando: `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com 0 falhas e `ok` nos casos `(736s)`, `(736t)` e `(736u)`.
+
 ### 4. Versão 2.17.4 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 8
+depende de: 9
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.

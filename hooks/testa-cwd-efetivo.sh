@@ -681,6 +681,21 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(segmentosComAspas("echo `echo $(echo # `; x").some((t) => t.trim() === "x"), true, "$( dentro da crase");
     eq(segmentosComAspas("echo `echo ${x:-# `; x").some((t) => t.trim() === "x"), true, "${ dentro da crase");
   });
+  test("(736s) separador escapado no alvo de redirecionamento: o resto vira segmento e a linha sai incerta", () => {
+    const s = segmentosComAspas("<<" + B + "; cd x");
+    eq(s.some((t) => t.trim() === "cd x"), true, "o cd aparece");
+    eq(s.incerto, true, "incerta");
+    eq(segmentosComAspas("find . -exec echo {} " + B + "; -print").incerto, undefined, "find -exec nao e incerto");
+  });
+  test("(736t) # em aritmetica e literal; CR e NBSP nao abrem comentario", () => {
+    eq(segmentosComAspas("echo $((1 # x)) | x").some((t) => t.trim() === "x"), true, "$(( ))");
+    eq(segmentosComAspas("echo a\r# y; x").some((t) => t.trim() === "x"), true, "CR");
+    eq(segmentosComAspas("echo a # y; x").some((t) => t.trim() === "x"), true, "NBSP");
+    eq(segmentosComAspas("echo a # y; x").length, 1, "espaco comum abre");
+  });
+  test("(736u) PowerShell: <# no meio da palavra nao abre comentario", () => {
+    eq(segmentosComAspas("echo a<#; x", true).some((t) => t.trim() === "x"), true, "meio da palavra");
+  });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
     eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");

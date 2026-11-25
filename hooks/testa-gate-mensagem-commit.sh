@@ -164,6 +164,8 @@ gate "heredoc com linha 'git commit' bare no corpo -> exit 0" 0 "$(payload "$R1"
 # #724 (zerar-issues-17): a continuacao de linha da abertura do heredoc e comando, nao corpo.
 gate "#724 git commit pelado na continuacao da linha do heredoc -> exit 2" 2 "$(payload "$R1" Bash $'cat <<\x27A\x27 \\\n> /dev/null; git commit\nx\nA')"
 gate "#736 git commit pelado depois de comentario com aspa -> exit 2" 2 "$(payload "$R1" Bash $'echo hi # don\x27t\ngit commit')"
+gate "#736 git commit pelado depois de <<\\; -> exit 2" 2 "$(payload "$R1" Bash $'<<\\; git commit')"
+gate "#736 git commit pelado depois de CR antes do # -> exit 2" 2 "$(payload "$R1" Bash $'echo a\r# x; git commit')"
 
 echo
 echo "== extra: mesma forma via ferramenta PowerShell (o hook vale para as duas) =="

@@ -18,7 +18,7 @@
     "em": "2026-11-25"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-25",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-gate-subagente-sem-gh.cjs; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
     "saida": "335 ok, 0 falha / 103 ok, 0 falha / 95 ok, 0 falha / 917 ok, 0 falha / 669 ok, 0 falha / ok: 61 falhou: 0 / ok: 164 falhou: 0 / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1,2,3,5,6,7,8 vermelho, tarefa 4 pulada (n/a)",
@@ -66,10 +66,31 @@
         "fixture": "aspa aberta no fim: o texto depois dela e analisado barra"
       }
     ],
-    "em": "2026-11-25"
+    "em": "2026-11-25",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-25"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "a29d6af2562de5c870cddada481dbc13eb521361",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a7d78bfb41adffa4a",
+        "veredito": "reprovado",
+        "em": "2026-11-25",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a7d78bfb41adffa4a.jsonl"
+      }
+    ],
+    "achados": 4,
+    "em": "2026-11-25",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

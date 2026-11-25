@@ -262,12 +262,17 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
       continue;
     }
     else if (c === "$" && cmd[i + 1] === "{" && dolarLivre) { pilha.push("{"); emite("${"); i += 1; continue; }
+    // `$((` e `((` são aritmética: o `#` dentro é literal (revisão do fluxo, achado 3).
+    else if (c === "$" && cmd[i + 1] === "(" && cmd[i + 2] === "(" && dolarLivre) { pilha.push("(("); emite("$(("); i += 2; continue; }
+    else if (c === "(" && cmd[i + 1] === "(" && dialeto === "bash" && abreComentario(saida, esc)) { pilha.push("(("); emite("(("); i += 1; continue; }
+    else if (c === ")" && cmd[i + 1] === ")" && topo() === "((") { pilha.pop(); emite("))"); i += 1; continue; }
     else if (c === "$" && cmd[i + 1] === "(" && dolarLivre) { pilha.push("("); emite("$("); i += 1; continue; }
     else if (c === "}" && topo() === "{") pilha.pop();
     else if (c === ")" && topo() === "(") pilha.pop();
     else if (c === "`" && dialeto === "bash") alternaCrase();
-    else if (c === "<" && cmd[i + 1] === "#" && dialeto === "powershell") { aspa = "<#"; emite("<#", CLASSE.comentario); i += 1; continue; }
-    else if (c === "#" && !incerto && topo() === "{") {
+    // `<#` só abre comentário de bloco no começo de token (revisão do fluxo, achado 4)
+    else if (c === "<" && cmd[i + 1] === "#" && dialeto === "powershell" && abreComentario(saida, esc)) { aspa = "<#"; emite("<#", CLASSE.comentario); i += 1; continue; }
+    else if (c === "#" && !incerto && (topo() === "{" || topo() === "((")) {
       // dentro de `${...}` o `#` é literal: não abre nada, e a aspa segue contando
     }
     else if (c === "#" && abreComentario(saida, esc)) {
@@ -299,7 +304,9 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
 // linha (`echo a >#x`), e na dúvida a leitura que separa é a que não esconde.
 function abreComentario(antes, esc) {
   if (antes === "") return true;
-  if (!/[\s;&|(]/.test(antes[antes.length - 1])) return false;
+  // Espaço é só o do bash (espaço, tab, quebra): CR, NBSP e BOM são letra para ele,
+  // e o \s do JavaScript os aceitava (revisão do fluxo, achado 2).
+  if (!/[ \t\n;&|(]/.test(antes[antes.length - 1])) return false;
   // Corrida ímpar do caractere de escape antes do delimitador: ele foi escapado.
   let k = antes.length - 2, n = 0;
   while (k >= 0 && antes[k] === esc) { n += 1; k -= 1; }
@@ -340,6 +347,7 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   else cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "", aspa = null, inicioAspa = -1;
+  const extras = [];
 
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
@@ -360,6 +368,13 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
       atual += c;
       continue;
     } else if (c === esc && aspa !== "'" && i + 1 < cmd.length) {
+      // Separador escapado no alvo de um redirecionamento (`<<\; git add -A`,
+      // `>out\; git add -A`): o redirecionamento pode vir antes do comando, e o
+      // shell roda o que vem depois. O texto depois do escape vira segmento também,
+      // e a linha sai incerta (revisão do fluxo, achado 1).
+      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>][<>&|]*[ \t]*[^ \t\n<>]*$/.test(atual)) {
+        extras.push(i + 2);
+      }
       atual += c + cmd[i + 1];
       i += 1;
       continue;
@@ -486,6 +501,10 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   // que leem escape; o "sem-escape" fica como antes do #736.
   if (leEscape && aspa && inicioAspa >= 0) {
     segmentos.push(...segmentosComAspas(cmd.slice(inicioAspa + 1), ehPowerShell, opcoes));
+    leituraIncerta = true;
+  }
+  for (const pos of extras) {
+    segmentos.push(...segmentosComAspas(cmd.slice(pos), ehPowerShell, opcoes));
     leituraIncerta = true;
   }
 
