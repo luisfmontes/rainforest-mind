@@ -66,6 +66,10 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
   - **Porquê:** o design `2026-11-17-gates-sem-ruido` registrou a forma como achado da #722, e esta rodada fecha a #722.
   - **Modelo de ameaça:** `python script.py <<'A'` continua dado (o stdin é do script).
 
+- **D13 — A rodada entrega por formas, não pela classe (revisão 2).** A revisão 2 reprovou com 12 formas novas de esconder `git add -A`, nenhuma regressão sobre a base. Uma vinha de código desta rodada e foi consertada aqui: o texto de `-c`/`eval` com operador dentro (`bash -c 'cd . && bash t.sh'`) era partido no `&&` antes de ser lido como comando. Agora ele é tokenizado de novo antes do corte. E `-c` só conta como texto de comando depois de um shell (`grep -c "bash x"` não barra mais). `$'...'` dentro de `${...}` também passou a ser ANSI-C. As outras 11 ficam como resíduo declarado (Fora de escopo).
+  - **Porquê:** decisão do Luís em 2026-11-25 (opção C): a máscara presume que o corpo é dado e procura jeitos de executar o arquivo. Essa lista não fecha, e cada revisão acha formas novas. Inverter o padrão (corpo é analisado, salvo consumidor inerte conhecido) fecha a classe, mas muda o contrato de falso positivo dos quatro gates. Isso pede brainstorm próprio (Issue #737), não o fim de uma rodada de conserto.
+  - **Modelo de ameaça:** as 11 formas residuais saem exit 0 com o `git add -A` executado. A entrega é estritamente melhor que a base: nenhuma forma que barrava passou a passar, e as formas das #722 e #724 barram.
+
 ## Avaliado e descartado
 
 - **Ler o corpo de script não-shell como shell de novo:** desfaz a D6 de `gates-sem-ruido` (regex de JavaScript lido como "comando dinâmico"), e a análise de shell também não vê a forma em array.
@@ -74,6 +78,18 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
 ## Fora de escopo
 
 - Continuação antes do `<<` (D1), leitura por variável e por `<(...)` (D2), cópia por ferramenta fora da lista (D3), lista montada por variável (D5).
+- Resíduo da revisão 2 (D13), todos na Issue #737:
+  - aspa ou apóstrofo solto entre o heredoc e o executor;
+  - `{ sh; } < t.sh`, `( sh ) < t.sh` e `exec <`;
+  - fim de linha lógica cedo com `${` multilinha, crase, `<(`, e `)` de `case` dentro de `$(`;
+  - `os.execvp` com `'git'` repetido, caminho com espaço, comentário de linha entre os literais, `%w[]`;
+  - opções de node e python com valor fora da lista;
+  - executores fora da lista (`awk -f`, `sed -f`, `npx tsx`, `lua`, `php`; preexistente);
+  - `<<` em aritmética (preexistente);
+  - escritores fora da lista (`dd of=`, `cp /dev/stdin`, `exec 3>`);
+  - referência não literal ao arquivo;
+  - continuação antes do `<<` (preexistente; a justificativa da D1, de que o bash não aceita a forma, está errada).
+- `$'\'` dentro de `${...}` (`echo ${x:-$'\'}<<\'A\''}`): a máscara já não vê heredoc aí, mas o segmentador do gate perde a linha seguinte. Fica na Issue #736.
 
 ## Varredura
 

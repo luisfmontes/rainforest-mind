@@ -140,6 +140,13 @@
       "porque": "Em gate-publicacao-destino a mascara so alimenta mencoesDeGhRepo, que acrescenta destinos (so aperta); com a linha mascarada o segmento gh fica com cwd incerto e o gate ja barra. Nao ha forma em que a mascara da base abra esse gate",
       "estagio": "executar",
       "em": "2026-11-24T23:54:39.191Z"
+    },
+    {
+      "pergunta": "Revisao 2 reprovou com 12 formas novas de esconder git add -A: inverter o padrao para allowlist, fechar forma por forma, ou entregar o que esta e abrir rodada propria?",
+      "escolha": "C: consertar o achado de codigo novo (-c/eval com operador; -c so para shell; ANSI-C em ${}), declarar os outros 11 como residuo e abrir a Issue #737 para a inversao",
+      "porque": "a entrega e estritamente melhor que a base sem regressao; a inversao muda o contrato de falso positivo dos quatro gates e pede brainstorm proprio (decisao do Luis, 2026-11-25)",
+      "estagio": "executar",
+      "em": "2026-11-25T11:45:58.164Z"
     }
   ],
   "reaberturas": [

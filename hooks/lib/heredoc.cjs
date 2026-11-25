@@ -306,6 +306,11 @@ function posicoesDeOperadorHeredoc(cmd) {
         if (s1) { if (x === "'") s1 = false; continue; }
         if (x === "\\") { k++; continue; }
         if (s2) { if (x === '"') s2 = false; continue; }
+        // `$'...'` dentro de `${...}` tambem e ANSI-C: `\'` nao fecha (revisao 2).
+        if (x === "$" && cmd[k + 1] === "'") {
+          for (k += 2; k < cmd.length && cmd[k] !== "'"; k++) if (cmd[k] === "\\") k++;
+          continue;
+        }
         if (x === "'") s1 = true;
         else if (x === '"') s2 = true;
         else if (x === "{") d++;
@@ -364,37 +369,48 @@ const PREFIXOS_DE_COMANDO = new Set(["sudo", "env", "command", "exec", "nohup", 
 const FLAGS_COM_VALOR = new Set(["-o", "+o", "-O", "+O", "--rcfile", "--init-file", "-W", "-X", "-r", "--require", "--import", "--loader", "--experimental-loader", "-I"]);
 const FLAGS_COM_VALOR_DE_PREFIXO = new Set(["-u", "-g", "-C", "-s", "-k", "-n", "--chdir", "--user", "--group", "--signal", "--kill-after", "--adjustment"]);
 
+const separarOperadores = (t) => String(t).split(RE_OPERADOR_COLADO).filter(Boolean);
+
+// Shells que leem o texto de `-c` (`/c` no cmd) como comando.
+const SHELLS_DE_TEXTO = new Set(["bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd"]);
+
 /**
- * Tokens de `texto` com o operador colado separado (D7) e a quebra de linha entre
- * dois tokens virando `;` (separa comandos). A continuacao `\`+quebra some antes.
+ * O proximo token, logo depois de `saida`, e texto de comando? Depois de `eval`, ou
+ * de `-c`/`/c` num comando que e shell (`bash -c`, `sudo sh -ec`). `grep -c "bash x"`
+ * nao e: o `-c` do grep conta linhas (achado 12 da revisao 2).
  */
-function tokensSeparados(texto) {
-  const limpo = String(texto).replace(/\\\r?\n/g, " ");
-  let toks;
-  try {
-    toks = [];
-    let anterior = null;
-    for (const t of tokensComAspas(limpo)) {
-      if (anterior && typeof anterior.fim === "number" && typeof t.ini === "number" && limpo.slice(anterior.fim, t.ini).includes("\n")) toks.push(";");
-      toks.push(String(t.v));
-      anterior = t;
-    }
-  } catch { toks = limpo.replace(/\n/g, " ; ").split(/\s+/); }
-  return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);
+function proximoEhTextoDeComando(saida) {
+  const ant = saida[saida.length - 1];
+  if (ant === undefined) return false;
+  if (normalizarExecutavel(ant) === "eval") return true;
+  if (!/^-\w*c\w*$/i.test(ant) && !/^\/c$/i.test(ant)) return false;
+  for (let k = saida.length - 2; k >= 0 && !ehOperador(saida[k]); k--) {
+    if (SHELLS_DE_TEXTO.has(normalizarExecutavel(saida[k]))) return true;
+  }
+  return false;
 }
 
 /**
- * Texto passado a `eval` ou a `-c` (`bash -c 'bash t.sh'`, `eval "sh < t.cjs"`) e
- * comando: os tokens dele entram no lugar do token, entre `;` (revisao 1).
+ * Tokens de `texto` com o operador colado separado (D7) e a quebra de linha entre
+ * dois tokens virando `;` (separa comandos). A continuacao `\`+quebra some antes.
+ * Texto passado a `eval` ou ao `-c` de um shell (`bash -c 'cd . && bash t.sh'`) e
+ * comando: entra tokenizado de novo, entre `;`, ANTES de qualquer corte por operador
+ * (revisao 1; na revisao 2 o corte vinha antes e partia o texto no `&&`).
  */
-function abrirTextoDeComando(toks) {
+function tokensSeparados(texto) {
+  const limpo = String(texto).replace(/\\\r?\n/g, " ");
+  let brutos;
+  try { brutos = tokensComAspas(limpo); } catch {
+    return limpo.replace(/\n/g, " ; ").split(/\s+/).flatMap(separarOperadores);
+  }
   const saida = [];
-  for (let k = 0; k < toks.length; k++) {
-    const t = toks[k];
-    const anterior = k > 0 ? toks[k - 1] : "";
-    const ehTexto = /\s/.test(t) && (/^-\w*c\w*$/.test(anterior) || normalizarExecutavel(anterior) === "eval");
-    if (ehTexto) saida.push(";", ...tokensSeparados(t), ";");
-    else saida.push(t);
+  let anterior = null;
+  for (const t of brutos) {
+    if (anterior && typeof anterior.fim === "number" && typeof t.ini === "number" && limpo.slice(anterior.fim, t.ini).includes("\n")) saida.push(";");
+    const v = String(t.v);
+    if (/\s/.test(v) && proximoEhTextoDeComando(saida)) saida.push(";", ...tokensSeparados(v), ";");
+    else saida.push(...separarOperadores(v));
+    anterior = t;
   }
   return saida;
 }
@@ -631,7 +647,7 @@ function executoresDoAlvo(cmd, i, fimDoHeredoc) {
   if (fimLinha === -1) fimLinha = cmd.length;
   const restoDaLinha = cmd.slice(i, Math.min(fimLinha, cmd.length));
   const depois = cmd.slice(Math.min(fimDoHeredoc, cmd.length));
-  const toks = abrirTextoDeComando(tokensSeparados(restoDaLinha + "\n" + depois));
+  const toks = tokensSeparados(restoDaLinha + "\n" + depois);
   expandirAlvosPorCopia(toks, alvos);
 
   for (let k = 0; k < toks.length; k++) {

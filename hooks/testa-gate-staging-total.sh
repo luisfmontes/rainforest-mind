@@ -640,6 +640,12 @@ gate "R1 node - <<'A' com execSync barra"               2 "$(b "$(hd "node - <<'
 gate "R1 python - <<'A' com os.system barra"            2 "$(b "$(hd "python - <<'A'" "import os; os.system('git add -A')" "A")")"
 gate "R1 node - <<'A' com regex sem git passa"          0 "$(b "$(hd "node - <<'A'" "$RX" "A")")"
 gate "R1 python script.py <<'A' com dado passa"         0 "$(b "$(hd "python script.py <<'A'" "texto" "A")")"
+# Revisao 2: texto de -c/eval com operador dentro e tokenizado antes do corte por
+# operador; e -c so e texto de comando depois de um shell.
+gate "R2b bash -c 'cd . && bash t.sh' barra"             2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash -c 'cd . && bash t.sh'")")"
+gate "R2b eval 'true; bash t.sh' barra"                  2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "eval 'true; bash t.sh'")")"
+gate "R2b sudo sh -ec 'true | bash t.sh' barra"          2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "sudo sh -ec 'true | bash t.sh'")")"
+gate "R2b grep -c 'bash t.sh' log.txt passa"             0 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "grep -c 'bash t.sh' log.txt")")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
