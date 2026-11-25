@@ -384,13 +384,15 @@ const C_DE_DADO = new Set(["grep", "egrep", "fgrep", "rg", "ag", "wc", "head", "
  * ele e o `-c` (achado 12 da revisao 2; `grep x | ...` fica de fora pelo operador).
  */
 function proximoEhTextoDeComando(saida) {
-  // Opcoes entre o `-c`/`eval` e o texto (`bash -c -e '...'`, `eval -- '...'`) nao
-  // separam os dois (achado 2 da revisao 3).
+  // `-c`/`eval` em qualquer ponto do trecho, nao so logo antes do texto: opcoes e os
+  // valores delas ficam no meio (`bash -c -e '...'`, `bash -c -o pipefail '...'`,
+  // `eval -- '...'`; achado 2 da revisao 3 e revisao automatica). Fechado de proposito.
   const ehC = (t) => /^-\w*c\w*$/i.test(t) || /^\/c$/i.test(t);
-  let p = saida.length - 1;
   let achouC = false;
-  while (p >= 0 && (ehFlag(saida[p]) || ehC(saida[p]))) { if (ehC(saida[p])) achouC = true; p--; }
-  if (p >= 0 && normalizarExecutavel(saida[p]) === "eval") return true;
+  for (let p = saida.length - 1; p >= 0 && !ehOperador(saida[p]); p--) {
+    if (normalizarExecutavel(saida[p]) === "eval") return true;
+    if (ehC(saida[p])) achouC = true;
+  }
   if (!achouC) return false;
   let ini = saida.length - 1;
   while (ini > 0 && !ehOperador(saida[ini - 1])) ini--;
