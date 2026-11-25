@@ -92,8 +92,8 @@ O que fazer:
 - `hooks/testa-cwd-efetivo.sh`: `(736j)` e `(736k)`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `    else if (c === "`" && dialeto === "bash") crase = !crase;`
-  para: `    else if (false) crase = !crase;`
+  de: `    else if (c === "`" && dialeto === "bash") alternaCrase();`
+  para: `    else if (false) alternaCrase();`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de crase nao passa da crase barra"
 prova-na-base: verde — casos novos; contra o commit 8ffea4b2 as quatro formas da revisão de segurança saem 0 (achado da revisão automática, conferido no shell em 2026-11-25)
@@ -135,17 +135,38 @@ O que fazer:
 - `hooks/testa-cwd-efetivo.sh`: `(736n)` e `(736o)`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `    else if (c === "#" && !incerto && chaves > 0) {`
+  de: `    else if (c === "#" && !incerto && topo() === "{") {`
   para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de ${} nao passa da chave barra"
 prova-na-base: verde — casos novos; contra o commit bcd7e602 `echo ${x:-#}'; cd x; '` fabrica o segmento `cd x` (achado da revisão automática, conferido no bash em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-worktree.sh` com 0 falhas, e `ok` nos casos `(736n)` e `(736o)`.
 
+### 8. Aninhamento em pilha e aspa aberta no fim (quarta revisão de segurança) [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-cwd-efetivo.sh`
+depende de: 7
+busca:
+- catalogo | colapsaContinuacaoDoDialeto e segmentosComAspas em hooks/lib/cwd-efetivo.cjs | estendo; são as funções das tarefas 1 a 7
+desfecho: estender
+O que fazer:
+- `pilha` no lugar de `crase` e `chaves`: `${` e `$(` empilham, `}` e `)` desempilham quando batem com o topo, a crase alterna no topo. O `#` olha `topo()`. No estado de comentário em crase, contrabarra leva o caractere seguinte.
+- Em `segmentosComAspas`, `inicioAspa` guarda onde a aspa abriu; aspa aberta no fim (com `leEscape`) acrescenta `segmentosComAspas(cmd.slice(inicioAspa + 1), ...)` e liga `leituraIncerta`.
+- Casos na seção nova, depois do comentário `# Revisao de seguranca do commit 6f2abe19`: crase escapada no comentário (2), crase dentro de `${}` (2), aspa aberta no fim (2).
+- `hooks/testa-cwd-efetivo.sh`: `(736p)` e `(736q)`.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `  if (leEscape && aspa && inicioAspa >= 0) {`
+  para: `  if (false) {`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "aspa aberta no fim: o texto depois dela e analisado barra"
+prova-na-base: verde — casos novos; contra o commit 6f2abe19 a crase escapada no comentário e a crase dentro de `${}` saem 0 (achado da revisão automática, conferido no bash em 2026-11-25)
+pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos `(736p)` e `(736q)` e 0 falhas.
+
 ### 4. Versão 2.17.4 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 7
+depende de: 8
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.

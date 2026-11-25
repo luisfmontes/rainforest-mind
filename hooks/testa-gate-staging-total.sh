@@ -723,6 +723,10 @@ gate "# em crase fecha na crase: aspa depois conta e passa" 0 "$(b "echo \`echo 
 gate "aspa dentro de \${} com # protege a chave barra"    2 "$(b "echo \${x:-# '}'}; git add -A")"
 gate "crase em duas linhas com # barra"                  2 "$(b "$(hd "echo \`echo" "# x \`; git add -A")")"
 gate "aspa no comentario dentro de crase barra"          2 "$(b "echo \`echo # a'\`; git add -A")"
+# Revisao de seguranca do commit 6f2abe19: aninhamento em pilha, crase escapada e aspa aberta no fim.
+gate "crase escapada nao fecha o comentario na crase barra" 2 "$(b "echo \`echo # ${BS}\`'\`; git add -A")"
+gate "crase dentro de \${} manda no # barra"              2 "$(b "echo \${x:-\`echo # '\`}; git add -A")"
+gate "aspa aberta no fim: o texto depois dela e analisado barra" 2 "$(b "echo \"a${BS}${BS}${BS}\"; git add -A")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

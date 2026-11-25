@@ -667,6 +667,16 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(r[r.length - 1].incerto, true, "cwd incerto");
     eq(segmentosComAspas("echo a; cd x").incerto, undefined, "linha comum nao e incerta");
   });
+  test("(736p) aspa aberta no fim: o texto depois dela vira segmento e a linha sai incerta", () => {
+    const s = segmentosComAspas(`echo "a${B}${B}${B}"; x`);
+    eq(s.some((t) => t.trim() === "x"), true, "o x aparece");
+    eq(s.incerto, true, "incerta");
+    eq(segmentosComAspas(`echo "a; x"`).incerto, undefined, "aspa fechada nao muda nada");
+  });
+  test("(736q) crase dentro de ${} manda no #, e crase escapada nao fecha o comentario", () => {
+    eq(segmentosComAspas("echo ${x:-`echo # " + Q + "`}; x").some((t) => t.trim() === "x"), true, "crase em ${}");
+    eq(segmentosComAspas("echo `echo # " + B + "`" + Q + "`; x").some((t) => t.trim() === "x"), true, "crase escapada");
+  });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
     eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");
