@@ -374,12 +374,14 @@ const separarOperadores = (t) => String(t).split(RE_OPERADOR_COLADO).filter(Bool
 // Ferramentas cujo `-c` leva dado, nao comando (`grep -c` conta linhas). Lista de
 // excecao, nao de shells: `su -c`, `fish -c`, `flock f -c` e `runuser -c` tambem rodam
 // texto, e o padrao segue fechado (revisao de seguranca automatica da revisao 2).
-const C_DE_DADO = new Set(["grep", "egrep", "fgrep", "rg", "ag", "wc", "head", "tail", "cut", "uniq", "ls", "tr", "cmp", "git"]);
+// `git` fica fora: `git -c 'alias.x=!bash t.sh' x` roda shell.
+const C_DE_DADO = new Set(["grep", "egrep", "fgrep", "rg", "ag", "wc", "head", "tail", "cut", "uniq", "ls", "tr", "cmp"]);
 
 /**
  * O proximo token, logo depois de `saida`, e texto de comando? Depois de `eval`, ou
  * de `-c`/`/c`, salvo quando o comando do trecho (primeiro token que nao e
- * atribuicao) e ferramenta de `C_DE_DADO` (achado 12 da revisao 2).
+ * atribuicao) e ferramenta de `C_DE_DADO` E nenhum executor ou prefixo aparece entre
+ * ele e o `-c` (achado 12 da revisao 2; `grep x | ...` fica de fora pelo operador).
  */
 function proximoEhTextoDeComando(saida) {
   const ant = saida[saida.length - 1];
@@ -389,8 +391,17 @@ function proximoEhTextoDeComando(saida) {
   let ini = saida.length - 1;
   while (ini > 0 && !ehOperador(saida[ini - 1])) ini--;
   while (ini < saida.length - 1 && /^[A-Za-z_]\w*=/.test(saida[ini])) ini++;
-  return !C_DE_DADO.has(normalizarExecutavel(saida[ini]));
+  if (!C_DE_DADO.has(normalizarExecutavel(saida[ini]))) return true;
+  for (let k = ini + 1; k < saida.length - 1; k++) {
+    const n = normalizarExecutavel(saida[k]);
+    if (EXECUTAM_ARQUIVO.has(n) || PREFIXOS_DE_COMANDO.has(n)) return true;
+  }
+  return false;
 }
+
+// Valor de `git -c`/`-c` de config com `chave=!comando` (alias de shell): o comando
+// e o que vem depois do `=!` (revisao de seguranca automatica).
+const semChaveDeConfig = (v) => v.replace(/^[A-Za-z][\w.-]*=!?/, "");
 
 /**
  * Tokens de `texto` com o operador colado separado (D7) e a quebra de linha entre
@@ -410,7 +421,7 @@ function tokensSeparados(texto) {
   for (const t of brutos) {
     if (anterior && typeof anterior.fim === "number" && typeof t.ini === "number" && limpo.slice(anterior.fim, t.ini).includes("\n")) saida.push(";");
     const v = String(t.v);
-    if (/\s/.test(v) && proximoEhTextoDeComando(saida)) saida.push(";", ...tokensSeparados(v), ";");
+    if (/\s/.test(v) && proximoEhTextoDeComando(saida)) saida.push(";", ...tokensSeparados(semChaveDeConfig(v)), ";");
     else saida.push(...separarOperadores(v));
     anterior = t;
   }
