@@ -625,7 +625,7 @@ gate "R1 cat >| t.sh barra"                             2 "$(b "$(hd "cat >| t.s
 gate "R1 spawnSync('git.exe',...) barra"                2 "$(b "$(hd "cat > t.cjs <<'EOF'" "spawnSync('git.exe',['add','-A'])" "EOF" "node t.cjs")")"
 gate "R1 spawnSync('git', /*x*/ [...]) barra"           2 "$(b "$(hd "cat > t.cjs <<'EOF'" "spawnSync('git', /*x*/ ['add','-A'])" "EOF" "node t.cjs")")"
 gate "R1 Deno.Command('git',{args:[...]}) barra"        2 "$(b "$(hd "cat > t.ts <<'EOF'" "new Deno.Command('git',{args:['add','-A']})" "EOF" "deno run t.ts")")"
-gate "R1 cat d.txt | python3 tool.py - passa"           0 "$(b "$(hd "cat > d.txt <<'EOF'" "git add -A" "EOF" "cat d.txt | python3 tool.py -")")"
+gate "R1 cat d.txt | node tool.cjs - passa"            0 "$(b "$(hd "cat > d.txt <<'EOF'" "git add -A" "EOF" "cat d.txt | node tool.cjs -")")"
 gate "R1 python3 tool.py - < d.txt passa"               0 "$(b "$(hd "cat > d.txt <<'EOF'" "git add -A" "EOF" "python3 tool.py - < d.txt")")"
 # Revisao 1, preexistentes da lib: linha logica de verdade e << que nao e operador.
 gate "R1 contrabarra escapada fecha a linha barra"      2 "$(b "$(hd "cat <<'A' \\\\" "A" "git add -A" "A")")"
