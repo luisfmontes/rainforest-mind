@@ -38,19 +38,19 @@ atende: D2
 arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-cwd-efetivo.sh`
 depende de: 1
 busca:
-- catalogo | inicioDePalavra/comentario em hooks/lib/cwd-efetivo.cjs | nada; o segmentador nao lia comentario
+- catalogo | comentario em hooks/lib/cwd-efetivo.cjs | nada; o segmentador nao lia comentario
 - catalogo | leitura de # com contrabarra em hooks/gate-fechar-issue.cjs:segmentosParaGate | nao reuso; esta dentro do segmentador proprio do gate (design, Avaliado e descartado)
 desfecho: estender
 O que fazer:
-- `inicioDePalavra(cmd, i, esc)`: começo do texto, ou caractere anterior em `[\s;&|()<>]` sem corrida ímpar de `esc` antes dele.
-- Em `segmentosComAspas`, `#` fora de aspas em começo de palavra abre a aspa `"#"`, que guarda tudo até a quebra; a quebra fecha e segue para a fronteira.
+- `abreComentario(antes, esc)`: começo do texto, ou último caractere já emitido em `[\s;&|(]` sem corrida ímpar de `esc` antes dele.
+- `colapsaContinuacaoDoDialeto` devolve `{ texto, comentario }`, com 1 em cada caractere de comentário (a quebra que fecha fica fora). Em `segmentosComAspas`, caractere marcado vai para o segmento sem efeito de aspa nem de fronteira.
 - `colapsaContinuacaoDoDialeto(cmd, dialeto)` substitui `colapsaContinuacaoDeLinhaNoTopo` quando `leEscape`: contrabarra (bash) ou crase (PowerShell) + LF/CRLF some fora de aspas simples, de `$'...'` e de comentário.
 - Casos na seção nova: `comentario com aspa: echo hi # don't` (2), `comentario com aspa dupla` (2), `comentario com contrabarra no fim` (2), `bash -c com comentario e aspa` (2), e os controles `echo a#b'; git add -A'` (0), `echo $#'; git add -A'` (0), `git add a.txt # sem -A` (2), `git status # add -A' x` (0).
 - `hooks/testa-cwd-efetivo.sh`: `echo hi # don't` + quebra + `git add -A` dá 2 segmentos; `echo hi #x\` + quebra + `git add -A` dá 2 segmentos.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `    else if (c === "#" && inicioDePalavra(cmd, i, esc)) aspa = "#";`
-  para: `    else if (false) aspa = "#";`
+  de: `    else if (c === "#" && !crase && chaves === 0 && abreComentario(saida, esc)) {`
+  para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "comentario com contrabarra no fim barra"
 prova-na-base: verde — casos novos; contra a lib da base `echo hi # don't` + quebra + `git add -A` sai 0 (sonda de 2026-11-25)
@@ -78,10 +78,31 @@ mutacao:
 prova-na-base: verde — casos novos ou que já saíam 2 pela leitura antiga; a mutação mede que a leitura nova não piora o PowerShell
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com `ok` nos casos `#736` e 0 falhas.
 
+### 5. Comentário só onde o shell abre (revisão de segurança) [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-cwd-efetivo.sh`
+depende de: 3
+busca:
+- catalogo | colapsaContinuacaoDoDialeto em hooks/lib/cwd-efetivo.cjs | estendo; é a função da tarefa 2
+desfecho: estender
+O que fazer:
+- Em `colapsaContinuacaoDoDialeto`, fora de aspas: `crase` alterna na crase do bash, `chaves` conta `${` e desconta `}`, e `#` só abre comentário com `!crase && chaves === 0`. No PowerShell, `<#` abre comentário que fecha em `#>`.
+- `abreComentario` não aceita `)`, `<` nem `>` antes do `#`.
+- Casos na seção nova, depois do comentário `# Revisao de seguranca do commit 8ffea4b2`: PowerShell `echo <# x #>; git add -A` (2), PowerShell `<#` em duas linhas (2), `` echo `echo #`; git add -A `` (2), `echo ${x:-a #}; git add -A` (2), PowerShell `echo ${a #}; git add -A` (2), `echo $(true)#; git add -A` (2), `cat <(true)#; git add -A` (2), `echo a\` + quebra + `#x; git add -A` (2), e o controle PowerShell `echo <# git add -A #> hi` (0).
+- `hooks/testa-cwd-efetivo.sh`: `(736j)` e `(736k)`.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `    else if (c === "`" && dialeto === "bash") crase = !crase;`
+  para: `    else if (false) crase = !crase;`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de crase nao passa da crase barra"
+prova-na-base: verde — casos novos; contra o commit 8ffea4b2 as quatro formas da revisão de segurança saem 0 (achado da revisão automática, conferido no shell em 2026-11-25)
+pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos da revisão de segurança e 0 falhas.
+
 ### 4. Versão 2.17.4 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 3
+depende de: 5
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.

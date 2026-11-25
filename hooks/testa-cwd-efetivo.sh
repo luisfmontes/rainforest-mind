@@ -642,6 +642,16 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(dialetoDoWrapper("cmd", "bash"), "sem-escape", "cmd");
     eq(dialetoDoWrapper("bash", "powershell"), "sem-escape", "bash -c pelo PowerShell");
   });
+  test("(736j) # dentro de crase, de ${} e colado a ) nao engole o ; (revisao de seguranca)", () => {
+    eq(segmentosComAspas("echo `echo #`; x").length, 2, "crase");
+    // `${` vira fronteira desde a rodada 19 (lote 3); o que importa e o `x` sair sozinho.
+    eq(segmentosComAspas("echo ${x:-a #}; x").filter((s) => s.trim() === "x").length, 1, "${}");
+    eq(segmentosComAspas("echo $(true)#; x").filter((s) => s.trim() === "x").length, 1, "$(true)#");
+  });
+  test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
+    eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
+    eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");
+  });
 }
 
 console.log();

@@ -179,50 +179,76 @@ function dialetoDoWrapper(nome, dialetoDeFora) {
  * comentário (`echo hi #x\` + quebra + `git add -A` roda o `git`). O texto
  * fora das continuações sai intacto, para os segmentos continuarem casando por
  * texto com os de `gate-fechar-issue.cjs`.
+ *
+ * É também o único lugar que decide o que é comentário: devolve `comentario`,
+ * um 1 por caractere de `texto` que está dentro de comentário (a quebra que
+ * fecha o de linha fica fora), e o segmentador só pula o que vier marcado.
+ * Revisão de segurança do commit 8ffea4b2: `#` dentro de crase ou de `${...}`
+ * não abre comentário que passe do fechamento (`` echo `echo #`; git add -A ``,
+ * `echo ${x:-a #}; git add -A`), `#` colado a `)` está no meio da palavra
+ * (`echo $(true)#; git add -A`), e no PowerShell `<# ... #>` fecha no `#>`, não
+ * na quebra (`echo <# x #>; git add -A`). Nos quatro o shell roda o `git`.
  */
 function colapsaContinuacaoDoDialeto(cmd, dialeto) {
   const esc = dialeto === "powershell" ? "`" : "\\";
-  let saida = "", aspa = null;
+  let saida = "", aspa = null, crase = false, chaves = 0;
+  const comentario = [];
+  const emite = (s, ehComentario = false) => {
+    saida += s;
+    for (let k = 0; k < s.length; k += 1) comentario.push(ehComentario ? 1 : 0);
+  };
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
     if (aspa === "#") {
-      if (c === "\n") aspa = null;
-      saida += c;
+      if (c === "\n") { aspa = null; emite(c); } else emite(c, true);
       continue;
     }
-    if (aspa === "'") { if (c === "'") aspa = null; saida += c; continue; }
+    if (aspa === "<#") {
+      if (c === "#" && cmd[i + 1] === ">") { emite("#>", true); i += 1; aspa = null; } else emite(c, true);
+      continue;
+    }
+    if (aspa === "'") { if (c === "'") aspa = null; emite(c); continue; }
     if (aspa === "$'") {
-      if (c === "\\" && i + 1 < cmd.length) { saida += c + cmd[i + 1]; i += 1; continue; }
+      if (c === "\\" && i + 1 < cmd.length) { emite(c + cmd[i + 1]); i += 1; continue; }
       if (c === "'") aspa = null;
-      saida += c;
+      emite(c);
       continue;
     }
     if (c === esc && i + 1 < cmd.length) {
       const prox = cmd[i + 1];
       if (prox === "\n") { i += 1; continue; }
       if (prox === "\r" && cmd[i + 2] === "\n") { i += 2; continue; }
-      saida += c + prox;
+      emite(c + prox);
       i += 1;
       continue;
     }
-    if (aspa === '"') { if (c === '"') aspa = null; saida += c; continue; }
+    if (aspa === '"') { if (c === '"') aspa = null; emite(c); continue; }
     if (c === '"' || c === "'") aspa = c;
-    else if (c === "$" && cmd[i + 1] === "'" && dialeto === "bash") { aspa = "$'"; saida += "$'"; i += 1; continue; }
-    else if (c === "#" && inicioDePalavra(cmd, i, esc)) aspa = "#";
-    saida += c;
+    else if (c === "$" && cmd[i + 1] === "'" && dialeto === "bash") { aspa = "$'"; emite("$'"); i += 1; continue; }
+    else if (c === "$" && cmd[i + 1] === "{") { chaves += 1; emite("${"); i += 1; continue; }
+    else if (c === "}" && chaves > 0) chaves -= 1;
+    else if (c === "`" && dialeto === "bash") crase = !crase;
+    else if (c === "<" && cmd[i + 1] === "#" && dialeto === "powershell") { aspa = "<#"; emite("<#", true); i += 1; continue; }
+    else if (c === "#" && !crase && chaves === 0 && abreComentario(saida, esc)) {
+      aspa = "#";
+      emite(c, true);
+      continue;
+    }
+    emite(c);
   }
-  return saida;
+  return { texto: saida, comentario };
 }
 
 // `#` abre comentário no começo de palavra: começo do texto, ou depois de
-// espaço ou operador (`;`, `&`, `|`, `(`, `)`, `<`, `>`) que não foi escapado.
-// `a#b`, `$#`, `${#x}` e `=#` não abrem.
-function inicioDePalavra(cmd, i, esc) {
-  if (i === 0) return true;
-  if (!/[\s;&|()<>]/.test(cmd[i - 1])) return false;
+// espaço, `;`, `&`, `|` ou `(` que não foi escapado. `a#b`, `$#`, `${#x}`, `=#`,
+// `$(x)#` e `<(x)#` não abrem. Depois de `<` e `>` também não: o bash recusa a
+// linha (`echo a >#x`), e na dúvida a leitura que separa é a que não esconde.
+function abreComentario(antes, esc) {
+  if (antes === "") return true;
+  if (!/[\s;&|(]/.test(antes[antes.length - 1])) return false;
   // Corrida ímpar do caractere de escape antes do delimitador: ele foi escapado.
-  let k = i - 2, n = 0;
-  while (k >= 0 && cmd[k] === esc) { n += 1; k -= 1; }
+  let k = antes.length - 2, n = 0;
+  while (k >= 0 && antes[k] === esc) { n += 1; k -= 1; }
   return n % 2 === 0;
 }
 
@@ -253,7 +279,9 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   // Tarefa 13 (#309, revisao 2): o colapso de continuacao de linha vem antes da
   // segmentacao, como em `segmentosParaGate` (gate-fechar-issue.cjs), para os
   // segmentos casarem por TEXTO (ver docblock de `cwdDoSegmento` la).
-  cmd = leEscape ? colapsaContinuacaoDoDialeto(String(cmd), dialeto) : colapsaContinuacaoDeLinhaNoTopo(cmd);
+  let comentario = [];
+  if (leEscape) ({ texto: cmd, comentario } = colapsaContinuacaoDoDialeto(String(cmd), dialeto));
+  else cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "", aspa = null;
 
@@ -262,9 +290,10 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
 
     if (!leEscape) {
       // sem leitura de escape: direto para a cadeia de aspas e fronteiras abaixo
-    } else if (aspa === "#") {
-      if (c !== "\n") { atual += c; continue; }
-      aspa = null; // a quebra fecha o comentário e segue para a fronteira abaixo
+    } else if (comentario[i] === 1) {
+      // comentário marcado pelo colapso: nem aspa nem fronteira
+      atual += c;
+      continue;
     } else if (aspa === "$'") {
       if (c === "\\" && i + 1 < cmd.length) { atual += c + cmd[i + 1]; i += 1; continue; }
       if (c === "'") aspa = null;
@@ -278,10 +307,6 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
       aspa = "$'";
       atual += "$'";
       i += 1;
-      continue;
-    } else if (!aspa && c === "#" && inicioDePalavra(cmd, i, esc)) {
-      aspa = "#";
-      atual += c;
       continue;
     }
 

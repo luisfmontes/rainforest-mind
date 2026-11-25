@@ -702,6 +702,16 @@ gate "PowerShell bash -c com aspa dobrada barra"         2 "$(p "bash -c 'echo $
 gate "pwsh -Command com crase pelo bash barra"           2 "$(b "pwsh -Command \"echo ${BS}\`'; git add -A\"")"
 gate "falso positivo da base: PowerShell \"a\`\"; ...\" passa" 0 "$(p "echo \"a\`\"; git add -A\"")"
 gate "falso positivo da base: cmd /c \"echo a\\\" & ...\" passa" 0 "$(b "cmd /c \"echo a${BS}\" & git add -A\"")"
+# Revisao de seguranca do commit 8ffea4b2 (D2 emendada): # que o shell nao le como comentario.
+gate "PowerShell <# #> fecha no #> barra"                2 "$(p "echo <# x #>; git add -A")"
+gate "PowerShell <# #> em duas linhas barra"             2 "$(p "$(hd "echo hi <# a" "b #>; git add -A")")"
+gate "# dentro de crase nao passa da crase barra"        2 "$(b "echo \`echo #\`; git add -A")"
+gate "# dentro de \${} nao passa da chave barra"          2 "$(b "echo \${x:-a #}; git add -A")"
+gate "PowerShell # dentro de \${} barra"                  2 "$(p "echo \${a #}; git add -A")"
+gate "\$(true)# e meio de palavra barra"                  2 "$(b "echo \$(true)#; git add -A")"
+gate "<(true)# e meio de palavra barra"                  2 "$(b "cat <(true)#; git add -A")"
+gate "continuacao antes do # junta a palavra barra"      2 "$(b "$(hd "echo a${BS}" "#x; git add -A")")"
+gate "controle: PowerShell <# git add -A #> passa"       0 "$(p "echo <# git add -A #> hi")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
