@@ -421,7 +421,13 @@ function tokensSeparados(texto) {
   for (const t of brutos) {
     if (anterior && typeof anterior.fim === "number" && typeof t.ini === "number" && limpo.slice(anterior.fim, t.ini).includes("\n")) saida.push(";");
     const v = String(t.v);
-    if (/\s/.test(v) && proximoEhTextoDeComando(saida)) saida.push(";", ...tokensSeparados(semChaveDeConfig(v)), ";");
+    if (/\s/.test(v) && proximoEhTextoDeComando(saida)) {
+      // O texto cru e a versao sem `chave=!` entram os dois: tirar a chave so pode
+      // somar deteccao (`bash -c 'X=y sh < t.sh'` mantem o `X=y` como atribuicao).
+      saida.push(";", ...tokensSeparados(v), ";");
+      const sem = semChaveDeConfig(v);
+      if (sem !== v) saida.push(...tokensSeparados(sem), ";");
+    }
     else saida.push(...separarOperadores(v));
     anterior = t;
   }

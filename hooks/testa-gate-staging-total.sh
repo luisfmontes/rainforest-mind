@@ -650,7 +650,9 @@ gate "R2b su -c 'cd . && bash t.sh' root barra"         2 "$(b "$(hd "cat > t.sh
 gate "R2b fish -c 'true; bash t.sh' barra"              2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "fish -c 'true; bash t.sh'")")"
 gate "R2b git -c 'alias.x=!bash t.sh' x barra"          2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "git -c 'alias.x=!bash t.sh' x")")"
 gate "R2b git bisect run sh -c '...; bash t.sh' barra"  2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "git bisect run sh -c 'true; bash t.sh'")")"
-gate "R2b su grep -c 'bash t.sh' barra"                2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "su grep -c 'true; bash t.sh'")")"
+gate "R2b bash -c 'X=y sh < t.sh' barra"                2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash -c 'X=y sh < t.sh'")")"
+gate "R2b eval 'X=y sh < t.sh' barra"                   2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "eval 'X=y sh < t.sh'")")"
+gate "R2b su grep -c 'bash t.sh' barra"               2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "su grep -c 'true; bash t.sh'")")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
