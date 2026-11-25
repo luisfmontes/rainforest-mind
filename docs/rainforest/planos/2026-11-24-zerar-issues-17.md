@@ -48,7 +48,7 @@ busca:
 - catalogo | tokensComAspas em hooks/lib/tokens-comando.cjs | estendo; o tokenizador é de uso geral e não separa operador colado de propósito, então a separação fica local em heredoc.cjs
 desfecho: estender
 O que fazer:
-- Emenda do executar (D7 emendada): `const RE_OPERADOR_COLADO = /(^\d+[<>]&\d*-?|[<>]&\d*-?|&>>?|^\d+>>?|^\d+<|>>?|<|[|;&(){}]+)/;` (dígito de descritor só no começo do token; `2>&1`, `>&2` e `&>` inteiros), `RE_REDIR_COM_ALVO = /^(?:\d*(?:<|>>?)|&>>?)$/`, `RE_REDIR_FECHADO = /^\d*[<>]&\d*-?$/` e `ehOperador`. `function tokensSeparados(texto)`: tira `\`+quebra, tokeniza com `tokensComAspas` e põe `;` entre dois tokens que têm quebra de linha entre eles (pelos offsets `ini`/`fim`); no `catch`, quebra vira ` ; ` e `split(/\s+/)`; e `return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);` (essa linha, literal, é o `de:` da mutação). Revisão 1: `<<`, `<<-`, `<<<` e `>|` também se separam inteiros. Comentário citando a D7.
+- Emenda do executar (D7 emendada): `const RE_OPERADOR_COLADO = /(^\d+[<>]&\d*-?|[<>]&\d*-?|&>>?|^\d+>>?|^\d+<|>>?|<|[|;&(){}]+)/;` (dígito de descritor só no começo do token; `2>&1`, `>&2` e `&>` inteiros), `RE_REDIR_COM_ALVO = /^(?:\d*(?:<|>>?)|&>>?)$/`, `RE_REDIR_FECHADO = /^\d*[<>]&\d*-?$/` e `ehOperador`. `function tokensSeparados(texto)`: tira `\`+quebra, tokeniza com `tokensComAspas` e põe `;` entre dois tokens que têm quebra de linha entre eles (pelos offsets `ini`/`fim`); no `catch`, quebra vira ` ; ` e `split(/\s+/)`; e `return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);` (revisão 2: o corte passou para dentro do laço, e o `de:` da mutação é `else saida.push(...separarOperadores(v));`). Revisão 1: `<<`, `<<-`, `<<<` e `>|` também se separam inteiros. Comentário citando a D7.
 - `executoresDoAlvo` usa `tokensSeparados(depois)` no lugar do `try { toks = tokensComAspas(...) } catch {...}`.
 - Casos na seção nova:
   - `operador colado: bash t.sh; true barra` → 2: `$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash t.sh; true")")`.
@@ -56,8 +56,8 @@ O que fazer:
   - `digito so e descritor no comeco: bash t2>log barra` → 2: arquivo `t2`, cauda `bash t2>log`.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`
-  de: `return toks.flatMap((t) => t.split(RE_OPERADOR_COLADO)).filter(Boolean);`
-  para: `return toks;`
+  de: `else saida.push(...separarOperadores(v));`
+  para: `else saida.push(v);`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 17", caso "operador colado: bash t.sh; true barra"
 prova-na-base: verde — casos novos desta tarefa; contra a lib da base `bash t.sh; true` sai 0 (sonda de 2026-11-24)

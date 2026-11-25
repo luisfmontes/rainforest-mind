@@ -371,23 +371,25 @@ const FLAGS_COM_VALOR_DE_PREFIXO = new Set(["-u", "-g", "-C", "-s", "-k", "-n", 
 
 const separarOperadores = (t) => String(t).split(RE_OPERADOR_COLADO).filter(Boolean);
 
-// Shells que leem o texto de `-c` (`/c` no cmd) como comando.
-const SHELLS_DE_TEXTO = new Set(["bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd"]);
+// Ferramentas cujo `-c` leva dado, nao comando (`grep -c` conta linhas). Lista de
+// excecao, nao de shells: `su -c`, `fish -c`, `flock f -c` e `runuser -c` tambem rodam
+// texto, e o padrao segue fechado (revisao de seguranca automatica da revisao 2).
+const C_DE_DADO = new Set(["grep", "egrep", "fgrep", "rg", "ag", "wc", "head", "tail", "cut", "uniq", "ls", "tr", "cmp", "git"]);
 
 /**
  * O proximo token, logo depois de `saida`, e texto de comando? Depois de `eval`, ou
- * de `-c`/`/c` num comando que e shell (`bash -c`, `sudo sh -ec`). `grep -c "bash x"`
- * nao e: o `-c` do grep conta linhas (achado 12 da revisao 2).
+ * de `-c`/`/c`, salvo quando o comando do trecho (primeiro token que nao e
+ * atribuicao) e ferramenta de `C_DE_DADO` (achado 12 da revisao 2).
  */
 function proximoEhTextoDeComando(saida) {
   const ant = saida[saida.length - 1];
   if (ant === undefined) return false;
   if (normalizarExecutavel(ant) === "eval") return true;
   if (!/^-\w*c\w*$/i.test(ant) && !/^\/c$/i.test(ant)) return false;
-  for (let k = saida.length - 2; k >= 0 && !ehOperador(saida[k]); k--) {
-    if (SHELLS_DE_TEXTO.has(normalizarExecutavel(saida[k]))) return true;
-  }
-  return false;
+  let ini = saida.length - 1;
+  while (ini > 0 && !ehOperador(saida[ini - 1])) ini--;
+  while (ini < saida.length - 1 && /^[A-Za-z_]\w*=/.test(saida[ini])) ini++;
+  return !C_DE_DADO.has(normalizarExecutavel(saida[ini]));
 }
 
 /**

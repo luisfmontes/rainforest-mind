@@ -646,6 +646,9 @@ gate "R2b bash -c 'cd . && bash t.sh' barra"             2 "$(b "$(hd "cat > t.s
 gate "R2b eval 'true; bash t.sh' barra"                  2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "eval 'true; bash t.sh'")")"
 gate "R2b sudo sh -ec 'true | bash t.sh' barra"          2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "sudo sh -ec 'true | bash t.sh'")")"
 gate "R2b grep -c 'bash t.sh' log.txt passa"             0 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "grep -c 'bash t.sh' log.txt")")"
+gate "R2b su -c 'cd . && bash t.sh' root barra"         2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "su -c 'cd . && bash t.sh' root")")"
+gate "R2b fish -c 'true; bash t.sh' barra"              2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "fish -c 'true; bash t.sh'")")"
+gate "R2b su grep -c 'bash t.sh' barra"                 2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "su grep -c 'true; bash t.sh'")")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
