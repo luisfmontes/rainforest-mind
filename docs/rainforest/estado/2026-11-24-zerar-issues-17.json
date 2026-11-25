@@ -85,23 +85,23 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "90d1690c21f3bc12ca62a9925dd3a7b331629e97",
+      "head": "10a12e806c81ec932de5d37817415ccb1699718a",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a3779de3e0e11ea94",
+        "agente_id": "a324274118ba0a3b6",
         "veredito": "ok",
         "em": "2026-11-25",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a3779de3e0e11ea94.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a324274118ba0a3b6.jsonl"
       }
     ],
-    "achados": 5,
+    "achados": 0,
     "base": "3b1ecacfcece3a9e51ae2b56c6501db6daac429d",
-    "head": "90d1690c21f3bc12ca62a9925dd3a7b331629e97",
+    "head": "10a12e806c81ec932de5d37817415ccb1699718a",
     "em": "2026-11-25",
     "voltas": [
       {
@@ -139,16 +139,28 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a514989068e6962ca.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a3779de3e0e11ea94",
+            "veredito": "ok",
+            "em": "2026-11-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a3779de3e0e11ea94.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-11-25",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; grep -c version .claude-plugin/plugin.json .codex-plugin/plugin.json; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-24-zerar-issues-17",
     "saida": "288 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0 / 2.17.3 nas duas plugin.json e ## 2.17.3 no CHANGELOG / tarefas 1-5 e 7-11 vermelho, 6 pulada (n/a)",
     "sensor_externo": "bash hooks/testa-gate-staging-total.sh",
-    "head": "6278482c2559af7764a76df0bf3ecdff36689199"
+    "head": "10a12e806c81ec932de5d37817415ccb1699718a"
   },
   "fechar": {
     "status": "pendente",
