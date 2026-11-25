@@ -18,12 +18,12 @@
     "em": "2026-11-24"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-25",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs",
-    "saida": "263 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "saida": "274 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0",
+    "tarefas_ok": 11,
+    "tarefas": 11,
     "mutacao": [
       {
         "tarefa": 1,
@@ -74,13 +74,14 @@
         "tarefa": 10,
         "resultado": "vermelho",
         "fixture": "R1 node - <<A com execSync barra"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "R2b bash -c 'cd . && bash t.sh' barra"
       }
     ],
-    "em": "2026-11-24",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-24"
-    },
+    "em": "2026-11-25",
     "reaberturas": 1
   },
   "revisar": {

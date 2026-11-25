@@ -238,7 +238,7 @@ pronto quando: com o `node - <<'A'` que o revisor rodou no bash real, provado po
 ### 11. Texto de `-c`/`eval` tokenizado antes do corte, e resíduo declarado (revisão 2) [tipo: implementar]
 atende: D13
 arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`, `CHANGELOG.md`, `docs/rainforest/design/2026-11-24-zerar-issues-17.md`
-depende de: 7
+depende de: 10
 busca:
 - catalogo | tokensSeparados e abrirTextoDeComando em hooks/lib/heredoc.cjs | estendo; abrirTextoDeComando sai, a expansao entra no laco de tokensSeparados
 desfecho: estender
@@ -259,7 +259,7 @@ pronto quando: com os comandos que a revisão 2 e a revisão automática mediram
 ### 6. Versão 2.17.3 [tipo: docs]
 atende: D6
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
-depende de: 10
+depende de: 11
 O que fazer:
 - `version` `2.17.3` nas duas `plugin.json` e nas duas ocorrências da linha do selo do `README.md` (URL e `alt`).
 - `## 2.17.3 — 2026-11-24` no topo do `CHANGELOG.md`, um item por Issue (#724, #722) e um para o operador colado, do ponto de vista de quem usa.
