@@ -28,10 +28,38 @@ function normalizarExecutavel(nome) {
 // `cat <<'EOF' \` + `| bash` na linha de baixo é UMA linha para o bash, e o
 // corpo começa depois da segunda quebra — a versão anterior parava na
 // primeira e o `| bash` virava corpo, invisível.
+//
+// Revisao 1 do zerar-issues-17: a varredura e de verdade, nao "quebra precedida de
+// `\`". `\\` + quebra e contrabarra escapada (a linha acaba ali); `#` em inicio de
+// palavra abre comentario, onde `\` nao continua nada; quebra dentro de aspas ou de
+// `$(...)` nao encerra a linha. Nos tres casos o bash abria o corpo em outro lugar.
 function fimDaLinhaLogica(cmd, i) {
-  let idx = cmd.indexOf('\n', i);
-  while (idx > 0 && cmd[idx - 1] === '\\') idx = cmd.indexOf('\n', idx + 1);
-  return idx;
+  let simples = false;
+  let duplas = false;
+  let sub = 0;
+  for (let k = i; k < cmd.length; k++) {
+    const c = cmd[k];
+    if (simples) { if (c === "'") simples = false; continue; }
+    if (c === '\\') { k++; continue; }
+    if (duplas) { if (c === '"') duplas = false; continue; }
+    if (c === '$' && cmd[k + 1] === "'") {
+      for (k += 2; k < cmd.length && cmd[k] !== "'"; k++) if (cmd[k] === '\\') k++;
+      continue;
+    }
+    if (c === "'") { simples = true; continue; }
+    if (c === '"') { duplas = true; continue; }
+    if (c === '$' && cmd[k + 1] === '(') { sub++; k++; continue; }
+    if (c === ')' && sub > 0) { sub--; continue; }
+    if (c === '#' && (k === 0 || /[\s;|&()]/.test(cmd[k - 1]))) {
+      const q = cmd.indexOf('\n', k);
+      if (q === -1) return -1;
+      if (sub === 0) return q;
+      k = q;
+      continue;
+    }
+    if (c === '\n' && sub === 0) return k;
+  }
+  return -1;
 }
 
 /**
@@ -261,13 +289,42 @@ function posicoesDeOperadorHeredoc(cmd) {
   let duplas = false;
   for (let k = 0; k < cmd.length; k++) {
     const c = cmd[k];
+    // Revisao 1 do zerar-issues-17: `$'...'` (onde `\'` nao fecha) e `${...}` nao
+    // abrem heredoc (`echo ${x:-<<'A'}`).
+    if (!simples && !duplas && c === "$" && cmd[k + 1] === "'") {
+      for (k += 2; k < cmd.length && cmd[k] !== "'"; k++) if (cmd[k] === "\\") k++;
+      continue;
+    }
+    // Dentro de `${...}`, chave entre aspas ou escapada nao conta (`${x:-"}"<<'A'}`:
+    // a expansao so fecha na ultima chave; revisao de seguranca automatica).
+    if (!simples && !duplas && c === "$" && cmd[k + 1] === "{") {
+      let d = 0;
+      let s1 = false;
+      let s2 = false;
+      for (k += 1; k < cmd.length; k++) {
+        const x = cmd[k];
+        if (s1) { if (x === "'") s1 = false; continue; }
+        if (x === "\\") { k++; continue; }
+        if (s2) { if (x === '"') s2 = false; continue; }
+        // `$'...'` dentro de `${...}` tambem e ANSI-C: `\'` nao fecha (revisao 2).
+        if (x === "$" && cmd[k + 1] === "'") {
+          for (k += 2; k < cmd.length && cmd[k] !== "'"; k++) if (cmd[k] === "\\") k++;
+          continue;
+        }
+        if (x === "'") s1 = true;
+        else if (x === '"') s2 = true;
+        else if (x === "{") d++;
+        else if (x === "}" && --d === 0) break;
+      }
+      continue;
+    }
     if (!simples && c === "\\") { k++; continue; }
     if (!duplas && c === "'") { simples = !simples; continue; }
     if (!simples && c === '"') { duplas = !duplas; continue; }
     if (simples || duplas) continue;
     if (c === "#") {
       const antes = k === 0 ? "" : cmd[k - 1];
-      if (k === 0 || " \t\n;|&(".includes(antes)) {
+      if (k === 0 || " \t\n;|&()".includes(antes)) {
         const quebra = cmd.indexOf("\n", k);
         if (quebra === -1) break;
         k = quebra;
@@ -291,6 +348,262 @@ const EXECUTAM_ARQUIVO = new Set([
   "source", ".", "node", "python", "python3", "py", "perl", "ruby", "deno", "bun",
 ]);
 
+// D7 (zerar-issues-17): operador colado ao nome se separa antes da busca do alvo.
+// `tokensComAspas` devolve `t.sh;` e `t.cjs|sh` como um token so, e `bash t.sh; true`
+// atravessava o gate. O digito de descritor so conta no COMECO do token (`2>log` e
+// `2>` + `log`); `t2>log` e `t2` + `>` + `log`, como no bash. `2>&1`, `>&2` e `&>`
+// ficam inteiros: sao redirecionamento, nao o `&` de segundo plano. `<<`, `<<-` e
+// `<<<` tambem: abrem heredoc e here-string, com o delimitador ou a string depois.
+const RE_OPERADOR_COLADO = /(^\d+[<>]&\d*-?|[<>]&\d*-?|&>>?|<<<|<<-?|^\d+>[>|]?|^\d+<|>[>|]?|<|[|;&(){}]+)/;
+// Redirecionamento cujo ALVO e o token seguinte (`<`, `0<`, `>`, `2>>`, `>|`, `&>`, `<<`).
+const RE_REDIR_COM_ALVO = /^(?:\d*(?:<|>[>|]?)|&>>?|<<-?|<<<)$/;
+// Redirecionamento que ja traz o alvo (`2>&1`, `>&2`, `<&0`, `2>&-`).
+const RE_REDIR_FECHADO = /^\d*[<>]&\d*-?$/;
+const ehOperador = (t) => /^[|;&(){}]+$/.test(t);
+const ehFlag = (t) => t.startsWith("-") || /^\+[A-Za-z]+$/.test(t);
+// Prefixos que rodam o comando seguinte (`sudo sh < t.cjs`, `cat t | env sh`).
+const PREFIXOS_DE_COMANDO = new Set(["sudo", "env", "command", "exec", "nohup", "nice", "time", "timeout", "builtin", "xargs", "watch", "strace", "setsid", "stdbuf", "ionice", "chrt"]);
+// Flags que levam valor no token seguinte. Depois do comando: `bash -o pipefail t.sh`,
+// `python -W ignore t.py`, `node -r x t.cjs` (revisao 1). Antes dele, as dos prefixos:
+// `sudo -u x sh`, `env -C d sh`, `timeout -s KILL 5 sh`, `nice -n 5 sh`.
+const FLAGS_COM_VALOR = new Set(["-o", "+o", "-O", "+O", "--rcfile", "--init-file", "-W", "-X", "-r", "--require", "--import", "--loader", "--experimental-loader", "-I"]);
+const FLAGS_COM_VALOR_DE_PREFIXO = new Set(["-u", "-g", "-C", "-s", "-k", "-n", "--chdir", "--user", "--group", "--signal", "--kill-after", "--adjustment"]);
+
+const separarOperadores = (t) => String(t).split(RE_OPERADOR_COLADO).filter(Boolean);
+
+// Ferramentas cujo `-c` leva dado, nao comando (`grep -c` conta linhas). Lista de
+// excecao, nao de shells: `su -c`, `fish -c`, `flock f -c` e `runuser -c` tambem rodam
+// texto, e o padrao segue fechado (revisao de seguranca automatica da revisao 2).
+// `git` fica fora: `git -c 'alias.x=!bash t.sh' x` roda shell.
+const C_DE_DADO = new Set(["grep", "egrep", "fgrep", "rg", "ag", "wc", "head", "tail", "cut", "uniq", "ls", "tr", "cmp"]);
+
+/**
+ * O proximo token, logo depois de `saida`, e texto de comando? Depois de `eval`, ou
+ * de `-c`/`/c`, salvo quando o comando do trecho (primeiro token que nao e
+ * atribuicao) e ferramenta de `C_DE_DADO` E nenhum executor ou prefixo aparece entre
+ * ele e o `-c` (achado 12 da revisao 2; `grep x | ...` fica de fora pelo operador).
+ */
+function proximoEhTextoDeComando(saida) {
+  // `-c`/`eval` em qualquer ponto do trecho, nao so logo antes do texto: opcoes e os
+  // valores delas ficam no meio (`bash -c -e '...'`, `bash -c -o pipefail '...'`,
+  // `eval -- '...'`; achado 2 da revisao 3 e revisao automatica). Fechado de proposito.
+  const ehC = (t) => /^-\w*c\w*$/i.test(t) || /^\/c$/i.test(t);
+  let achouC = false;
+  for (let p = saida.length - 1; p >= 0 && !ehOperador(saida[p]); p--) {
+    if (normalizarExecutavel(saida[p]) === "eval") return true;
+    if (ehC(saida[p])) achouC = true;
+  }
+  if (!achouC) return false;
+  let ini = saida.length - 1;
+  while (ini > 0 && !ehOperador(saida[ini - 1])) ini--;
+  while (ini < saida.length - 1 && /^[A-Za-z_]\w*=/.test(saida[ini])) ini++;
+  if (!C_DE_DADO.has(normalizarExecutavel(saida[ini]))) return true;
+  for (let k = ini + 1; k < saida.length - 1; k++) {
+    const n = normalizarExecutavel(saida[k]);
+    if (EXECUTAM_ARQUIVO.has(n) || PREFIXOS_DE_COMANDO.has(n)) return true;
+  }
+  return false;
+}
+
+// Valor de `git -c`/`-c` de config com `chave=!comando` (alias de shell): o comando
+// e o que vem depois do `=!` (revisao de seguranca automatica).
+const semChaveDeConfig = (v) => v.replace(/^[A-Za-z][\w.-]*=!?/, "");
+
+/**
+ * Tokens de `texto` com o operador colado separado (D7) e a quebra de linha entre
+ * dois tokens virando `;` (separa comandos). A continuacao `\`+quebra some antes.
+ * Texto passado a `eval` ou ao `-c` de um shell (`bash -c 'cd . && bash t.sh'`) e
+ * comando: entra tokenizado de novo, entre `;`, ANTES de qualquer corte por operador
+ * (revisao 1; na revisao 2 o corte vinha antes e partia o texto no `&&`).
+ */
+function tokensSeparados(texto) {
+  const limpo = String(texto).replace(/\\\r?\n/g, " ");
+  let brutos;
+  try { brutos = tokensComAspas(limpo); } catch {
+    return limpo.replace(/\n/g, " ; ").split(/\s+/).flatMap(separarOperadores);
+  }
+  const saida = [];
+  let anterior = null;
+  for (const t of brutos) {
+    if (anterior && typeof anterior.fim === "number" && typeof t.ini === "number" && limpo.slice(anterior.fim, t.ini).includes("\n")) saida.push(";");
+    const v = String(t.v);
+    // Texto com espaco OU com operador (`bash -c 'sh<t.sh'`, achado 1 da revisao 3).
+    if (/[\s<>|;&()]/.test(v) && proximoEhTextoDeComando(saida)) {
+      // O texto cru e a versao sem `chave=!` entram os dois: tirar a chave so pode
+      // somar deteccao (`bash -c 'X=y sh < t.sh'` mantem o `X=y` como atribuicao).
+      saida.push(";", ...tokensSeparados(v), ";");
+      const sem = semChaveDeConfig(v);
+      if (sem !== v) saida.push(...tokensSeparados(sem), ";");
+    }
+    else saida.push(...separarOperadores(v));
+    anterior = t;
+  }
+  return saida;
+}
+
+// Nome-base de um token de arquivo: sem aspas nas pontas, sem diretorio.
+function nomeBase(t) {
+  return String(t).replace(/^["']+|["']+$/g, "").split(/[\\/]/).pop();
+}
+
+// `[ini, fim)` do trecho (comando simples, entre operadores) que contem `k`.
+function trechoEm(toks, k) {
+  let ini = k;
+  while (ini > 0 && !ehOperador(toks[ini - 1])) ini--;
+  let fim = k;
+  while (fim < toks.length && !ehOperador(toks[fim])) fim++;
+  return [ini, fim];
+}
+
+/**
+ * Comando e argumentos de `toks[ini..fim)`: pula atribuicao (`X=1`), redirecionamento
+ * (com o alvo dele) e prefixo que roda o comando seguinte (`sudo`, `env`, `timeout 5`),
+ * com as flags de valor deles. Devolve `{ nome, nomeIdx, posicionais, flags,
+ * stdinComoScript }`: `nome` normalizado (ou null) e o indice do token dele, os
+ * INDICES dos posicionais, as flags depois do comando, e se um `-` veio antes de
+ * qualquer posicional (`node - arg`: o script e o stdin).
+ */
+const PALAVRAS_RESERVADAS = new Set(["if", "then", "else", "elif", "do", "while", "until", "!"]);
+
+function lerTrecho(toks, ini, fim) {
+  let nome = null;
+  let nomeIdx = -1;
+  let stdinComoScript = false;
+  const posicionais = [];
+  const flags = [];
+  for (let j = ini; j < fim; j++) {
+    const t = toks[j];
+    if (RE_REDIR_COM_ALVO.test(t)) { j++; continue; }
+    if (RE_REDIR_FECHADO.test(t)) continue;
+    if (nome === null) {
+      // `if true; then sh < t.sh; fi`: a palavra reservada nao e o comando (achado 3
+      // da revisao 3).
+      if (PALAVRAS_RESERVADAS.has(t)) continue;
+      if (FLAGS_COM_VALOR_DE_PREFIXO.has(t)) { j++; continue; }
+      if (/^\w+=/.test(t) || ehFlag(t) || /^\d+[smhd]?$/.test(t)) continue;
+      const n = normalizarExecutavel(t);
+      if (PREFIXOS_DE_COMANDO.has(n)) continue;
+      nome = n;
+      nomeIdx = j;
+      continue;
+    }
+    // `deno run t.ts`, `bun run t.ts`: o subcomando nao e o script.
+    if ((nome === "deno" || nome === "bun") && t === "run" && posicionais.length === 0) continue;
+    if (t === "-" && posicionais.length === 0) { stdinComoScript = true; flags.push(t); continue; }
+    if (FLAGS_COM_VALOR.has(t)) { flags.push(t); j++; continue; }
+    if (ehFlag(t)) flags.push(t);
+    else posicionais.push(j);
+  }
+  return { nome, nomeIdx, posicionais, flags, stdinComoScript };
+}
+
+const SHELLS_COM_S = new Set(["bash", "sh", "zsh", "ksh", "dash"]);
+
+// D2: executor que le o script do STDIN. Sem posicional (`sh`, `bash -x`), com `-s`
+// num shell (`sh -s arg`: os posicionais sao argumentos do script), ou com o
+// "arquivo" sendo o proprio stdin (`node - arg`, `bash /dev/stdin`). Com arquivo de
+// script proprio (`python script.py < dados.txt`, `python tool.py -`), o stdin e
+// dado do script.
+function executorDeStdin(trecho, toks) {
+  if (!trecho.nome || !EXECUTAM_ARQUIVO.has(trecho.nome)) return null;
+  if (trecho.posicionais.length === 0) return trecho.nome;
+  if (trecho.stdinComoScript) return trecho.nome;
+  if (SHELLS_COM_S.has(trecho.nome) && trecho.flags.some((x) => /^-[a-z]*s[a-z]*$/i.test(x))) return trecho.nome;
+  if (toks[trecho.posicionais[0]] === "/dev/stdin") return trecho.nome;
+  return null;
+}
+
+/**
+ * O alvo em `k` e o arquivo de script de um executor? Duas leituras, qualquer uma
+ * basta: o alvo e o primeiro posicional de um trecho cujo comando executa arquivo
+ * (`sudo bash t.sh`, `bash -o pipefail t.sh`), ou o token que vem antes dele --
+ * pulando flags, valor de flag e redirecionamento (`bash 2>/dev/null t.sh`, `bash
+ * 2>&1 t.sh`) -- e um executor (`find . -exec bash t.sh`). Alvo que e destino de
+ * redirecionamento (`cat x > t.sh`) nao e argumento.
+ */
+function executorAntes(toks, k, ini, trecho) {
+  if (k > ini && RE_REDIR_COM_ALVO.test(toks[k - 1])) return null;
+  if (trecho.nome && EXECUTAM_ARQUIVO.has(trecho.nome) && trecho.posicionais[0] === k) return trecho.nome;
+  for (let j = k - 1; j >= ini; j--) {
+    const t = toks[j];
+    if (ehFlag(t) || RE_REDIR_FECHADO.test(t)) continue;
+    if (j - 1 >= ini && (RE_REDIR_COM_ALVO.test(toks[j - 1]) || FLAGS_COM_VALOR.has(toks[j - 1]))) { j--; continue; }
+    const n = normalizarExecutavel(t);
+    return EXECUTAM_ARQUIVO.has(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Nomes-base dos arquivos que a linha logica do heredoc em `i` grava: alvo de `>`,
+ * `>>` e `>|`, com ou sem espaco antes (`cat>t.sh`), e os arquivos de `tee`
+ * (`tee t.sh <<'A' > /dev/null`, revisao 1).
+ */
+function alvosDaLinha(cmd, i) {
+  let ini = i;
+  while (ini > 0 && cmd[ini - 1] !== "\n") ini--;
+  let fimLinha = fimDaLinhaLogica(cmd, i);
+  if (fimLinha === -1) fimLinha = cmd.length;
+  const linha = cmd.slice(ini, fimLinha);
+  const alvos = new Set();
+  const re = /\d?>[>|]?\s*([^\s;|&<>()]+)/g;
+  let m;
+  while ((m = re.exec(linha)) !== null) {
+    const base = nomeBase(m[1]);
+    if (base) alvos.add(base);
+  }
+  const toks = tokensSeparados(linha);
+  for (let a = 0; a < toks.length; ) {
+    const [, fim] = trechoEm(toks, a);
+    const t = lerTrecho(toks, a, fim);
+    if (t.nome === "tee") for (const j of t.posicionais) { const b = nomeBase(toks[j]); if (b) alvos.add(b); }
+    a = fim + 1;
+  }
+  return alvos;
+}
+
+const COPIAM_ARQUIVO = new Set(["cp", "mv", "ln", "install"]);
+
+// O trecho le algum alvo, como argumento ou como stdin (`cat t.sh`, `cat < t.sh`)?
+function trechoLeAlvo(toks, ini, fim, trecho, alvos) {
+  if (trecho.posicionais.some((j) => alvos.has(nomeBase(toks[j])))) return true;
+  for (let j = ini; j < fim - 1; j++) {
+    if (ehRedirecionamentoDeEntrada(toks[j]) && alvos.has(nomeBase(toks[j + 1]))) return true;
+  }
+  return false;
+}
+
+/**
+ * D3 (zerar-issues-17): o conteudo gravado chega ao executor por outro nome.
+ * `cp`/`mv`/`ln`/`install` com um alvo entre as origens acrescentam o nome-base do
+ * destino; `cat <alvo> > <novo>` e `cat < <alvo> > <novo>` acrescentam `<novo>`.
+ * Repete ate nao crescer (`cp a b; mv b c`), com teto de 10 voltas.
+ */
+function expandirAlvosPorCopia(toks, alvos) {
+  for (let volta = 0; volta < 10; volta++) {
+    const antes = alvos.size;
+    for (let ini = 0; ini < toks.length; ) {
+      const [, fim] = trechoEm(toks, ini);
+      const trecho = lerTrecho(toks, ini, fim);
+      const { nome, posicionais } = trecho;
+      if (COPIAM_ARQUIVO.has(nome) && posicionais.length >= 2) {
+        const origens = posicionais.slice(0, -1).map((j) => nomeBase(toks[j]));
+        const destino = nomeBase(toks[posicionais[posicionais.length - 1]]);
+        if (destino && origens.some((b) => alvos.has(b))) alvos.add(destino);
+      } else if (nome === "cat" && trechoLeAlvo(toks, ini, fim, trecho, alvos)) {
+        for (let j = ini; j < fim - 1; j++) {
+          if (/^(?:\d*>[>|]?|&>>?)$/.test(toks[j])) {
+            const destino = nomeBase(toks[j + 1]);
+            if (destino) alvos.add(destino);
+          }
+        }
+      }
+      ini = fim + 1;
+    }
+    if (alvos.size === antes) break;
+  }
+}
+
 /**
  * O heredoc que abre em `i` e gravado num arquivo que o proprio comando executa
  * depois? Nesse caso o corpo e script, nao dado, e nao pode ser mascarado.
@@ -305,49 +618,14 @@ const EXECUTAM_ARQUIVO = new Set([
  * 2. "Aparece depois" nao basta. `cat > /tmp/x.md <<'EOF'` seguido de
  *    `gh issue create --body-file /tmp/x.md` cita o arquivo sem executa-lo — e
  *    e exatamente o caso da Issue #258, que tem de continuar passando. So conta
- *    como execucao o arquivo citado como `./x` ou como argumento de um comando
- *    que executa arquivo (`bash x`, `sh -x x`, `source x`, `node x`).
+ *    como execucao o que `executoresDoAlvo` reconhece.
+ *
+ * D4 (zerar-issues-17): e a MESMA regua de `executoresDoAlvo`. As duas repetiam a
+ * varredura; com stdin, pipe e copia so numa delas, o corpo podia ser mascarado
+ * como dado com executor achado pela outra.
  */
 function alvoDoRedirecionamentoEhExecutadoDepois(cmd, i, fimDoHeredoc) {
-  let ini = i;
-  while (ini > 0 && cmd[ini - 1] !== "\n") ini--;
-  let fimLinha = fimDaLinhaLogica(cmd, i);
-  if (fimLinha === -1) fimLinha = cmd.length;
-  const linha = cmd.slice(ini, fimLinha);
-
-  const alvos = new Set();
-  const re = /(?:^|[\s;|&])\d?>>?\s*([^\s;|&<>]+)/g;
-  let m;
-  while ((m = re.exec(linha)) !== null) {
-    const alvo = m[1].replace(/^["']+|["']+$/g, "");
-    if (!alvo) continue;
-    const base = alvo.split(/[\\/]/).pop();
-    if (base) alvos.add(base);
-  }
-  if (alvos.size === 0) return false;
-
-  const depois = cmd.slice(Math.min(fimDoHeredoc, cmd.length));
-  let toks;
-  try { toks = tokensComAspas(depois).map((t) => String(t.v)); } catch { toks = depois.split(/\s+/); }
-
-  for (let k = 0; k < toks.length; k++) {
-    const t = toks[k];
-    const nu = t.replace(/^["']+|["']+$/g, "");
-    const base = nu.split(/[\\/]/).pop();
-    if (!base || !alvos.has(base)) continue;
-    // Citado com caminho explicito de execucao: `./x.sh`, `.\x.sh`.
-    if (/^\.[\\/]/.test(nu)) return true;
-    // Argumento de um comando que executa arquivo, pulando flags.
-    for (let j = k - 1; j >= 0; j--) {
-      const anterior = String(toks[j]);
-      if (/^[|;&(){}]+$/.test(anterior)) break;
-      if (anterior.startsWith("-")) continue;
-      const alvoTok = anterior.split(/[|;&(){}]+/).filter(Boolean).pop();
-      if (alvoTok && EXECUTAM_ARQUIVO.has(normalizarExecutavel(alvoTok))) return true;
-      break;
-    }
-  }
-  return false;
+  return executoresDoAlvo(cmd, i, fimDoHeredoc).length > 0;
 }
 
 /**
@@ -358,68 +636,153 @@ function alvoDoRedirecionamentoEhExecutadoDepois(cmd, i, fimDoHeredoc) {
  */
 const INTERPRETADORES_NAO_SHELL = new Set(["node", "python", "python3", "py", "perl", "ruby", "deno", "bun"]);
 
+// D2: executores de stdin na mesma pipeline depois de `toks[fim]` (`| head | bash`,
+// `| tee o | sh`, `| (sh)`, `| { sh; }`). Para no primeiro operador que nao e pipe
+// nem agrupamento.
+function executoresDaPipeline(toks, fim) {
+  const achados = [];
+  let p = fim;
+  while (p < toks.length && (toks[p] === "|" || toks[p] === "|&")) {
+    p++;
+    while (p < toks.length && /^[({]+$/.test(toks[p])) p++;
+    const [ini2, fim2] = trechoEm(toks, p);
+    const ex = executorDeStdin(lerTrecho(toks, ini2, fim2), toks);
+    if (ex) achados.push(ex);
+    p = fim2;
+    while (p < toks.length && /^[)}]+$/.test(toks[p])) p++;
+  }
+  return achados;
+}
+
 /**
- * Quem EXECUTA o arquivo que o heredoc em `i` grava, depois dele? Mesma varredura
- * de `alvoDoRedirecionamentoEhExecutadoDepois`, mas junta TODOS os executores em
- * vez de parar no primeiro: `"./"` para `./x`, o nome normalizado do comando nos
- * outros casos. Vazio = nenhum executor.
+ * Quem EXECUTA o arquivo que o heredoc em `i` grava? `"./"` para execucao por
+ * caminho, o nome normalizado do comando nos outros casos. Vazio = nenhum executor.
+ *
+ * Le o resto da linha que abre o heredoc, depois do `<<` (D8: `cat > t.cjs <<'EOF'
+ * && node t.cjs` roda depois do corpo gravado), e o texto depois do fechamento. O
+ * arquivo conta como executado quando (zerar-issues-17):
+ * - e o comando do trecho, com caminho (`./x`, `../x`, `d/x`, `$PWD/x`, `/tmp/x`) (D9);
+ * - e o arquivo de script de um executor, pulando flags e redirecionamentos;
+ * - e o stdin (`<`) de um executor que le o script do stdin (D2);
+ * - e lido (argumento ou stdin) por um trecho que segue por pipe ate um executor
+ *   assim (D2);
+ * - chega a qualquer um desses por outro nome, via copia (D3);
+ * - aparece no texto de `eval` ou `-c` (revisao 1).
  */
 function executoresDoAlvo(cmd, i, fimDoHeredoc) {
-  let ini = i;
-  while (ini > 0 && cmd[ini - 1] !== "\n") ini--;
-  let fimLinha = fimDaLinhaLogica(cmd, i);
-  if (fimLinha === -1) fimLinha = cmd.length;
-  const linha = cmd.slice(ini, fimLinha);
-
-  const alvos = new Set();
-  const re = /(?:^|[\s;|&])\d?>>?\s*([^\s;|&<>]+)/g;
-  let m;
-  while ((m = re.exec(linha)) !== null) {
-    const alvo = m[1].replace(/^["']+|["']+$/g, "");
-    if (!alvo) continue;
-    const base = alvo.split(/[\\/]/).pop();
-    if (base) alvos.add(base);
-  }
+  const alvos = alvosDaLinha(cmd, i);
   const executores = [];
   if (alvos.size === 0) return executores;
 
+  let fimLinha = fimDaLinhaLogica(cmd, i);
+  if (fimLinha === -1) fimLinha = cmd.length;
+  const restoDaLinha = cmd.slice(i, Math.min(fimLinha, cmd.length));
   const depois = cmd.slice(Math.min(fimDoHeredoc, cmd.length));
-  let toks;
-  try { toks = tokensComAspas(depois).map((t) => String(t.v)); } catch { toks = depois.split(/\s+/); }
+  const toks = tokensSeparados(restoDaLinha + "\n" + depois);
+  expandirAlvosPorCopia(toks, alvos);
 
   for (let k = 0; k < toks.length; k++) {
     const t = toks[k];
-    const nu = t.replace(/^["']+|["']+$/g, "");
-    const base = nu.split(/[\\/]/).pop();
+    const base = nomeBase(t);
     if (!base || !alvos.has(base)) continue;
-    if (/^\.[\\/]/.test(nu)) { executores.push("./"); continue; }
-    for (let j = k - 1; j >= 0; j--) {
-      const anterior = String(toks[j]);
-      if (/^[|;&(){}]+$/.test(anterior)) break;
-      if (anterior.startsWith("-")) continue;
-      const alvoTok = anterior.split(/[|;&(){}]+/).filter(Boolean).pop();
-      if (alvoTok && EXECUTAM_ARQUIVO.has(normalizarExecutavel(alvoTok))) executores.push(normalizarExecutavel(alvoTok));
-      break;
+    const [ini, fim] = trechoEm(toks, k);
+    const trecho = lerTrecho(toks, ini, fim);
+    // `./x` em qualquer posicao (`find . -exec ./t.sh`), como antes da rodada; e
+    // caminho na posicao de comando (`../t.sh`, `$PWD/t.sh`) (D9).
+    if (/^\.[\\/]/.test(t.replace(/^["']+/, "")) || (trecho.nomeIdx === k && /[\\/]/.test(t))) { executores.push("./"); continue; }
+    if (k > ini && ehRedirecionamentoDeEntrada(toks[k - 1])) {
+      const ex = executorDeStdin(trecho, toks);
+      if (ex) { executores.push(ex); continue; }
+    } else {
+      const ex = executorAntes(toks, k, ini, trecho);
+      if (ex) { executores.push(ex); continue; }
     }
+    if (trechoLeAlvo(toks, ini, fim, trecho, alvos)) executores.push(...executoresDaPipeline(toks, fim));
   }
   return executores;
 }
 
+function ehRedirecionamentoDeEntrada(t) {
+  return /^\d*<$/.test(t);
+}
+
 /**
- * Corpo de script nao-shell: cada linha fica em branco, exceto os trechos `git ...`
- * (ate aspa, `;`, `|`, `&`, `)` ou fim de linha). Comprimento e quebras de linha
- * sao preservados, como em todo mascaramento deste arquivo.
+ * Revisao 1 (zerar-issues-17): o heredoc e o STDIN de um interpretador nao-shell que
+ * le o script dele (`node - <<'A'`, `python <<'A'`). Devolve o nome, ou null.
+ */
+function interpretadorNaoShellDoHeredoc(cmd, i) {
+  let ini = i;
+  while (ini > 0 && cmd[ini - 1] !== "\n") ini--;
+  let fimLinha = fimDaLinhaLogica(cmd, i);
+  if (fimLinha === -1) fimLinha = cmd.length;
+  const L = tokensSeparados(cmd.slice(ini, i) + "<<").length - 1;
+  const toks = tokensSeparados(cmd.slice(ini, fimLinha));
+  if (L < 0 || !/^<<-?$/.test(toks[L] || "")) return null;
+  const [a, z] = trechoEm(toks, L);
+  const ex = executorDeStdin(lerTrecho(toks, a, z), toks);
+  return ex && INTERPRETADORES_NAO_SHELL.has(ex) ? ex : null;
+}
+
+/**
+ * D5 (zerar-issues-17): `spawnSync('git',['add','-A'])`, `subprocess.run(["git",
+ * "add", "-A"])` e `new Deno.Command('git', {args: ['add', '-A']})` -- o comando em
+ * lista de strings. Acha cada literal `git` entre aspas (com caminho e `.exe`:
+ * `'/usr/bin/git'`, `'git.exe'`) e o estende enquanto vier, depois de espacos,
+ * quebras de linha, virgulas, colchetes, chaves, parenteses, comentario de bloco e
+ * chave de objeto (`args:`), outro literal completo de mesma aspa na abertura e no
+ * fechamento. Devolve `{ ini, fim, conteudos }`: o intervalo inteiro e o miolo de
+ * cada literal.
+ */
+function trechosDeListaGit(texto) {
+  const achados = [];
+  const re = /(['"`])((?:[^'"`\n]*[\\/])?git(?:\.exe)?)\1/gi;
+  const seguinte = /^(?:[\s,[\](){}]|\/\*[\s\S]*?\*\/|\w+\s*:)*(['"`])([^'"`\n]*)\1/;
+  let m;
+  while ((m = re.exec(texto)) !== null) {
+    const conteudos = [[m.index + 1, m.index + 1 + m[2].length]];
+    let fim = m.index + m[0].length;
+    let s;
+    while ((s = seguinte.exec(texto.slice(fim))) !== null) {
+      const fimLiteral = fim + s[0].length;
+      conteudos.push([fimLiteral - 1 - s[2].length, fimLiteral - 1]);
+      fim = fimLiteral;
+    }
+    achados.push({ ini: m.index, fim, conteudos });
+    re.lastIndex = fim;
+  }
+  return achados;
+}
+
+/**
+ * Corpo de script nao-shell: tudo fica em branco, exceto os trechos `git ...`
+ * (ate aspa, `;`, `|`, `&`, `)` ou fim de linha) e o comando em lista de strings
+ * (D5): ali so o miolo de cada literal fica, e o resto do intervalo -- aspas,
+ * virgulas, colchetes, comentario, chave de objeto, quebra de linha -- vira espaco,
+ * para a analise ler um comando so. Comprimento preservado; as quebras de linha de
+ * fora da lista tambem.
  */
 function mascaraSoGit(trecho) {
-  return trecho.split("\n").map((linha) => {
-    const chars = linha.replace(/[^]/g, " ").split("");
-    const re = /\bgit\b[^'"`;|&)\n]*/g;
-    let m;
-    while ((m = re.exec(linha)) !== null) {
-      for (let k = m.index; k < m.index + m[0].length; k++) chars[k] = linha[k];
+  const chars = trecho.replace(/[^\n]/g, " ").split("");
+  const re = /\bgit\b[^'"`;|&)\n]*/g;
+  let m;
+  while ((m = re.exec(trecho)) !== null) {
+    for (let k = m.index; k < m.index + m[0].length; k++) chars[k] = trecho[k];
+  }
+  for (const lista of trechosDeListaGit(trecho)) {
+    for (let k = lista.ini; k < lista.fim; k++) chars[k] = " ";
+    for (const [a, z] of lista.conteudos) {
+      for (let k = a; k < z; k++) chars[k] = trecho[k] === "\n" ? " " : trecho[k];
     }
-    return chars.join("");
-  }).join("\n");
+  }
+  return chars.join("");
+}
+
+// #724 (zerar-issues-17): o corpo comeca depois da linha LOGICA que abre o heredoc,
+// como em `corpoDeHeredoc`. Com `cat <<'A' \` + quebra + `> x; git add -A`, a mascara
+// comecava na primeira quebra fisica e apagava o comando da continuacao.
+function inicioDoCorpo(fora, i) {
+  const fl = fimDaLinhaLogica(fora, i);
+  return fl === -1 ? fora.length : fl + 1;
 }
 
 /**
@@ -486,19 +849,20 @@ function mascararCorposDeHeredoc(cmd, opcoes = {}) {
       heredoc.delimitadorQuotado &&
       heredoc.fechado &&
       !linhaDoHeredocTemInterpretador(fora, i) &&
-      !alvoDoRedirecionamentoEhExecutadoDepois(fora, i, fimDoHeredoc);
+      !alvoDoRedirecionamentoEhExecutadoDepois(fora, i, fimDoHeredoc) &&
+      !(opcoes.scriptNaoShell === true && interpretadorNaoShellDoHeredoc(fora, i));
     if (dado) {
-      const quebra = fora.indexOf("\n", i);
-      const inicio = quebra === -1 ? fora.length : quebra + 1;
+      const inicio = inicioDoCorpo(fora, i);
       if (fimDoHeredoc > inicio) {
         const emBranco = fora.slice(inicio, fimDoHeredoc).replace(/[^\n]/g, " ");
         fora = fora.slice(0, inicio) + emBranco + fora.slice(fimDoHeredoc);
       }
     } else if (opcoes.scriptNaoShell === true && heredoc.delimitadorQuotado && heredoc.fechado && !linhaDoHeredocTemInterpretador(fora, i)) {
       const ex = executoresDoAlvo(fora, i, fimDoHeredoc);
+      const doStdin = interpretadorNaoShellDoHeredoc(fora, i);
+      if (doStdin) ex.push(doStdin);
       if (ex.length > 0 && ex.every((e) => INTERPRETADORES_NAO_SHELL.has(e))) {
-        const quebra = fora.indexOf("\n", i);
-        const inicio = quebra === -1 ? fora.length : quebra + 1;
+        const inicio = inicioDoCorpo(fora, i);
         if (fimDoHeredoc > inicio) {
           fora = fora.slice(0, inicio) + mascaraSoGit(fora.slice(inicio, fimDoHeredoc)) + fora.slice(fimDoHeredoc);
         }

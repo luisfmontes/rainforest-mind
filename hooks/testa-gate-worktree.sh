@@ -2297,6 +2297,8 @@ EOF
 git commit -F msg.txt
 EOC
 )"
+# #724 (zerar-issues-17): o mv na continuacao da linha que abre o heredoc e comando.
+g580e '#724 mv na continuacao da linha do heredoc barra' 2 "$(printf '%s\n' "cat <<'A' \\" '> msg.txt; mv a.txt "$X/f"' 'x' 'A')"
 gate_stderr '#580 D1: D=<fora>; touch "$D/f" nomeia o comando, o alvo e a saida' \
   "$(b "$(printf '%s' 'D=__FORA__; touch "$D/f"' | s573)" "$WN")" 'Alvo de touch comeca com variavel ou substituicao: $D/f' 'diretorio de trabalho principal'
 gate_stderr '#580 D1: cp a.txt "$CLAUDE_PROJECT_DIR/f" da a saida da ferramenta Write' \

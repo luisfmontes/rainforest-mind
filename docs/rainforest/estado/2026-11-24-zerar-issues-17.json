@@ -1,0 +1,204 @@
+{
+  "slug": "2026-11-24-zerar-issues-17",
+  "titulo": "Rodada 17: heredoc com continuacao de linha e staging por script nao-shell",
+  "criado_em": "2026-11-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-24-zerar-issues-17.md",
+    "em": "2026-11-24"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-24-zerar-issues-17.md",
+    "tarefas": 6,
+    "paralelas": [],
+    "em": "2026-11-24"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-25",
+    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs",
+    "saida": "288 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0",
+    "tarefas_ok": 11,
+    "tarefas": 11,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "#724 continuacao esconde git add -A barra"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "operador colado: bash t.sh; true barra"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "#722 sh < t.cjs barra"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "#722 cp t.cjs x.sh && bash x.sh barra"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "#722 spawnSync executado por node barra"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "troca de versao e changelog"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "R1 ../t.sh barra"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "R1 contrabarra em comentario nao continua barra"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "R1 (true)#<<A e comentario barra"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "R1 node - <<A com execSync barra"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "R2b bash -c 'cd . && bash t.sh' barra"
+      }
+    ],
+    "em": "2026-11-25",
+    "reaberturas": 2
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "10a12e806c81ec932de5d37817415ccb1699718a",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a324274118ba0a3b6",
+        "veredito": "ok",
+        "em": "2026-11-25",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a324274118ba0a3b6.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "3b1ecacfcece3a9e51ae2b56c6501db6daac429d",
+    "head": "10a12e806c81ec932de5d37817415ccb1699718a",
+    "em": "2026-11-25",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aaaf17da4079e4a6e",
+            "veredito": "ok",
+            "em": "2026-11-24",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-aaaf17da4079e4a6e.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a8b57edad28d0f86f",
+            "veredito": "reprovado",
+            "em": "2026-11-24",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a8b57edad28d0f86f.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a514989068e6962ca",
+            "veredito": "reprovado",
+            "em": "2026-11-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a514989068e6962ca.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a3779de3e0e11ea94",
+            "veredito": "ok",
+            "em": "2026-11-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a3779de3e0e11ea94.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-25",
+    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; grep -c version .claude-plugin/plugin.json .codex-plugin/plugin.json; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-24-zerar-issues-17",
+    "saida": "288 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0 / 2.17.3 nas duas plugin.json e ## 2.17.3 no CHANGELOG / tarefas 1-5 e 7-11 vermelho, 6 pulada (n/a)",
+    "sensor_externo": "bash hooks/testa-gate-staging-total.sh",
+    "head": "10a12e806c81ec932de5d37817415ccb1699718a"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-25"
+  },
+  "decididos": [
+    {
+      "pergunta": "Sete furos achados na base antes da tarefa 3 (redirecionamento antes do comando, 2>&1 e 2>/dev/null antes do alvo, executor e cp na linha do heredoc, lista em varias linhas, digito colado ao nome): entram nesta rodada?",
+      "escolha": "Entram: emendas em D2, D5 e D7 e a D8 nova",
+      "porque": "Mesma classe e mesmo codigo das tarefas 2 a 5; deixar fora seria fechar #722 com formas equivalentes abertas, que o revisor de seguranca acharia primeiro",
+      "estagio": "executar",
+      "em": "2026-11-24T23:43:10.175Z"
+    },
+    {
+      "pergunta": "O caso #724 da bateria de publicacao ja sai 2 na base: troca de caso ou fica?",
+      "escolha": "Fica como controle de regressao, renomeado; os casos que medem a mascara sao os de staging, mensagem-commit e worktree",
+      "porque": "Em gate-publicacao-destino a mascara so alimenta mencoesDeGhRepo, que acrescenta destinos (so aperta); com a linha mascarada o segmento gh fica com cwd incerto e o gate ja barra. Nao ha forma em que a mascara da base abra esse gate",
+      "estagio": "executar",
+      "em": "2026-11-24T23:54:39.191Z"
+    },
+    {
+      "pergunta": "Revisao 2 reprovou com 12 formas novas de esconder git add -A: inverter o padrao para allowlist, fechar forma por forma, ou entregar o que esta e abrir rodada propria?",
+      "escolha": "C: consertar o achado de codigo novo (-c/eval com operador; -c so para shell; ANSI-C em ${}), declarar os outros 11 como residuo e abrir a Issue #737 para a inversao",
+      "porque": "a entrega e estritamente melhor que a base sem regressao; a inversao muda o contrato de falso positivo dos quatro gates e pede brainstorm proprio (decisao do Luis, 2026-11-25)",
+      "estagio": "executar",
+      "em": "2026-11-25T11:45:58.164Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-11-24",
+      "de": "revisar",
+      "motivo": "Revisao 1 (ok com 10 achados da mesma classe): flag com valor antes do alvo, cat < alvo > novo e pipe encadeado, execucao por caminho e por -c, alvo de tee/cat>x/>|, git.exe e lista com comentario, '-' depois de script, e os preexistentes fimDaLinhaLogica sem paridade/comentario/aspa, << falso em ${..}/)#/$'..', node - <<'A'"
+    },
+    {
+      "em": "2026-11-25",
+      "de": "verificar",
+      "motivo": "CI do PR #738: testa-dependencias-de-bateria barrou python3 no caso R1 da bateria; caso trocado para node"
+    }
+  ]
+}
