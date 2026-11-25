@@ -143,8 +143,12 @@
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-24"
+    "status": "ok",
+    "em": "2026-11-25",
+    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; grep -c version .claude-plugin/plugin.json .codex-plugin/plugin.json; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-24-zerar-issues-17",
+    "saida": "288 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0 / 2.17.3 nas duas plugin.json e ## 2.17.3 no CHANGELOG / tarefas 1-5 e 7-11 vermelho, 6 pulada (n/a)",
+    "sensor_externo": "bash hooks/testa-gate-staging-total.sh",
+    "head": "6278482c2559af7764a76df0bf3ecdff36689199"
   },
   "fechar": {
     "status": "pendente",
