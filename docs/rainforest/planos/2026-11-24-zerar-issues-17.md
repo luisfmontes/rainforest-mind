@@ -246,6 +246,7 @@ O que fazer:
 - `tokensSeparados` expande o token com espaço depois de `eval` ou de `-c`/`/c` antes de qualquer corte por operador (`proximoEhTextoDeComando`); `abrirTextoDeComando` sai. O texto entra cru e, se tiver `chave=!`, também sem a chave (`git -c 'alias.x=!bash t.sh'`).
 - `-c` só é dado quando o comando do trecho é ferramenta de `C_DE_DADO` (`grep`, `wc`, `cut`…), sem executor ou prefixo entre ela e o `-c`. `git` fica fora da lista.
 - `$'...'` dentro de `${...}` é ANSI-C em `posicoesDeOperadorHeredoc`.
+- Revisão 3: texto com operador e sem espaço também é reaberto; opções entre o `-c`/`eval` e o texto são puladas; `lerTrecho` pula palavra reservada (`if`, `then`, `do`, `!`...) antes do comando. Casos `R3b` e o teste da lib para `$'...'` dentro de `${...}`.
 - Casos `R2b` na seção da rodada 17; item "Limite conhecido" no CHANGELOG apontando a Issue #737; resíduo no Fora de escopo do design.
 mutacao:
   arquivo: `hooks/lib/heredoc.cjs`

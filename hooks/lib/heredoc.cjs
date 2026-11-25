@@ -384,10 +384,14 @@ const C_DE_DADO = new Set(["grep", "egrep", "fgrep", "rg", "ag", "wc", "head", "
  * ele e o `-c` (achado 12 da revisao 2; `grep x | ...` fica de fora pelo operador).
  */
 function proximoEhTextoDeComando(saida) {
-  const ant = saida[saida.length - 1];
-  if (ant === undefined) return false;
-  if (normalizarExecutavel(ant) === "eval") return true;
-  if (!/^-\w*c\w*$/i.test(ant) && !/^\/c$/i.test(ant)) return false;
+  // Opcoes entre o `-c`/`eval` e o texto (`bash -c -e '...'`, `eval -- '...'`) nao
+  // separam os dois (achado 2 da revisao 3).
+  const ehC = (t) => /^-\w*c\w*$/i.test(t) || /^\/c$/i.test(t);
+  let p = saida.length - 1;
+  let achouC = false;
+  while (p >= 0 && (ehFlag(saida[p]) || ehC(saida[p]))) { if (ehC(saida[p])) achouC = true; p--; }
+  if (p >= 0 && normalizarExecutavel(saida[p]) === "eval") return true;
+  if (!achouC) return false;
   let ini = saida.length - 1;
   while (ini > 0 && !ehOperador(saida[ini - 1])) ini--;
   while (ini < saida.length - 1 && /^[A-Za-z_]\w*=/.test(saida[ini])) ini++;
@@ -421,7 +425,8 @@ function tokensSeparados(texto) {
   for (const t of brutos) {
     if (anterior && typeof anterior.fim === "number" && typeof t.ini === "number" && limpo.slice(anterior.fim, t.ini).includes("\n")) saida.push(";");
     const v = String(t.v);
-    if (/\s/.test(v) && proximoEhTextoDeComando(saida)) {
+    // Texto com espaco OU com operador (`bash -c 'sh<t.sh'`, achado 1 da revisao 3).
+    if (/[\s<>|;&()]/.test(v) && proximoEhTextoDeComando(saida)) {
       // O texto cru e a versao sem `chave=!` entram os dois: tirar a chave so pode
       // somar deteccao (`bash -c 'X=y sh < t.sh'` mantem o `X=y` como atribuicao).
       saida.push(";", ...tokensSeparados(v), ";");
@@ -456,6 +461,8 @@ function trechoEm(toks, k) {
  * INDICES dos posicionais, as flags depois do comando, e se um `-` veio antes de
  * qualquer posicional (`node - arg`: o script e o stdin).
  */
+const PALAVRAS_RESERVADAS = new Set(["if", "then", "else", "elif", "do", "while", "until", "!"]);
+
 function lerTrecho(toks, ini, fim) {
   let nome = null;
   let nomeIdx = -1;
@@ -467,6 +474,9 @@ function lerTrecho(toks, ini, fim) {
     if (RE_REDIR_COM_ALVO.test(t)) { j++; continue; }
     if (RE_REDIR_FECHADO.test(t)) continue;
     if (nome === null) {
+      // `if true; then sh < t.sh; fi`: a palavra reservada nao e o comando (achado 3
+      // da revisao 3).
+      if (PALAVRAS_RESERVADAS.has(t)) continue;
       if (FLAGS_COM_VALOR_DE_PREFIXO.has(t)) { j++; continue; }
       if (/^\w+=/.test(t) || ehFlag(t) || /^\d+[smhd]?$/.test(t)) continue;
       const n = normalizarExecutavel(t);

@@ -653,6 +653,24 @@ gate "R2b git bisect run sh -c '...; bash t.sh' barra"  2 "$(b "$(hd "cat > t.sh
 gate "R2b bash -c 'X=y sh < t.sh' barra"                2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash -c 'X=y sh < t.sh'")")"
 gate "R2b eval 'X=y sh < t.sh' barra"                   2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "eval 'X=y sh < t.sh'")")"
 gate "R2b su grep -c 'bash t.sh' barra"               2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "su grep -c 'true; bash t.sh'")")"
+# Revisao 3: texto de -c/eval sem espaco, opcao entre -c e o texto, palavra reservada
+# antes do executor, e o ramo de $'...' dentro de ${...}.
+gate "R3b bash -c 'sh<t.sh' barra"                      2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash -c 'sh<t.sh'")")"
+gate "R3b eval 'sh<t.sh;true' barra"                    2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "eval 'sh<t.sh;true'")")"
+gate "R3b bash -c -e 'bash t.sh' barra"                 2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash -c -e 'bash t.sh'")")"
+gate "R3b bash -c -- 'bash t.sh' barra"                 2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "bash -c -- 'bash t.sh'")")"
+gate "R3b eval -- 'bash t.sh' barra"                    2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "eval -- 'bash t.sh'")")"
+gate "R3b if true; then sh < t.sh; fi barra"            2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "if true; then sh < t.sh; fi")")"
+gate "R3b for i in 1; do sh < t.sh; done barra"         2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "for i in 1; do sh < t.sh; done")")"
+gate "R3b ! sh < t.sh barra"                            2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "! sh < t.sh")")"
+gate "R3b then cp t.sh x.sh && bash x.sh barra"         2 "$(b "$(hd "cat > t.sh <<'EOF'" "git add -A" "EOF" "if true; then cp t.sh x.sh && bash x.sh; fi")")"
+gate "R3b controle: then git commit -F m.txt passa"     0 "$(b "$(hd "cat > m.txt <<'EOF'" "git add -A" "EOF" "if true; then git commit -F m.txt; fi")")"
+gate "R3b controle: \${x:-\$'\\''}<<'A' e heredoc passa" 0 "$(b "$(hd "echo \${x:-\$'\\''}<<'A'" "git add -A" "A")")"
+# No gate o segmentador (#736) esconde a diferenca; a lib e medida direto: dentro de
+# ${...}, $'\'' e ANSI-C e o << depois e heredoc de verdade (posicao 16).
+pos_ansi="$(node -e "const h=require(process.argv[1]);const c=process.argv[2];process.stdout.write(JSON.stringify(h.posicoesDeOperadorHeredoc(c)))" "$SRC/hooks/lib/heredoc.cjs" "echo \${x:-\$'\\''}<<'A'")"
+if [ "$pos_ansi" = "[16]" ]; then ok=$((ok+1)); echo "  ok   R3b lib: \$'...' dentro de \${...} e ANSI-C ($pos_ansi)"
+else falhou=$((falhou+1)); echo "  FALHA R3b lib: \$'...' dentro de \${...} e ANSI-C: esperava [16], veio $pos_ansi"; fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

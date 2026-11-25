@@ -19,7 +19,7 @@ Gates que deixavam passar staging em massa escondido em arquivo gravado por here
 - **`git` chamado em lista de strings é visto no script JavaScript ou Python (#722).** `spawnSync('git', ['add', '-A'])`, `subprocess.run(["git", "add", "-A"])`, `'git.exe'` e `new Deno.Command('git', {args: [...]})` passam a barrar como o texto `git add -A`, também quando a lista quebra linha.
 - **A linha que abre o heredoc é lida mais perto de como o bash lê.** Contrabarra escapada (`\\`), contrabarra dentro de comentário e aspa que atravessa a quebra mudavam onde o corpo começa; e `<<` dentro de `${...}` ou depois de `)#` era lido como heredoc. Nos dois casos, um comando real podia ser apagado da análise.
 - **Operador colado ao nome do arquivo não esconde o executor.** `bash t.sh; true` e `bash t.sh;true` saíam como se `t.sh` não fosse executado, porque o `;` colado fazia parte do nome.
-- **Limite conhecido.** A máscara ainda presume que o corpo é dado e reconhece os jeitos de executar o arquivo um a um. A revisão de segurança achou formas que continuam passando, como `{ sh; } < t.sh`, `awk -f t.awk` e uma aspa solta num comentário entre o heredoc e o executor. A lista completa e a proposta de inverter o padrão estão na Issue #737.
+- **Limite conhecido.** A máscara ainda presume que o corpo é dado e reconhece os jeitos de executar o arquivo um a um. A revisão de segurança achou formas que continuam passando, como `{ sh; } < t.sh`, `awk -f t.awk` e uma aspa solta num comentário entre o heredoc e o executor, além de comando rodado pela configuração do git (alias com `!`). A lista completa e a proposta de inverter o padrão estão na Issue #737.
 
 ## 2.17.2 — 2026-11-24
 

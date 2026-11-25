@@ -68,6 +68,7 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
 
 - **D13 — A rodada entrega por formas, não pela classe (revisão 2).** A revisão 2 reprovou com 12 formas novas de esconder `git add -A`, nenhuma regressão sobre a base. Uma vinha de código desta rodada e foi consertada aqui: o texto de `-c`/`eval` com operador dentro (`bash -c 'cd . && bash t.sh'`) era partido no `&&` antes de ser lido como comando. Agora ele é tokenizado de novo antes do corte. E `-c` só conta como texto de comando depois de um shell (`grep -c "bash x"` não barra mais). `$'...'` dentro de `${...}` também passou a ser ANSI-C. As outras 11 ficam como resíduo declarado (Fora de escopo).
   - **Porquê:** decisão do Luís em 2026-11-25 (opção C): a máscara presume que o corpo é dado e procura jeitos de executar o arquivo. Essa lista não fecha, e cada revisão acha formas novas. Inverter o padrão (corpo é analisado, salvo consumidor inerte conhecido) fecha a classe, mas muda o contrato de falso positivo dos quatro gates. Isso pede brainstorm próprio (Issue #737), não o fim de uma rodada de conserto.
+  - **Revisão 3:** achou formas da mesma família no código desta rodada, todas consertadas aqui. Texto de `-c`/`eval` sem espaço (`bash -c 'sh<t.sh'`), opção entre o `-c` e o texto (`bash -c -e`, `eval --`), e palavra reservada antes do executor (`if true; then sh < t.sh; fi`, `for ... do`, `!`). O comando rodado pela configuração do git (`git -c alias.x=!sh\ t.sh` sem aspas, `git config alias`, `--config-env`, `GIT_CONFIG_*`) entra no resíduo.
   - **Modelo de ameaça:** as 11 formas residuais saem exit 0 com o `git add -A` executado. A entrega é estritamente melhor que a base: nenhuma forma que barrava passou a passar, e as formas das #722 e #724 barram.
 
 ## Avaliado e descartado
@@ -88,6 +89,7 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
   - `<<` em aritmética (preexistente);
   - escritores fora da lista (`dd of=`, `cp /dev/stdin`, `exec 3>`);
   - referência não literal ao arquivo;
+  - comando rodado pela configuração do git (alias com `!` sem aspas, `git config alias`, `--config-env`, `GIT_CONFIG_*`; revisão 3);
   - continuação antes do `<<` (preexistente; a justificativa da D1, de que o bash não aceita a forma, está errada).
 - `$'\'` dentro de `${...}` (`echo ${x:-$'\'}<<\'A\''}`): a máscara já não vê heredoc aí, mas o segmentador do gate perde a linha seguinte. Fica na Issue #736.
 
