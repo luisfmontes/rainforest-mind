@@ -235,6 +235,27 @@ mutacao:
 prova-na-base: verde — casos novos da revisão 1; contra a lib do commit 6cea5864 saem 0
 pronto quando: com o `node - <<'A'` que o revisor rodou no bash real, provado por `bash hooks/testa-gate-staging-total.sh` com `ok` nos quatro casos e 0 falhas.
 
+### 11. Texto de `-c`/`eval` tokenizado antes do corte, e resíduo declarado (revisão 2) [tipo: implementar]
+atende: D13
+arquivos: `hooks/lib/heredoc.cjs`, `hooks/testa-gate-staging-total.sh`, `CHANGELOG.md`, `docs/rainforest/design/2026-11-24-zerar-issues-17.md`
+depende de: 7
+busca:
+- catalogo | tokensSeparados e abrirTextoDeComando em hooks/lib/heredoc.cjs | estendo; abrirTextoDeComando sai, a expansao entra no laco de tokensSeparados
+desfecho: estender
+O que fazer:
+- `tokensSeparados` expande o token com espaço depois de `eval` ou de `-c`/`/c` antes de qualquer corte por operador (`proximoEhTextoDeComando`); `abrirTextoDeComando` sai. O texto entra cru e, se tiver `chave=!`, também sem a chave (`git -c 'alias.x=!bash t.sh'`).
+- `-c` só é dado quando o comando do trecho é ferramenta de `C_DE_DADO` (`grep`, `wc`, `cut`…), sem executor ou prefixo entre ela e o `-c`. `git` fica fora da lista.
+- `$'...'` dentro de `${...}` é ANSI-C em `posicoesDeOperadorHeredoc`.
+- Casos `R2b` na seção da rodada 17; item "Limite conhecido" no CHANGELOG apontando a Issue #737; resíduo no Fora de escopo do design.
+mutacao:
+  arquivo: `hooks/lib/heredoc.cjs`
+  de: `if (!C_DE_DADO.has(normalizarExecutavel(saida[ini]))) return true;`
+  para: `if (false) return true;`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 17", caso "R2b bash -c 'cd . && bash t.sh' barra"
+prova-na-base: verde — casos R2b; contra a lib dos commits 9d9cf28d, a46f6766, 1cd1d2c6 e cc7f3654 saem com as falhas medidas (4, 2, 2 e 2)
+pronto quando: com os comandos que a revisão 2 e a revisão automática mediram (`bash -c 'cd . && bash t.sh'`, `su -c`, `git -c 'alias.x=!bash t.sh' x`, `bash -c 'X=y sh < t.sh'`), provado por `bash hooks/testa-gate-staging-total.sh` com `ok` nos casos `R2b` e 0 falhas.
+
 ### 6. Versão 2.17.3 [tipo: docs]
 atende: D6
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
