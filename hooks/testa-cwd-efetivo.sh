@@ -677,6 +677,10 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(segmentosComAspas("echo ${x:-`echo # " + Q + "`}; x").some((t) => t.trim() === "x"), true, "crase em ${}");
     eq(segmentosComAspas("echo `echo # " + B + "`" + Q + "`; x").some((t) => t.trim() === "x"), true, "crase escapada");
   });
+  test("(736r) a crase fecha o $( e o ${ abertos dentro dela", () => {
+    eq(segmentosComAspas("echo `echo $(echo # `; x").some((t) => t.trim() === "x"), true, "$( dentro da crase");
+    eq(segmentosComAspas("echo `echo ${x:-# `; x").some((t) => t.trim() === "x"), true, "${ dentro da crase");
+  });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
     eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");

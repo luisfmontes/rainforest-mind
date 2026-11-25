@@ -727,6 +727,9 @@ gate "aspa no comentario dentro de crase barra"          2 "$(b "echo \`echo # a
 gate "crase escapada nao fecha o comentario na crase barra" 2 "$(b "echo \`echo # ${BS}\`'\`; git add -A")"
 gate "crase dentro de \${} manda no # barra"              2 "$(b "echo \${x:-\`echo # '\`}; git add -A")"
 gate "aspa aberta no fim: o texto depois dela e analisado barra" 2 "$(b "echo \"a${BS}${BS}${BS}\"; git add -A")"
+# Revisao de seguranca do commit 8a5bdc2c: a crase fecha o que abriu depois dela.
+gate "crase fecha o \$( aberto dentro dela barra"         2 "$(b "echo \`echo \$(echo # \`; git add -A")"
+gate "crase fecha o \${ aberto dentro dela barra"         2 "$(b "echo \`echo \${x:-# \`; git add -A")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

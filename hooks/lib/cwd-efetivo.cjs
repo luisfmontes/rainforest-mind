@@ -199,7 +199,11 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
   // obedece ao mais interno (revisão de segurança do commit 6f2abe19).
   const pilha = [];
   const topo = () => pilha[pilha.length - 1];
-  const alternaCrase = () => { if (topo() === "`") pilha.pop(); else pilha.push("`"); };
+  // Dentro de crase o bash acha a crase de fechamento antes de olhar `$(` e `${`:
+  // ela fecha tudo o que abriu depois da crase aberta (`` `echo $(echo # `; x ``
+  // roda o `x`; revisão de segurança do commit 8a5bdc2c).
+  const fechaCrase = () => { const k = pilha.lastIndexOf("`"); if (k >= 0) { pilha.length = k; return true; } return false; };
+  const alternaCrase = () => { if (!fechaCrase()) pilha.push("`"); };
   const classe = [];
   const emite = (s, k = CLASSE.normal) => {
     saida += s;
@@ -223,7 +227,7 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
       // comentário dentro de crase: o bash o fecha na crase sem escape, que fecha a
       // substituição; crase com contrabarra antes é literal ali dentro
       if (c === "\\" && i + 1 < cmd.length) { emite(c + cmd[i + 1], CLASSE.comentario); i += 1; continue; }
-      if (c === "`") { aspa = null; if (topo() === "`") pilha.pop(); emite(c); continue; }
+      if (c === "`") { aspa = null; fechaCrase(); emite(c); continue; }
       if (c === "\n") { aspa = null; incerto = true; emite(c); continue; }
       emite(c, CLASSE.comentario);
       continue;
@@ -276,7 +280,9 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
       // `cd` que pode ser texto entre aspas (revisões de segurança dos commits
       // a0b55385 e bcd7e602).
       if (incerto) { aspa = "#?"; emite(c, CLASSE.neutro); continue; }
-      aspa = topo() === "`" ? "#`" : "#";
+      // crase em qualquer nível manda: o comentário fecha na próxima crase sem escape
+      aspa = pilha.includes("`") ? "#`" : "#";
+      if (pilha.length > 1) incerto = true;
       emite(c, CLASSE.comentario);
       continue;
     }

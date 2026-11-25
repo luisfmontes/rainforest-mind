@@ -152,6 +152,7 @@ desfecho: estender
 O que fazer:
 - `pilha` no lugar de `crase` e `chaves`: `${` e `$(` empilham, `}` e `)` desempilham quando batem com o topo, a crase alterna no topo. O `#` olha `topo()`. No estado de comentário em crase, contrabarra leva o caractere seguinte.
 - Em `segmentosComAspas`, `inicioAspa` guarda onde a aspa abriu; aspa aberta no fim (com `leEscape`) acrescenta `segmentosComAspas(cmd.slice(inicioAspa + 1), ...)` e liga `leituraIncerta`.
+- Emenda da quinta revisão (commit 8a5bdc2c): `fechaCrase` desempilha até a crase mais recente; o comentário é ``"#`"`` com crase em qualquer nível (`pilha.includes`), e `#` com `pilha.length > 1` liga `incerto`. Casos depois do comentário `# Revisao de seguranca do commit 8a5bdc2c` e `(736r)`.
 - Casos na seção nova, depois do comentário `# Revisao de seguranca do commit 6f2abe19`: crase escapada no comentário (2), crase dentro de `${}` (2), aspa aberta no fim (2).
 - `hooks/testa-cwd-efetivo.sh`: `(736p)` e `(736q)`.
 mutacao:
