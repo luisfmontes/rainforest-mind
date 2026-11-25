@@ -648,6 +648,13 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(segmentosComAspas("echo ${x:-a #}; x").filter((s) => s.trim() === "x").length, 1, "${}");
     eq(segmentosComAspas("echo $(true)#; x").filter((s) => s.trim() === "x").length, 1, "$(true)#");
   });
+  test("(736l) $$ e o PID: $${ nao abre chave e $$' nao abre ANSI-C", () => {
+    eq(segmentosComAspas(`echo $\${ # don${Q}t\nx`).filter((s) => s.trim() === "x").length, 1, "$${");
+    eq(segmentosComAspas(`echo $$${Q}a${B}${Q}; x #${Q}`).filter((s) => s.trim() === "x #'").length, 1, "$$'");
+  });
+  test("(736m) crase solta deixa o # neutro: a aspa do comentario nao engole a linha de baixo", () => {
+    eq(segmentosComAspas("echo `\necho hi # don" + Q + "t\nx").filter((s) => s.trim() === "x").length, 1, "crase solta");
+  });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
     eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");

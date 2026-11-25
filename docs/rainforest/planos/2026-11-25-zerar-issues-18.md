@@ -26,8 +26,8 @@ O que fazer:
 - Casos na seção nova da bateria de staging (exit): `#736 $'\' engole o heredoc` (2), `#736 $'\' dentro de ${}` (2), `escape fora de aspas: echo \' ; git add -A` (2), e os controles `echo \$'a\'; git add -A` (2), `echo "$'"; git add -A` (2), `echo 'a; git add -A'` (0), `echo $'a; git add -A'` (0), e os falsos positivos da base `echo $'a\'; git add -A'` (0) e `echo "a\"; git add -A ; echo b"` (0).
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `} else if (!aspa && c === "$" && cmd[i + 1] === "'" && dialeto === "bash") {`
-  para: `} else if (false) {`
+  de: `    else if (c === "$" && cmd[i + 1] === "'" && dialeto === "bash" && dolarLivre) {`
+  para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "#736 $'\' engole o heredoc barra"
 prova-na-base: verde — os casos só existem na seção que esta tarefa escreve; contra a lib da base o `git add -A` da #736 sai 0 (sonda de 2026-11-25)
@@ -49,7 +49,7 @@ O que fazer:
 - `hooks/testa-cwd-efetivo.sh`: `echo hi # don't` + quebra + `git add -A` dá 2 segmentos; `echo hi #x\` + quebra + `git add -A` dá 2 segmentos.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `    else if (c === "#" && !crase && chaves === 0 && abreComentario(saida, esc)) {`
+  de: `    else if (c === "#" && abreComentario(saida, esc)) {`
   para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "comentario com contrabarra no fim barra"
@@ -99,10 +99,32 @@ mutacao:
 prova-na-base: verde — casos novos; contra o commit 8ffea4b2 as quatro formas da revisão de segurança saem 0 (achado da revisão automática, conferido no shell em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos da revisão de segurança e 0 falhas.
 
+### 6. `$$` e trecho neutro (segunda revisão de segurança) [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-cwd-efetivo.sh`
+depende de: 5
+busca:
+- catalogo | colapsaContinuacaoDoDialeto em hooks/lib/cwd-efetivo.cjs | estendo; é a função das tarefas 2 e 5
+desfecho: estender
+O que fazer:
+- `CLASSE = { normal, comentario, neutro, ansi }`; o colapso devolve `{ texto, classe }` e marca com `ansi` o `$` que abre `$'`. O segmentador usa `classe` para comentário, trecho neutro e abertura de `$'`, sem decidir sozinho.
+- `dolares` conta a corrida de `$` sem escape; `$'` e `${` só abrem com `dolaresAntes % 2 === 0`.
+- `#` em começo de palavra com `crase || chaves > 0` abre o estado `#?`: os caracteres até a quebra saem `neutro`. No segmentador, aspa, escape e `$` neutros vão para o segmento sem efeito; a fronteira segue valendo.
+- Casos na seção nova, depois do comentário `# Revisao de seguranca do commit a0b55385`: `echo $${ # don't` + quebra + `git add -A` (2), `echo $$'a\'; git add -A #'` (2), `bash <<'EOF'` com crase solta no corpo e `echo hi # don't` + quebra + `git add -A` depois (2), e o controle `echo $$$'a\'; git add -A'` (0).
+- `hooks/testa-cwd-efetivo.sh`: `(736l)` e `(736m)`.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `    const dolarLivre = dolaresAntes % 2 === 0;`
+  para: `    const dolarLivre = true;`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "$$' e PID e aspa simples barra"
+prova-na-base: verde — casos novos; contra o commit a0b55385 `echo $${ # don't` + quebra + `git add -A`, `echo $$'a\'; git add -A #'` e a crase solta no corpo de `bash <<'EOF'` saem 0 (sonda de 2026-11-25)
+pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos da segunda revisão de segurança e 0 falhas.
+
 ### 4. Versão 2.17.4 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 5
+depende de: 6
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.

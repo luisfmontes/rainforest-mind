@@ -180,31 +180,42 @@ function dialetoDoWrapper(nome, dialetoDeFora) {
  * fora das continuações sai intacto, para os segmentos continuarem casando por
  * texto com os de `gate-fechar-issue.cjs`.
  *
- * É também o único lugar que decide o que é comentário: devolve `comentario`,
- * um 1 por caractere de `texto` que está dentro de comentário (a quebra que
- * fecha o de linha fica fora), e o segmentador só pula o que vier marcado.
+ * É também o único lugar que decide o que é comentário, trecho neutro e começo
+ * de `$'`: devolve `classe`, uma `CLASSE` por caractere de `texto` (a quebra que
+ * fecha o comentário de linha fica fora), e o segmentador só obedece.
  * Revisão de segurança do commit 8ffea4b2: `#` dentro de crase ou de `${...}`
  * não abre comentário que passe do fechamento (`` echo `echo #`; git add -A ``,
  * `echo ${x:-a #}; git add -A`), `#` colado a `)` está no meio da palavra
  * (`echo $(true)#; git add -A`), e no PowerShell `<# ... #>` fecha no `#>`, não
  * na quebra (`echo <# x #>; git add -A`). Nos quatro o shell roda o `git`.
  */
+// Classe de cada caractere do texto colapsado, para o segmentador.
+const CLASSE = { normal: 0, comentario: 1, neutro: 2, ansi: 3 };
+
 function colapsaContinuacaoDoDialeto(cmd, dialeto) {
   const esc = dialeto === "powershell" ? "`" : "\\";
-  let saida = "", aspa = null, crase = false, chaves = 0;
-  const comentario = [];
-  const emite = (s, ehComentario = false) => {
+  let saida = "", aspa = null, crase = false, chaves = 0, dolares = 0;
+  const classe = [];
+  const emite = (s, k = CLASSE.normal) => {
     saida += s;
-    for (let k = 0; k < s.length; k += 1) comentario.push(ehComentario ? 1 : 0);
+    for (let j = 0; j < s.length; j += 1) classe.push(k);
   };
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
-    if (aspa === "#") {
-      if (c === "\n") { aspa = null; emite(c); } else emite(c, true);
+    // `$` seguidos sem escape antes deste caractere: `$$` é o PID, então o `$`
+    // de `$${` ou `$$'` fecha o par e não abre `${` nem `$'` (revisão de
+    // segurança do commit a0b55385).
+    const dolaresAntes = dolares;
+    dolares = 0;
+    if (aspa === "#" || aspa === "#?") {
+      if (c === "\n") { aspa = null; emite(c); continue; }
+      if (aspa === "#?" && c === "`" && dialeto === "bash") crase = !crase;
+      if (aspa === "#?" && c === "}" && chaves > 0) chaves -= 1;
+      emite(c, aspa === "#" ? CLASSE.comentario : CLASSE.neutro);
       continue;
     }
     if (aspa === "<#") {
-      if (c === "#" && cmd[i + 1] === ">") { emite("#>", true); i += 1; aspa = null; } else emite(c, true);
+      if (c === "#" && cmd[i + 1] === ">") { emite("#>", CLASSE.comentario); i += 1; aspa = null; } else emite(c, CLASSE.comentario);
       continue;
     }
     if (aspa === "'") { if (c === "'") aspa = null; emite(c); continue; }
@@ -223,20 +234,33 @@ function colapsaContinuacaoDoDialeto(cmd, dialeto) {
       continue;
     }
     if (aspa === '"') { if (c === '"') aspa = null; emite(c); continue; }
+    const dolarLivre = dolaresAntes % 2 === 0;
     if (c === '"' || c === "'") aspa = c;
-    else if (c === "$" && cmd[i + 1] === "'" && dialeto === "bash") { aspa = "$'"; emite("$'"); i += 1; continue; }
-    else if (c === "$" && cmd[i + 1] === "{") { chaves += 1; emite("${"); i += 1; continue; }
+    else if (c === "$" && cmd[i + 1] === "'" && dialeto === "bash" && dolarLivre) {
+      aspa = "$'";
+      emite("$", CLASSE.ansi);
+      emite("'");
+      i += 1;
+      continue;
+    }
+    else if (c === "$" && cmd[i + 1] === "{" && dolarLivre) { chaves += 1; emite("${"); i += 1; continue; }
     else if (c === "}" && chaves > 0) chaves -= 1;
     else if (c === "`" && dialeto === "bash") crase = !crase;
-    else if (c === "<" && cmd[i + 1] === "#" && dialeto === "powershell") { aspa = "<#"; emite("<#", true); i += 1; continue; }
-    else if (c === "#" && !crase && chaves === 0 && abreComentario(saida, esc)) {
-      aspa = "#";
-      emite(c, true);
+    else if (c === "<" && cmd[i + 1] === "#" && dialeto === "powershell") { aspa = "<#"; emite("<#", CLASSE.comentario); i += 1; continue; }
+    else if (c === "#" && abreComentario(saida, esc)) {
+      // Dentro de crase ou de `${...}` o `#` não passa do fechamento, e a leitura
+      // pode errar o fechamento (crase solta num corpo de heredoc executado, `${`
+      // que não abriu). Ali o resto da linha fica NEUTRO: aspa não conta, mas a
+      // fronteira separa. Não esconde comando, e nenhuma aspa engole a linha de
+      // baixo (revisão de segurança do commit a0b55385).
+      aspa = crase || chaves > 0 ? "#?" : "#";
+      emite(c, aspa === "#" ? CLASSE.comentario : CLASSE.neutro);
       continue;
     }
     emite(c);
+    if (c === "$") dolares = dolaresAntes + 1;
   }
-  return { texto: saida, comentario };
+  return { texto: saida, classe };
 }
 
 // `#` abre comentário no começo de palavra: começo do texto, ou depois de
@@ -279,8 +303,10 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   // Tarefa 13 (#309, revisao 2): o colapso de continuacao de linha vem antes da
   // segmentacao, como em `segmentosParaGate` (gate-fechar-issue.cjs), para os
   // segmentos casarem por TEXTO (ver docblock de `cwdDoSegmento` la).
-  let comentario = [];
-  if (leEscape) ({ texto: cmd, comentario } = colapsaContinuacaoDoDialeto(String(cmd), dialeto));
+  // O colapso é quem decide o que é comentário, trecho neutro e começo de `$'`;
+  // aqui só se obedece a `classe`, para as duas leituras não divergirem.
+  let classe = [];
+  if (leEscape) ({ texto: cmd, classe } = colapsaContinuacaoDoDialeto(String(cmd), dialeto));
   else cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "", aspa = null;
@@ -290,8 +316,12 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
 
     if (!leEscape) {
       // sem leitura de escape: direto para a cadeia de aspas e fronteiras abaixo
-    } else if (comentario[i] === 1) {
-      // comentário marcado pelo colapso: nem aspa nem fronteira
+    } else if (classe[i] === CLASSE.comentario) {
+      // comentário: nem aspa nem fronteira
+      atual += c;
+      continue;
+    } else if (classe[i] === CLASSE.neutro && (c === '"' || c === "'" || c === esc || c === "$")) {
+      // trecho neutro: aspa e escape não contam; fronteira segue pela cadeia abaixo
       atual += c;
       continue;
     } else if (aspa === "$'") {
@@ -303,7 +333,7 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
       atual += c + cmd[i + 1];
       i += 1;
       continue;
-    } else if (!aspa && c === "$" && cmd[i + 1] === "'" && dialeto === "bash") {
+    } else if (!aspa && classe[i] === CLASSE.ansi) {
       aspa = "$'";
       atual += "$'";
       i += 1;
