@@ -18,7 +18,7 @@
     "em": "2026-11-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-24",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs",
     "saida": "263 ok, 0 falha / 94 ok, 0 falha / 917 ok, 0 falha / 335 ok, 0 falha / 669 ok, 0 falha / ok: 164 falhou: 0",
@@ -76,27 +76,47 @@
         "fixture": "R1 node - <<A com execSync barra"
       }
     ],
-    "em": "2026-11-24"
+    "em": "2026-11-24",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-24"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "6cea5864047471c23061e74e55740101b18a689d",
+      "head": "b7fc4a8dc8fcbaa267ac67b91b4cccc0d86bfc45",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aaaf17da4079e4a6e",
-        "veredito": "ok",
+        "agente_id": "a8b57edad28d0f86f",
+        "veredito": "reprovado",
         "em": "2026-11-24",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-aaaf17da4079e4a6e.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a8b57edad28d0f86f.jsonl"
       }
     ],
-    "achados": 10,
+    "achados": 12,
     "base": "3b1ecacfcece3a9e51ae2b56c6501db6daac429d",
     "head": "6cea5864047471c23061e74e55740101b18a689d",
-    "em": "2026-11-24"
+    "em": "2026-11-24",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aaaf17da4079e4a6e",
+            "veredito": "ok",
+            "em": "2026-11-24",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-aaaf17da4079e4a6e.jsonl"
+          }
+        ]
+      }
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente",
