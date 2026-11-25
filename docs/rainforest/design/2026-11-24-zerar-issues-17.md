@@ -52,13 +52,14 @@ Pedido do Luís em 2026-11-24 (rodada própria para #722 e #724, recomendada ace
 
 - **D9 — Execução por caminho e por texto de `-c`/`eval` (revisão 1).** O arquivo conta como executado quando é o COMANDO do trecho com caminho (`./x`, `../x`, `d/x`, `$PWD/x`, `/tmp/x`), e quando aparece no texto passado a `-c` ou a `eval` (`bash -c 'bash t.sh'`): esse texto é tokenizado como comando no lugar do token. Na base os dois saíam 0. E a linha do heredoc grava também os arquivos de `tee` (`tee t.sh <<'A' > /dev/null`) e o alvo de `>` sem espaço antes ou com `>|` (`cat>t.sh<<'A'`).
   - **Porquê:** o bash executa arquivo com barra no nome sem procurar no PATH; `-c` e `eval` rodam o texto como comando.
+  - **Revisão de segurança automática (2026-11-24):** `./x` em qualquer posição segue contando, como antes da rodada (`find . -exec ./t.sh`); e `xargs`, `watch`, `strace`, `setsid`, `stdbuf`, `ionice` e `chrt` entram nos prefixos que rodam o comando seguinte (`xargs ../t.sh`).
   - **Modelo de ameaça:** fica fora o nome sem barra na posição de comando (`t.sh` só roda se estiver no PATH).
 
 - **D10 — Linha lógica de verdade (revisão 1, preexistente).** `fimDaLinhaLogica` varre a linha: `\\` + quebra é contrabarra escapada (a linha acaba), `#` em início de palavra abre comentário onde `\` não continua, e quebra dentro de aspas, `$'...'` ou `$(...)` não encerra a linha. A D1 depende dela, e nos três casos o corpo começava onde o bash não começa.
   - **Porquê:** as variantes da mesma classe da #724 que o revisor mediu no bash real.
   - **Modelo de ameaça:** aspa dupla com `$(...)` aninhado com aspas dentro fica aproximada; o desvio só atrasa o início do corpo (mais texto analisado).
 
-- **D11 — `<<` que não é operador (revisão 1, preexistente).** `posicoesDeOperadorHeredoc` pula `$'...'` (onde `\'` não fecha) e `${...}`, e `#` depois de `)` também abre comentário. `echo ${x:-<<'A'}` e `(true)#<<'A'` faziam o gate mascarar como corpo o comando da linha seguinte.
+- **D11 — `<<` que não é operador (revisão 1, preexistente).** `posicoesDeOperadorHeredoc` pula `$'...'` (onde `\'` não fecha) e `${...}` (com chave entre aspas ou escapada sem contar), e `#` depois de `)` também abre comentário. `echo ${x:-<<'A'}` e `(true)#<<'A'` faziam o gate mascarar como corpo o comando da linha seguinte.
   - **Modelo de ameaça:** `echo $'\' <<'A''` já não é lido como heredoc pela lib, mas o segmentador do próprio `gate-staging-total` lê `$'\'` como aspa aberta e perde a linha seguinte: defeito de outro arquivo, anterior à rodada, na Issue #736.
 
 - **D12 — Heredoc no stdin de interpretador não-shell (revisão 1, preexistente).** `node - <<'A'` e `python - <<'A'` executam o corpo. No `gate-staging-total` (`scriptNaoShell`), esse corpo deixa de ser dado e passa pela máscara de script não-shell (só `git ...` visível), como o arquivo gravado e rodado por `node`. Os outros três gates seguem tratando-o como dado, como antes.

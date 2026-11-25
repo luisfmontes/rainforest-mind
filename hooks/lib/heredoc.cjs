@@ -295,11 +295,21 @@ function posicoesDeOperadorHeredoc(cmd) {
       for (k += 2; k < cmd.length && cmd[k] !== "'"; k++) if (cmd[k] === "\\") k++;
       continue;
     }
+    // Dentro de `${...}`, chave entre aspas ou escapada nao conta (`${x:-"}"<<'A'}`:
+    // a expansao so fecha na ultima chave; revisao de seguranca automatica).
     if (!simples && !duplas && c === "$" && cmd[k + 1] === "{") {
       let d = 0;
+      let s1 = false;
+      let s2 = false;
       for (k += 1; k < cmd.length; k++) {
-        if (cmd[k] === "{") d++;
-        else if (cmd[k] === "}" && --d === 0) break;
+        const x = cmd[k];
+        if (s1) { if (x === "'") s1 = false; continue; }
+        if (x === "\\") { k++; continue; }
+        if (s2) { if (x === '"') s2 = false; continue; }
+        if (x === "'") s1 = true;
+        else if (x === '"') s2 = true;
+        else if (x === "{") d++;
+        else if (x === "}" && --d === 0) break;
       }
       continue;
     }
@@ -347,7 +357,7 @@ const RE_REDIR_FECHADO = /^\d*[<>]&\d*-?$/;
 const ehOperador = (t) => /^[|;&(){}]+$/.test(t);
 const ehFlag = (t) => t.startsWith("-") || /^\+[A-Za-z]+$/.test(t);
 // Prefixos que rodam o comando seguinte (`sudo sh < t.cjs`, `cat t | env sh`).
-const PREFIXOS_DE_COMANDO = new Set(["sudo", "env", "command", "exec", "nohup", "nice", "time", "timeout", "builtin"]);
+const PREFIXOS_DE_COMANDO = new Set(["sudo", "env", "command", "exec", "nohup", "nice", "time", "timeout", "builtin", "xargs", "watch", "strace", "setsid", "stdbuf", "ionice", "chrt"]);
 // Flags que levam valor no token seguinte. Depois do comando: `bash -o pipefail t.sh`,
 // `python -W ignore t.py`, `node -r x t.cjs` (revisao 1). Antes dele, as dos prefixos:
 // `sudo -u x sh`, `env -C d sh`, `timeout -s KILL 5 sh`, `nice -n 5 sh`.
@@ -630,7 +640,9 @@ function executoresDoAlvo(cmd, i, fimDoHeredoc) {
     if (!base || !alvos.has(base)) continue;
     const [ini, fim] = trechoEm(toks, k);
     const trecho = lerTrecho(toks, ini, fim);
-    if (trecho.nomeIdx === k && /[\\/]/.test(t)) { executores.push("./"); continue; }
+    // `./x` em qualquer posicao (`find . -exec ./t.sh`), como antes da rodada; e
+    // caminho na posicao de comando (`../t.sh`, `$PWD/t.sh`) (D9).
+    if (/^\.[\\/]/.test(t.replace(/^["']+/, "")) || (trecho.nomeIdx === k && /[\\/]/.test(t))) { executores.push("./"); continue; }
     if (k > ini && ehRedirecionamentoDeEntrada(toks[k - 1])) {
       const ex = executorDeStdin(trecho, toks);
       if (ex) { executores.push(ex); continue; }
