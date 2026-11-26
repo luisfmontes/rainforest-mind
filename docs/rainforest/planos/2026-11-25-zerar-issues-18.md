@@ -4,7 +4,7 @@ Design: docs/rainforest/design/2026-11-25-zerar-issues-18.md
 
 ## O que não pode quebrar
 
-- Todo caso existente de `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-gate-mensagem-commit.sh`, `hooks/testa-gate-worktree.sh`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-bateria-sem-timeout.sh` e `hooks/testa-gate-subagente-sem-gh.cjs` mantém o exit esperado. Nenhum caso é apagado.
+- Todo caso existente de `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-gate-mensagem-commit.sh`, `hooks/testa-gate-worktree.sh`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-bateria-sem-timeout.cjs` e `hooks/testa-gate-subagente-sem-gh.cjs` mantém o exit esperado. Nenhum caso é apagado. Exceção declarada na D4: os cinco falsos positivos da base que a rodada tinha tirado voltam a barrar (o caso fica, com o exit 2).
 - A assinatura `segmentosComAspas(cmd, ehPowerShell)` continua valendo para quem não passa o terceiro argumento: o dialeto sai de `ehPowerShell`.
 - O texto de cada segmento continua um trecho do comando de entrada, sem a continuação de linha: `cwdDoSegmento` (`hooks/gate-fechar-issue.cjs`) casa segmentos por texto.
 
@@ -30,6 +30,7 @@ mutacao:
   para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "#736 $'\' engole o heredoc barra"
+  timeout: `900000`
 prova-na-base: verde — os casos só existem na seção que esta tarefa escreve; contra a lib da base o `git add -A` da #736 sai 0 (sonda de 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos `#736` e 0 falhas no placar das duas.
 
@@ -53,6 +54,7 @@ mutacao:
   para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "comentario com contrabarra no fim barra"
+  timeout: `900000`
 prova-na-base: verde — casos novos; contra a lib da base `echo hi # don't` + quebra + `git add -A` sai 0 (sonda de 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos de comentário e 0 falhas.
 
@@ -75,6 +77,7 @@ mutacao:
   para: `  if (false) return "sem-escape";`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "PowerShell bash -c com aspa dobrada barra"
+  timeout: `900000`
 prova-na-base: verde — casos novos ou que já saíam 2 pela leitura antiga; a mutação mede que a leitura nova não piora o PowerShell
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com `ok` nos casos `#736` e 0 falhas.
 
@@ -96,6 +99,7 @@ mutacao:
   para: `    else if (false) alternaCrase();`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de crase nao passa da crase barra"
+  timeout: `900000`
 prova-na-base: verde — casos novos; contra o commit 8ffea4b2 as quatro formas da revisão de segurança saem 0 (achado da revisão automática, conferido no shell em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos da revisão de segurança e 0 falhas.
 
@@ -118,6 +122,7 @@ mutacao:
   para: `    const dolarLivre = true;`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "$$' e PID e aspa simples barra"
+  timeout: `900000`
 prova-na-base: verde — casos novos; contra o commit a0b55385 `echo $${ # don't` + quebra + `git add -A`, `echo $$'a\'; git add -A #'` e a crase solta no corpo de `bash <<'EOF'` saem 0 (sonda de 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos da segunda revisão de segurança e 0 falhas.
 
@@ -139,6 +144,7 @@ mutacao:
   para: `    else if (false) {`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de ${} nao passa da chave barra"
+  timeout: `900000`
 prova-na-base: verde — casos novos; contra o commit bcd7e602 `echo ${x:-#}'; cd x; '` fabrica o segmento `cd x` (achado da revisão automática, conferido no bash em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-worktree.sh` com 0 falhas, e `ok` nos casos `(736n)` e `(736o)`.
 
@@ -151,16 +157,16 @@ busca:
 desfecho: estender
 O que fazer:
 - `pilha` no lugar de `crase` e `chaves`: `${` e `$(` empilham, `}` e `)` desempilham quando batem com o topo, a crase alterna no topo. O `#` olha `topo()`. No estado de comentário em crase, contrabarra leva o caractere seguinte.
-- Em `segmentosComAspas`, `inicioAspa` guarda onde a aspa abriu; aspa aberta no fim (com `leEscape`) acrescenta `segmentosComAspas(cmd.slice(inicioAspa + 1), ...)` e liga `leituraIncerta`.
+- ~~Em `segmentosComAspas`, aspa aberta no fim acrescenta o texto depois dela como segmento e liga `leituraIncerta`.~~ Removido pela tarefa 10 (D4): a leitura antiga cobre o que esse remendo recuperava.
 - Emenda da quinta revisão (commit 8a5bdc2c): `fechaCrase` desempilha até a crase mais recente; o comentário é ``"#`"`` com crase em qualquer nível (`pilha.includes`), e `#` com `pilha.length > 1` liga `incerto`. Casos depois do comentário `# Revisao de seguranca do commit 8a5bdc2c` e `(736r)`.
 - Casos na seção nova, depois do comentário `# Revisao de seguranca do commit 6f2abe19`: crase escapada no comentário (2), crase dentro de `${}` (2), aspa aberta no fim (2).
 - `hooks/testa-cwd-efetivo.sh`: `(736p)` e `(736q)`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `  if (leEscape && aspa && inicioAspa >= 0) {`
-  para: `  if (false) {`
-  bateria: `bash hooks/testa-gate-staging-total.sh`
-  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "aspa aberta no fim: o texto depois dela e analisado barra"
+  de: `    else if (c === "$" && cmd[i + 1] === "(" && dolarLivre) { pilha.push("("); emite("$("); i += 1; continue; }`
+  para: `    else if (false) { pilha.push("("); emite("$("); i += 1; continue; }`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736r) a crase fecha o $( e o ${ abertos dentro dela" (teste da lib, sem a segunda leitura do gate por cima)
 prova-na-base: verde — casos novos; contra o commit 6f2abe19 a crase escapada no comentário e a crase dentro de `${}` saem 0 (achado da revisão automática, conferido no bash em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos `(736p)` e `(736q)` e 0 falhas.
 
@@ -172,7 +178,7 @@ busca:
 - catalogo | colapsaContinuacaoDoDialeto, abreComentario e segmentosComAspas em hooks/lib/cwd-efetivo.cjs | estendo; são as funções das tarefas 1 a 8
 desfecho: estender
 O que fazer:
-- Em `segmentosComAspas`, separador (`;`, `&`, `|`) escapado com `<` ou `>` em qualquer ponto antes dele na linha (`<<\;`, `2>\;`, `>out\;`, `> "a b"\;`, `>$(echo a b)\;`): o texto depois do escape vira segmento também, e a linha sai incerta. Falha fechado, porque o alvo pode ter aspa ou `$( )` com espaço.
+- ~~Em `segmentosComAspas`, separador escapado com `<` ou `>` antes dele vira segmento extra e a linha sai incerta.~~ Removido pela tarefa 10 (D4): a recursão estourava a pilha com 17 escapes (exit 1, que não bloqueia) e dava falso positivo no `gate-worktree`. Os casos de redirecionamento continuam na bateria e barram pela leitura antiga.
 - `abreComentario` aceita o espaço do dialeto: no bash só espaço, tab e quebra (CR, NBSP, BOM e FF são letra); no PowerShell o `\s` do JavaScript mais U+0085, menos o BOM (medido em 2026-11-25).
 - Emenda da revisão automática do commit bf7dfb13: casos depois do comentário `# Revisao de seguranca do commit bf7dfb13`.
 - `$((` e `((` no começo de token empilham `"(("`, que `))` desempilha; dentro dele o `#` é literal.
@@ -180,17 +186,43 @@ O que fazer:
 - Casos depois do comentário `# Revisao do fluxo (revisor, rodada 18)` (14 que barram, 5 controles), `(736s)` a `(736u)` em `testa-cwd-efetivo.sh`, e dois `#736` em `testa-gate-mensagem-commit.sh`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>]/.test(cmd.slice(0, i)) && cmd.slice(i + 2).trim()) {`
-  para: `      if (false) {`
+  de: `  const psEspaco = (/\s/.test(ch) || c0 === 0x85) && c0 !== 0xfeff;`
+  para: `  const psEspaco = /[ \t\n]/.test(ch);`
   bateria: `bash hooks/testa-gate-staging-total.sh`
-  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "<<\\; antes do comando barra"
+  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "PowerShell NBSP antes do # abre comentario barra" (a base também deixa passar, então só a leitura nova barra)
+  timeout: `900000`
 prova-na-base: verde — casos novos; contra o commit a29d6af2 os 17 ataques da revisão saem 0 (medido com o gate do commit a29d6af2 em 2026-11-25; o bash roda o `git` em todos)
 pronto quando: `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com 0 falhas e `ok` nos casos `(736s)`, `(736t)` e `(736u)`.
 
-### 4. Versão 2.17.4 [tipo: docs]
-atende: D1, D2, D3
-arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
+### 10. Duas leituras, uma decisão (segunda reprovação do revisor do fluxo) [tipo: implementar]
+atende: D4
+arquivos: `hooks/lib/duas-leituras.cjs`, `hooks/lib/cwd-efetivo.cjs`, `hooks/gate-staging-total.cjs`, `hooks/gate-mensagem-commit.cjs`, `hooks/gate-worktree.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-cwd-efetivo.sh`
 depende de: 9
+busca:
+- catalogo | segmentosComAspas em hooks/lib/cwd-efetivo.cjs | estendo; é a função das tarefas 1 a 9
+- catalogo | main de hooks/gate-staging-total.cjs, hooks/gate-mensagem-commit.cjs e hooks/gate-worktree.cjs | estendo; leem a entrada por fs.readFileSync(0) e decidem por process.exit
+- repo | grep -rln "process.exit = |rodarCom|duasLeituras" hooks scripts | nenhum invólucro que rode o main de um gate duas vezes; os achados são rodarComCwd (teste do gate-subagente-sem-gh) e nomes alheios
+desfecho: construir
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: `definirLeituraAntiga(ligada)` exportada; com ela ligada, `segmentosComAspas` usa "sem-escape" em toda chamada. Saem os remendos da aspa aberta no fim (tarefa 8) e do separador escapado depois de `<`/`>` (tarefa 9).
+- `hooks/lib/duas-leituras.cjs`: `rodarComDuasLeituras(main)` lê a entrada uma vez, serve-a às duas passadas e troca `process.exit`: exit 0 da primeira passada roda a segunda com a leitura antiga, se o comando tem contrabarra, crase, `#`, CR ou `$'`; exit diferente de 0 sai na hora.
+- Os três gates terminam em `require("./lib/duas-leituras.cjs").rodarComDuasLeituras(main)` no lugar de `main()`.
+- `hooks/testa-gate-staging-total.sh`: os cinco falsos positivos da base voltam a esperar exit 2; casos nomeados da segunda volta do revisor (escape de `(`, `)`, `{`, `}` no alvo de redirecionamento, `\|&`, crase + CR + LF no PowerShell, 17 escapes depois de `>`); e a seção "D4: propriedade", que extrai `hooks/lib` e os dois gates da base `e9d2b14e` por `git show` e compara o exit numa amostra com semente fixa (base barra ⇒ head barra, head nunca 1).
+- `hooks/testa-cwd-efetivo.sh`: `(736p)` vira o teste da chave de leitura; `(736s)` confere que a leitura nova não fabrica segmento nem marca incerto.
+mutacao:
+  arquivo: `hooks/lib/duas-leituras.cjs`
+  de: `    if (!segunda && c === 0 && precisaDaSegunda(entrada)) {`
+  para: `    if (false) {`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, seção "D4: propriedade", e o caso "\\|& manda o git em segundo plano barra"
+  timeout: `900000`
+prova-na-base: verde — casos novos; contra o commit 49178bd6 os casos nomeados saem 0 (e 1 no de 17 escapes), medido com `sonda.cjs` em 2026-11-26, e a propriedade com a segunda passada desligada dá 30 violações
+pronto quando: `bash hooks/testa-gate-staging-total.sh` com 0 falhas e a linha `propriedade: ... violacoes 0`; `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com 0 falhas.
+
+### 4. Versão 2.17.4 [tipo: docs]
+atende: D1, D2, D3, D4
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
+depende de: 10
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.

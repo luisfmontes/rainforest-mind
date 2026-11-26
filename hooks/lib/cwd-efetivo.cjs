@@ -308,7 +308,9 @@ function abreComentario(antes, esc) {
   // no bash é só espaço, tab e quebra (CR, NBSP e BOM são letra); no PowerShell é o
   // \s do JavaScript mais U+0085, menos o BOM (NBSP, FF, VT, U+2003 e U+3000 contam).
   const ch = antes[antes.length - 1];
-  const espaco = esc === "`" ? (/[\s\u0085]/.test(ch) && ch !== "﻿") : /[ \t\n]/.test(ch);
+  const c0 = ch.charCodeAt(0);
+  const psEspaco = (/\s/.test(ch) || c0 === 0x85) && c0 !== 0xfeff;
+  const espaco = esc === "`" ? psEspaco : /[ \t\n]/.test(ch);
   if (!espaco && !/[;&|(]/.test(ch)) return false;
   // Corrida ímpar do caractere de escape antes do delimitador: ele foi escapado.
   let k = antes.length - 2, n = 0;
@@ -335,8 +337,14 @@ function abreComentario(antes, esc) {
  * escape nem comentário. O texto de cada segmento continua um trecho do comando:
  * só a fronteira muda.
  */
+// Leitura forçada (D4): `lib/duas-leituras.cjs` roda o gate de novo com a leitura
+// antiga ("sem-escape" em toda chamada), que é a da base de antes do #736. O gate
+// barra se qualquer das duas barrar.
+let leituraAntiga = false;
+function definirLeituraAntiga(ligada) { leituraAntiga = ligada === true; }
+
 function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
-  const dialeto = opcoes.dialeto || (ehPowerShell ? "powershell" : "bash");
+  const dialeto = leituraAntiga ? "sem-escape" : (opcoes.dialeto || (ehPowerShell ? "powershell" : "bash"));
   // "sem-escape": a leitura de antes do #736 (continuação do bash, sem escape nem comentário).
   const leEscape = dialeto !== "sem-escape";
   const esc = dialeto === "powershell" ? "`" : "\\";
@@ -349,8 +357,7 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   if (leEscape) ({ texto: cmd, classe, incerto: leituraIncerta } = colapsaContinuacaoDoDialeto(String(cmd), dialeto));
   else cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
-  let atual = "", aspa = null, inicioAspa = -1;
-  const extras = [];
+  let atual = "", aspa = null;
 
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
@@ -371,21 +378,11 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
       atual += c;
       continue;
     } else if (c === esc && aspa !== "'" && i + 1 < cmd.length) {
-      // Separador escapado no alvo de um redirecionamento (`<<\; git add -A`,
-      // `>out\; git add -A`): o redirecionamento pode vir antes do comando, e o
-      // shell roda o que vem depois. O texto depois do escape vira segmento também,
-      // e a linha sai incerta (revisão do fluxo, achado 1). Falha fechado: basta haver
-      // `<` ou `>` antes, em qualquer ponto da linha, porque o alvo pode ter aspa ou
-      // `$( )` com espaço (`> "a b"\; git add -A`, `>$(echo a b)\; git add -A`), e
-      // `$( )` e chave já viraram fronteira de segmento aqui.
-      if (!aspa && ";&|".includes(cmd[i + 1]) && /[<>]/.test(cmd.slice(0, i)) && cmd.slice(i + 2).trim()) {
-        extras.push(i + 2);
-      }
       atual += c + cmd[i + 1];
       i += 1;
       continue;
     } else if (!aspa && classe[i] === CLASSE.ansi) {
-      aspa = "$'"; inicioAspa = i + 1;
+      aspa = "$'";
       atual += "$'";
       i += 1;
       continue;
@@ -399,7 +396,7 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
       atual += c;
     } else if (c === '"' || c === "'") {
       // Entrar em aspa
-      aspa = c; inicioAspa = i;
+      aspa = c;
       atual += c;
     } else if (i + 1 < cmd.length && OPERADORES_DE_DOIS.has(c + cmd[i + 1])) {
       // `|&` (#309, achado 1, revisao 2): fronteira de DOIS caracteres — o
@@ -500,19 +497,9 @@ function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
     segmentos.push(atual);
   }
 
-  // Aspa aberta no fim: o shell recusaria a linha, então quem errou foi esta
-  // leitura (escape, crase ou expansão que ela não modela). O texto depois da aspa
-  // vira segmento também, para o gate ver o comando que ela teria engolido, e a
-  // linha sai incerta (revisão de segurança do commit 6f2abe19). Só nos dialetos
-  // que leem escape; o "sem-escape" fica como antes do #736.
-  if (leEscape && aspa && inicioAspa >= 0) {
-    segmentos.push(...segmentosComAspas(cmd.slice(inicioAspa + 1), ehPowerShell, opcoes));
-    leituraIncerta = true;
-  }
-  for (const pos of extras) {
-    segmentos.push(...segmentosComAspas(cmd.slice(pos), ehPowerShell, opcoes));
-    leituraIncerta = true;
-  }
+  // Aspa aberta no fim, ou separador escapado no alvo de redirecionamento: esta
+  // leitura pode juntar texto que o shell separa. Não há remendo aqui: quem cobre é
+  // a leitura antiga, que o gate roda também (`lib/duas-leituras.cjs`, D4).
 
   // Leitura incerta de crase ou `${` (ver `colapsaContinuacaoDoDialeto`): quem deduz
   // cwd pelos segmentos trata a linha como incerta.
@@ -1002,6 +989,7 @@ module.exports = {
   toplevelConfinado,
   normalizarMsys,
   segmentosComAspas,
+  definirLeituraAntiga,
   dialetoDoWrapper,
   extrairUltimoDirGit,
   contemSubshellOuGrupo,

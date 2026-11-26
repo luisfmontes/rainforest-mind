@@ -8,17 +8,19 @@
   "design": {
     "status": "aprovado",
     "doc": "docs/rainforest/design/2026-11-25-zerar-issues-18.md",
-    "em": "2026-11-25"
+    "em": "2026-11-26",
+    "emenda": "D4 duas leituras, decidida pelo Luis em 2026-11-26"
   },
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/2026-11-25-zerar-issues-18.md",
-    "tarefas": 8,
+    "tarefas": 10,
     "paralelas": [],
-    "em": "2026-11-25"
+    "em": "2026-11-26",
+    "emenda": "tarefa 10 (D4)"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-25",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-gate-subagente-sem-gh.cjs; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
     "saida": "358 ok, 0 falha / 106 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 669 ok, 0 falha / ok: 61 falhou: 0 / ok: 164 falhou: 0 / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1,2,3,5,6,7,8,9 vermelho, tarefa 4 pulada (n/a)",
@@ -72,26 +74,44 @@
       }
     ],
     "em": "2026-11-25",
-    "reaberturas": 1
+    "reaberturas": 2,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-25"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a29d6af2562de5c870cddada481dbc13eb521361",
+      "head": "49178bd676f90326685ff31c0303d5174daf1f4f",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a7d78bfb41adffa4a",
+        "agente_id": "ac87a8be9aae90eae",
         "veredito": "reprovado",
         "em": "2026-11-25",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a7d78bfb41adffa4a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ac87a8be9aae90eae.jsonl"
       }
     ],
     "achados": 4,
     "em": "2026-11-25",
-    "tentativas": 1
+    "tentativas": 2,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7d78bfb41adffa4a",
+            "veredito": "reprovado",
+            "em": "2026-11-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a7d78bfb41adffa4a.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

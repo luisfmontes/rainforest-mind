@@ -2309,4 +2309,5 @@ function main() {
   process.exit(0);
 }
 
-main();
+// #736 (D4): a leitura nova e a antiga do segmentador; barra se qualquer uma barrar.
+require("./lib/duas-leituras.cjs").rodarComDuasLeituras(main);

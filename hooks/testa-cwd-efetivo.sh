@@ -667,11 +667,13 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(r[r.length - 1].incerto, true, "cwd incerto");
     eq(segmentosComAspas("echo a; cd x").incerto, undefined, "linha comum nao e incerta");
   });
-  test("(736p) aspa aberta no fim: o texto depois dela vira segmento e a linha sai incerta", () => {
-    const s = segmentosComAspas(`echo "a${B}${B}${B}"; x`);
-    eq(s.some((t) => t.trim() === "x"), true, "o x aparece");
-    eq(s.incerto, true, "incerta");
-    eq(segmentosComAspas(`echo "a; x"`).incerto, undefined, "aspa fechada nao muda nada");
+  test("(736p) chave de leitura (D4): a antiga e a de antes do #736, e a nova volta depois", () => {
+    const { definirLeituraAntiga } = require(process.argv[2]);
+    const cmd = "echo $" + Q + "a" + B + Q + "; x";
+    eq(segmentosComAspas(cmd).length, 1, "nova: $'...' junta");
+    definirLeituraAntiga(true);
+    try { eq(segmentosComAspas(cmd).length, 2, "antiga: separa no ;"); } finally { definirLeituraAntiga(false); }
+    eq(segmentosComAspas(cmd).length, 1, "nova de novo");
   });
   test("(736q) crase dentro de ${} manda no #, e crase escapada nao fecha o comentario", () => {
     eq(segmentosComAspas("echo ${x:-`echo # " + Q + "`}; x").some((t) => t.trim() === "x"), true, "crase em ${}");
@@ -681,23 +683,22 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(segmentosComAspas("echo `echo $(echo # `; x").some((t) => t.trim() === "x"), true, "$( dentro da crase");
     eq(segmentosComAspas("echo `echo ${x:-# `; x").some((t) => t.trim() === "x"), true, "${ dentro da crase");
   });
-  test("(736s) separador escapado no alvo de redirecionamento: o resto vira segmento e a linha sai incerta", () => {
-    const s = segmentosComAspas("<<" + B + "; cd x");
-    eq(s.some((t) => t.trim() === "cd x"), true, "o cd aparece");
-    eq(s.incerto, true, "incerta");
+  test("(736s) sem remendo na leitura nova: nao fabrica segmento nem marca incerto (D4)", () => {
+    eq(segmentosComAspas("<<" + B + "; cd x").length, 1, "redirecionamento: um segmento so");
+    eq(segmentosComAspas(("echo >a " + B + "; x ").repeat(40)).length, 1, "sem recursao por escape");
     eq(segmentosComAspas("find . -exec echo {} " + B + "; -print").incerto, undefined, "find -exec nao e incerto");
-    eq(segmentosComAspas(">$(echo a b)" + B + "; cd x").some((t) => t.trim() === "cd x"), true, "alvo $( ) com espaco");
+    eq(segmentosComAspas(`echo "a${B}${B}${B}"; x`).incerto, undefined, "aspa aberta no fim nao marca incerto");
   });
   test("(736t) # em aritmetica e literal; CR e NBSP nao abrem comentario", () => {
     eq(segmentosComAspas("echo $((1 # x)) | x").some((t) => t.trim() === "x"), true, "$(( ))");
     eq(segmentosComAspas("echo a\r# y; x").some((t) => t.trim() === "x"), true, "CR");
-    eq(segmentosComAspas("echo a # y; x").some((t) => t.trim() === "x"), true, "NBSP");
+    eq(segmentosComAspas("echo a\u00a0# y; x").some((t) => t.trim() === "x"), true, "NBSP");
     eq(segmentosComAspas("echo a # y; x").length, 1, "espaco comum abre");
   });
   test("(736u) PowerShell: <# no meio da palavra nao abre comentario", () => {
     eq(segmentosComAspas("echo a<#; x", true).some((t) => t.trim() === "x"), true, "meio da palavra");
-    eq(segmentosComAspas("echo a # " + Q + "\nx", true).some((t) => t.trim() === "x"), true, "NBSP abre comentario no PowerShell");
-    eq(segmentosComAspas("echo a﻿# y; x", true).some((t) => t.trim() === "x"), true, "BOM nao abre no PowerShell");
+    eq(segmentosComAspas("echo a\u00a0# " + Q + "\nx", true).some((t) => t.trim() === "x"), true, "NBSP abre comentario no PowerShell");
+    eq(segmentosComAspas("echo a\ufeff# y; x", true).some((t) => t.trim() === "x"), true, "BOM nao abre no PowerShell");
   });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");

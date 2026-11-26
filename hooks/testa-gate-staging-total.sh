@@ -683,8 +683,8 @@ gate "controle: echo \\\$'a\\'; git add -A barra"         2 "$(b "echo ${BS}\$'a
 gate "controle: echo \"\$'\"; git add -A barra"           2 "$(b "echo \"\$'\"; git add -A")"
 gate "controle: echo 'a; git add -A' passa"              0 "$(b "echo 'a; git add -A'")"
 gate "controle: echo \$'a; git add -A' passa"            0 "$(b "echo \$'a; git add -A'")"
-gate "falso positivo da base: echo \$'a\\'; git add -A' passa" 0 "$(b "echo \$'a${BS}'; git add -A'")"
-gate "falso positivo da base: echo \"a\\\"; git add -A\" passa" 0 "$(b "echo \"a${BS}\"; git add -A ; echo b\"")"
+gate "falso positivo da base, de volta pela D4: echo \$'a\\'; git add -A' barra" 2 "$(b "echo \$'a${BS}'; git add -A'")"
+gate "falso positivo da base, de volta pela D4: echo \"a\\\"; git add -A\" barra" 2 "$(b "echo \"a${BS}\"; git add -A ; echo b\"")"
 # D2: comentario e continuacao de linha.
 gate "comentario com aspa: echo hi # don't barra"        2 "$(b "$(hd "echo hi # don't" "git add -A")")"
 gate "comentario com aspa dupla barra"                   2 "$(b "$(hd 'echo hi # say "x' "git add -A")")"
@@ -700,8 +700,8 @@ gate "PowerShell crase escapa a aspa barra"              2 "$(p "echo \`'; git a
 gate "PowerShell \$'a\\' nao e aspa barra"                2 "$(p "echo \$'a${BS}'; git add -A")"
 gate "PowerShell bash -c com aspa dobrada barra"         2 "$(p "bash -c 'echo ${BS}''; git add -A'")"
 gate "pwsh -Command com crase pelo bash barra"           2 "$(b "pwsh -Command \"echo ${BS}\`'; git add -A\"")"
-gate "falso positivo da base: PowerShell \"a\`\"; ...\" passa" 0 "$(p "echo \"a\`\"; git add -A\"")"
-gate "falso positivo da base: cmd /c \"echo a\\\" & ...\" passa" 0 "$(b "cmd /c \"echo a${BS}\" & git add -A\"")"
+gate "falso positivo da base, de volta pela D4: PowerShell \"a\`\"; ...\" barra" 2 "$(p "echo \"a\`\"; git add -A\"")"
+gate "falso positivo da base, de volta pela D4: cmd /c \"echo a\\\" & ...\" barra" 2 "$(b "cmd /c \"echo a${BS}\" & git add -A\"")"
 # Revisao de seguranca do commit 8ffea4b2 (D2 emendada): # que o shell nao le como comentario.
 gate "PowerShell <# #> fecha no #> barra"                2 "$(p "echo <# x #>; git add -A")"
 gate "PowerShell <# #> em duas linhas barra"             2 "$(p "$(hd "echo hi <# a" "b #>; git add -A")")"
@@ -716,7 +716,7 @@ gate "controle: PowerShell <# git add -A #> passa"       0 "$(p "echo <# git add
 gate "\$\${ e PID e chave literal: # comenta barra"       2 "$(b "$(hd "echo \$\${ # don't" "git add -A")")"
 gate "\$\$' e PID e aspa simples barra"                  2 "$(b "echo \$\$'a${BS}'; git add -A #'")"
 gate "crase solta no corpo de bash <<EOF barra"          2 "$(b "$(hd "bash <<'EOF'" "\`" "EOF" "echo hi # don't" "git add -A")")"
-gate "controle: \$\$\$'a\\'; git add -A' e ANSI-C passa" 0 "$(b "echo \$\$\$'a${BS}'; git add -A'")"
+gate "falso positivo da base, de volta pela D4: \$\$\$'a\\'; git add -A' barra" 2 "$(b "echo \$\$\$'a${BS}'; git add -A'")"
 # Revisao de seguranca do commit bcd7e602: leitura exata de # em ${} e em crase; neutro so na incerteza.
 gate "# em \${} e literal: aspa depois conta e passa"     0 "$(b "echo \${x:-#}'; git add -A; '")"
 gate "# em crase fecha na crase: aspa depois conta e passa" 0 "$(b "echo \`echo #\`'; git add -A; '")"
@@ -755,6 +755,77 @@ gate "> \"a b\"\\; antes do comando barra"                  2 "$(b "> \"a b\"${B
 gate ">\$(echo a b)\\; antes do comando barra"             2 "$(b ">\$(echo a b)${BS}; git add -A")"
 gate "PowerShell NBSP antes do # abre comentario barra"  2 "$(p "$(hd "echo a$(printf '\302\240')# don't" "git add -A" "echo 'x'")")"
 gate "PowerShell FF antes do # abre comentario barra"    2 "$(p "$(hd "echo a$(printf '\f')# don't" "git add -A" "echo 'x'")")"
+# D4 (revisor, segunda volta): duas leituras, uma decisao. Formas que so a leitura antiga barra.
+gate ">o\\( antes do comando barra"                       2 "$(b ">o${BS}( git add -A")"
+gate ">o\\) antes do comando barra"                       2 "$(b ">o${BS}) git add -A")"
+gate ">\\{ antes do comando barra"                        2 "$(b ">${BS}{ git add -A")"
+gate "<<\\{ antes do comando barra"                       2 "$(b "<<${BS}{ git add -A")"
+gate "<<\\( antes do comando barra"                       2 "$(b "<<${BS}( git add -A")"
+gate "\\|& manda o git em segundo plano barra"            2 "$(b "echo a ${BS}|& git add -A")"
+gate "PowerShell crase escapa so o CR do CRLF barra"     2 "$(p "$(printf 'echo a`\r\ngit add -A')")"
+gate "17 escapes depois de > nao estouram a pilha barra" 2 "$(b "$(printf 'echo >a \\; x %.0s' $(seq 17)); git add -A")"
+
+# D4, propriedade: o que a base de antes do #736 (e9d2b14e) barra, o head barra, e o
+# head nunca sai 1 (exit 1 nao bloqueia). Amostra com semente fixa, gates
+# gate-staging-total e gate-mensagem-commit, ferramentas Bash e PowerShell. O CI
+# faz checkout com fetch-depth: 0, entao o commit da base existe; sem ele, falha.
+echo
+echo "== D4: propriedade base barra => head barra, contra e9d2b14e =="
+PROP="$RAIZ/propriedade-d4.cjs"
+cat > "$PROP" <<'JS'
+const { execFileSync, spawnSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+const [SRC, RAIZ, REPO, NS] = process.argv.slice(2);
+const BASE = "e9d2b14e";
+const N = Number(NS);
+const dirBase = path.join(RAIZ, "base-d4");
+const arquivos = execFileSync("git", ["-C", SRC, "ls-tree", "-r", "--name-only", BASE, "hooks"], { encoding: "utf8" })
+  .split("\n").filter((f) => f.startsWith("hooks/lib/") || f === "hooks/gate-staging-total.cjs" || f === "hooks/gate-mensagem-commit.cjs");
+if (arquivos.length < 5) { console.log("  FALHA base " + BASE + " ausente (" + arquivos.length + " arquivos)"); process.exit(1); }
+for (const f of arquivos) {
+  const destino = path.join(dirBase, f);
+  fs.mkdirSync(path.dirname(destino), { recursive: true });
+  fs.writeFileSync(destino, execFileSync("git", ["-C", SRC, "show", BASE + ":" + f]));
+}
+const B = String.fromCharCode(92), C = String.fromCharCode(96);
+const FR_BASH = ["echo", "a", " ", " ", B, B, "'", "'", '"', '"', "$'", "$", "#", "#", ";", "&&", "|", "\n", "(", ")", "{", "}", C, "$(", "${", "$((", "))", "<", ">", "<<", B + ";", B + B, B + "'", B + '"', B + "#", "$$", "\r\n", B + "\n", "&", "\t", "2>", "|&", "#x", "'a'", '"b"', B + "(", B + "{", B + "|"];
+const FR_PS = FR_BASH.map((f) => f.split(B).join(C)).concat(["<#", "#>", "@'", "'@", C + "\r\n", C + C, "iex"]);
+const SEPS = [";", "\n", "&&", "|", "&", " ", "\r\n"];
+let semente = 736;
+const rnd = (n) => { semente = (semente * 48271) % 0x7fffffff; return semente % n; };
+function gera(fr, sonda) {
+  const t = [];
+  const n = 1 + rnd(8);
+  for (let i = 0; i < n; i++) t.push(fr[rnd(fr.length)]);
+  t.splice(rnd(t.length + 1), 0, SEPS[rnd(SEPS.length)] + sonda + " ");
+  return t.join("");
+}
+function roda(dir, gate, ferramenta, cmd) {
+  const ev = JSON.stringify({ hook_event_name: "PreToolUse", tool_name: ferramenta, tool_input: { command: cmd }, cwd: REPO });
+  return spawnSync(process.execPath, [path.join(dir, "hooks", gate)], { input: ev, encoding: "utf8" }).status;
+}
+let total = 0, baseBarra = 0, violacoes = 0;
+for (const [gate, sonda, n] of [["gate-staging-total.cjs", "git add -A", N], ["gate-mensagem-commit.cjs", 'git commit -m "x."', Math.ceil(N / 2)]]) {
+  for (const [ferramenta, fr] of [["Bash", FR_BASH], ["PowerShell", FR_PS]]) {
+    for (let k = 0; k < n; k++) {
+      const cmd = gera(fr, sonda);
+      const b = roda(dirBase, gate, ferramenta, cmd);
+      const h = roda(SRC, gate, ferramenta, cmd);
+      total += 1;
+      if (b === 2) baseBarra += 1;
+      if (h === 1 || (b === 2 && h !== 2)) {
+        violacoes += 1;
+        if (violacoes <= 5) console.log("  FALHA " + gate + " " + ferramenta + " base " + b + " head " + h + " " + JSON.stringify(cmd));
+      }
+    }
+  }
+}
+console.log("  propriedade: " + total + " comandos, base barra " + baseBarra + ", violacoes " + violacoes);
+process.exit(violacoes === 0 && baseBarra > total / 4 ? 0 : 1);
+JS
+if node "$PROP" "$SRC" "$RAIZ" "$R" 120; then ok=$((ok+1)); echo "  ok   D4: base barra => head barra, e nunca exit 1"
+else falhou=$((falhou+1)); echo "  FALHA D4: propriedade base barra => head barra"; fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

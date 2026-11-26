@@ -46,11 +46,22 @@ Pedido do Luís em 2026-11-25 (rodada própria para a #736, recomendada aceita).
   - **Porquê:** no PowerShell a contrabarra é literal e `$'` não é aspa. Ler `echo $'a\'; git add -A` pelo bash esconderia um `git add -A` que o PowerShell executa (medido: `powershell -File` com essa linha roda o segundo comando).
   - **Avaliado e descartado:** reusar `dialetoDoWrapper` de `hooks/gate-fechar-issue.cjs`. Ela devolve só Bash/PowerShell, sem a leitura sem escape, e mora no gate, não na lib. Trazê-la para a lib mexeria no `gate-fechar-issue`, fora do escopo.
 
+- **D4 — Duas leituras, uma decisão (decidido pelo Luís em 2026-11-26, depois da segunda reprovação do revisor do fluxo).**
+  - **O que é:** `gate-staging-total`, `gate-mensagem-commit` e `gate-worktree` rodam o `main` duas vezes pela `hooks/lib/duas-leituras.cjs`: primeiro com a leitura nova (D1 a D3); se ela libera (exit 0), de novo com a leitura antiga ("sem-escape" em toda chamada de `segmentosComAspas`, ligada por `definirLeituraAntiga`). Barram se qualquer das duas barrar. A entrada é lida uma vez e servida às duas passadas; exit diferente de 0 na primeira sai na hora. A segunda passada só roda quando o comando tem contrabarra, crase, `#`, CR ou `$'`, os únicos pontos em que as leituras divergem.
+  - **Porquê:** a leitura nova junta texto que a antiga separava, e a antiga pegava comandos justamente por separar. Cada revisão achou uma forma em que a base barrava e o head não (sete emendas, e a segunda volta do revisor achou mais quatro: escape de `(`, `)`, `{`, `}` no alvo de redirecionamento, `\|&`, crase + CR + LF no PowerShell, e estouro de pilha pela recursão do remendo de redirecionamento). Corrigir forma por forma não convergia: o remendo da sexta emenda causou o estouro de pilha (exit 1, que não bloqueia) e falsos positivos no `gate-worktree`. Com duas leituras, "a base barra ⇒ o head barra" vale por construção.
+  - **Medido antes de decidir:** a leitura "sem-escape" do head é idêntica à da base `e9d2b14e` em 200 mil linhas aleatórias, Bash e PowerShell (0 diferenças em `segmentosComAspas`).
+  - **O que sai:** os dois remendos que só existiam para recuperar o que a base pegava. O texto depois de aspa aberta no fim deixa de virar segmento (quarta emenda) e o separador escapado depois de `<`/`>` deixa de abrir segmento (sexta e sétima). Tirados um a um, nenhum caso de gate ficou vermelho; só os testes de unidade dos próprios remendos.
+  - **O custo, aceito:** voltam os falsos positivos da base, porque a leitura antiga barra o que barrava: `echo $'a\'; git add -A'`, `echo "a\"; git add -A ; echo b"`, ``echo "a`"; git add -A"`` no PowerShell, `cmd /c "echo a\" & git add -A"` e `echo $$$'a\'; git add -A'`. E fica um falso positivo da quinta emenda no `gate-worktree`, de subagente em worktree: atribuição com crase em várias linhas (`` x=`echo a`` + quebra + `` echo b` ``) seguida de commit deixa a linha incerta.
+  - **Fora da D4:** `gate-fechar-issue`, `gate-subagente-sem-gh` e `gate-publicacao-destino` recebem da lib só o cwd (`cwdPorSegmento`), e o `main` deles guarda estado de módulo (texto de heredoc, contador de varredura), o que tornaria a segunda passada insegura. Medido com os casos do revisor: nenhuma regressão no `gate-fechar-issue`.
+  - **Avaliado e descartado:** juntar os segmentos das duas leituras numa lista só. O `gate-worktree` deduz o cwd pela ordem dos segmentos, e a união embaralharia a ordem.
+
 ## Avaliado e descartado
 
 - **Mudar `colapsaContinuacaoDeLinha` (`hooks/lib/tokens-comando.cjs`)** para conhecer comentário e `$'...'`: ela também serve o desempacotador e o `gate-fechar-issue`, que tem leitura própria de comentário com contrabarra (zerar-issues-14). O colapso novo fica local ao segmentador (D2).
 - **Reusar `dialetoDoWrapper` de `hooks/gate-fechar-issue.cjs`:** devolve só Bash/PowerShell, sem a leitura sem escape, e mora no gate (D3).
 - **Ler o texto de `bash -c` chamado pelo PowerShell no dialeto bash:** esconde `bash -c 'echo \''; git add -A'`, que a leitura antiga barrava (medido na execução, D3).
+- **Seguir emendando a leitura nova forma por forma:** sete emendas e duas reprovações do revisor sem convergir, e o remendo da sexta emenda estourou a pilha. Trocado pela D4.
+- **Encerrar a rodada sem merge e levar o #736 ao `/brainstorm`:** a opção B da decisão de 2026-11-26. Recomendada a D4.
 
 ## Fora de escopo
 
@@ -68,4 +79,5 @@ docs/rainforest/varredura/2026-11-25-zerar-issues-18.txt. Só #736 e #737 aberta
 ## Pronto quando
 
 - Os casos 1 a 6 do Objetivo saem exit 2 na seção da rodada 18 de `hooks/testa-gate-staging-total.sh`, os controles mantêm o exit, e a bateria inteira fica com 0 falhas.
-- `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-mensagem-commit.sh`, `hooks/testa-gate-worktree.sh`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-bateria-sem-timeout.sh` e `node hooks/testa-gate-subagente-sem-gh.cjs` ficam com 0 falhas.
+- `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-mensagem-commit.sh`, `hooks/testa-gate-worktree.sh`, `hooks/testa-gate-fechar-issue.sh`, `node hooks/testa-gate-bateria-sem-timeout.cjs` e `node hooks/testa-gate-subagente-sem-gh.cjs` ficam com 0 falhas.
+- D4: a seção "D4: propriedade" de `hooks/testa-gate-staging-total.sh` imprime `violacoes 0` numa amostra com semente fixa de comandos gerados contra o gate da base `e9d2b14e` (base barra ⇒ head barra, e o head nunca sai 1), e fica vermelha com a segunda passada desligada.
