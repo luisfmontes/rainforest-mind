@@ -700,6 +700,17 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
     eq(segmentosComAspas("echo a\u00a0# " + Q + "\nx", true).some((t) => t.trim() === "x"), true, "NBSP abre comentario no PowerShell");
     eq(segmentosComAspas("echo a\ufeff# y; x", true).some((t) => t.trim() === "x"), true, "BOM nao abre no PowerShell");
   });
+  // (736v) e (736w): na D4 a leitura antiga cobre o gate, entao mutar a leitura
+  // nova nao muda o exit do gate; a mordida das tarefas 3, 7 e 8 mora aqui, na lib.
+  test("(736v) dialeto do wrapper: com o PowerShell por fora, o texto de dentro e sem escape", () => {
+    eq(dialetoDoWrapper("bash", "powershell"), "sem-escape", "bash -c dentro do PowerShell");
+    eq(dialetoDoWrapper("bash", "bash"), "bash", "bash -c dentro do bash");
+    eq(dialetoDoWrapper("pwsh", "bash"), "powershell", "pwsh dentro do bash");
+  });
+  test("(736w) pilha: o # logo depois do $( dentro de ${} abre comentario (o topo e o $()", () => {
+    eq(segmentosComAspas("echo ${x:-$(echo #)}; x").some((t) => t.trim() === "x"), false, "$( dentro de ${}");
+    eq(segmentosComAspas("echo ${x:-a #}; x").some((t) => t.trim() === "x"), true, "# solto em ${} e literal");
+  });
   test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
     eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
     eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");

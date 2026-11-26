@@ -75,9 +75,8 @@ mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
   de: `  if (dialetoDeFora !== "bash") return "sem-escape";`
   para: `  if (false) return "sem-escape";`
-  bateria: `bash hooks/testa-gate-staging-total.sh`
-  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "PowerShell bash -c com aspa dobrada barra"
-  timeout: `900000`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736v) dialeto do wrapper: com o PowerShell por fora, o texto de dentro e sem escape" (teste da lib: na D4 a leitura antiga cobre o gate e o caso "PowerShell bash -c com aspa dobrada barra" barra com ou sem a mutação)
 prova-na-base: verde — casos novos ou que já saíam 2 pela leitura antiga; a mutação mede que a leitura nova não piora o PowerShell
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com `ok` nos casos `#736` e 0 falhas.
 
@@ -142,9 +141,8 @@ mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
   de: `    else if (c === "#" && !incerto && (topo() === "{" || topo() === "((")) {`
   para: `    else if (false) {`
-  bateria: `bash hooks/testa-gate-staging-total.sh`
-  fixture: testa-gate-staging-total.sh, seção "rodada 18", caso "# dentro de ${} nao passa da chave barra"
-  timeout: `900000`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, casos "(736t)" ($(( )) e "(736w)" (# solto em ${}) (teste da lib: na D4 a leitura antiga cobre o gate)
 prova-na-base: verde — casos novos; contra o commit bcd7e602 `echo ${x:-#}'; cd x; '` fabrica o segmento `cd x` (achado da revisão automática, conferido no bash em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-worktree.sh` com 0 falhas, e `ok` nos casos `(736n)` e `(736o)`.
 
@@ -166,7 +164,7 @@ mutacao:
   de: `    else if (c === "$" && cmd[i + 1] === "(" && dolarLivre) { pilha.push("("); emite("$("); i += 1; continue; }`
   para: `    else if (false) { pilha.push("("); emite("$("); i += 1; continue; }`
   bateria: `bash hooks/testa-cwd-efetivo.sh`
-  fixture: testa-cwd-efetivo.sh, caso "(736r) a crase fecha o $( e o ${ abertos dentro dela" (teste da lib, sem a segunda leitura do gate por cima)
+  fixture: testa-cwd-efetivo.sh, caso "(736w) pilha: o # logo depois do $( dentro de ${} abre comentario" (teste da lib, sem a segunda leitura do gate por cima; o (736r) passa com ou sem a mutação)
 prova-na-base: verde — casos novos; contra o commit 6f2abe19 a crase escapada no comentário e a crase dentro de `${}` saem 0 (achado da revisão automática, conferido no bash em 2026-11-25)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` e `bash hooks/testa-cwd-efetivo.sh` com `ok` nos casos `(736p)` e `(736q)` e 0 falhas.
 
@@ -212,8 +210,8 @@ O que fazer:
 - `hooks/testa-cwd-efetivo.sh`: `(736p)` vira o teste da chave de leitura; `(736s)` confere que a leitura nova não fabrica segmento nem marca incerto.
 mutacao:
   arquivo: `hooks/lib/duas-leituras.cjs`
-  de: `    if (!segunda && c === 0 && precisaDaSegunda(entrada)) {`
-  para: `    if (false) {`
+  de: `    if (!segunda && c === 0 && precisaDaSegunda(entrada)) rodaSegunda();`
+  para: `    if (false) rodaSegunda();`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "D4: propriedade", e o caso "\\|& manda o git em segundo plano barra"
   timeout: `900000`
