@@ -164,9 +164,30 @@
     "resumo": "quinta volta ok: conserto da tarefa 12 confirmado; 7200 pares base x head nos gates fora da D4 e 4500 nos da D4 sem regressao; achado 1 [baixa] wrapper sem caso de bateria em subagente-sem-gh e publicacao-destino (nenhum comando dependente encontrado); achado 2 [baixa] 10 falsos positivos de staging no PowerShell, direcao mais estrita"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-corpus-comandos.cjs; grep -c 2.17.4 .claude-plugin/plugin.json .codex-plugin/plugin.json CHANGELOG.md; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
+    "saida": "375 ok, 0 falha (propriedade: 360 comandos, base barra 192, violacoes 0; 5 casos {1,2} ok) / 108 ok, 0 falha (736n-736w ok) / 97 ok, 0 falha / 917 ok, 0 falha / 671 ok, 0 falha (736-ps1 e 736-ps2 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / ok: 61 falhou: 0 / ok: 24 falhou: 0 / 2.17.4: 1 em cada plugin.json e 1 ## 2.17.4 no CHANGELOG / mutacoes: tarefas 1-3 e 5-12 vermelho, 4 pulada (n/a)",
+    "sensor_externo": "bash hooks/testa-gate-staging-total.sh",
+    "em": "2026-11-26",
+    "head": "cc9271ed43510ebf04a8e2ca27a204132b12bba2"
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "O PR fecha a #736?",
+      "escolha": "Nao: PR com Refs #736; a #736 fica aberta com titulo trocado para o resto (gate-bateria-sem-timeout, segmentador proprio) e comentario de balanco",
+      "porque": "a #740 foi fechada como duplicata da #736 e o defeito do gate-bateria-sem-timeout mora nela; esta rodada nao o consertou (CHANGELOG 2.17.4), e fechar enterraria o registro sem abrir Issue nova",
+      "estagio": "fechar",
+      "em": "2026-11-26T22:08:34.204Z"
+    },
+    {
+      "pergunta": "Defeito preexistente cd X #comentario (quarta volta, achado 2): Issue nova?",
+      "escolha": "Nao: vai como comentario na #736, que segue aberta com os restos da familia",
+      "porque": "mesma familia (comentario mal lido na segmentacao); a observacao da sessao pede achado da mesma familia como comentario na Issue aberta, nao Issue nova",
+      "estagio": "fechar",
+      "em": "2026-11-26T22:08:54.963Z"
+    }
+  ]
 }
