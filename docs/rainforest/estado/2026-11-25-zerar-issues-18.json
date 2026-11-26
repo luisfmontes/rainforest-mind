@@ -92,23 +92,22 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "dda08240fc06ceb4cebf410e07d209792e95e54c",
+      "head": "b5b955b0828b3b978e40689b9e74348e737ff298",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad7bc7d790412f203",
-        "veredito": "reprovado",
+        "agente_id": "a89a2fecfbe037cbd",
+        "veredito": "ok",
         "em": "2026-11-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ad7bc7d790412f203.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a89a2fecfbe037cbd.jsonl"
       }
     ],
-    "achados": 4,
-    "em": "2026-11-25",
-    "tentativas": 2,
+    "achados": 2,
+    "em": "2026-11-26",
     "voltas": [
       {
         "volta": 1,
@@ -145,8 +144,24 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-adeb3641f2eb8a090.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ad7bc7d790412f203",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ad7bc7d790412f203.jsonl"
+          }
+        ]
       }
-    ]
+    ],
+    "base": "e9d2b14e",
+    "head": "9b903f05",
+    "severidade": "baixa",
+    "resumo": "quinta volta ok: conserto da tarefa 12 confirmado; 7200 pares base x head nos gates fora da D4 e 4500 nos da D4 sem regressao; achado 1 [baixa] wrapper sem caso de bateria em subagente-sem-gh e publicacao-destino (nenhum comando dependente encontrado); achado 2 [baixa] 10 falsos positivos de staging no PowerShell, direcao mais estrita"
   },
   "verificar": {
     "status": "pendente"
