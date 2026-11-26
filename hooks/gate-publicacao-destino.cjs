@@ -1390,7 +1390,9 @@ function conferirGhLeitura(ev, cmd, cwdDoEvento, agente) {
   try {
     const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
     const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
-    const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
+    const { cwdPorSegmento: cwdPorSegmentoDaLib, comLeituraAntiga } = require("./lib/cwd-efetivo.cjs");
+    // #736: o mapa de cwd sai da leitura antiga, a mesma da base (ver comLeituraAntiga).
+    const cwdPorSegmento = (...a) => comLeituraAntiga(() => cwdPorSegmentoDaLib(...a));
     const { desempacotarWrapperDeString } = require("./lib/tokens-comando.cjs");
     // Segmenta o comando CRU. A máscara de heredoc apaga também a linha do
     // delimitador, e o `segmentosParaGate` perdia todo `gh` das linhas seguintes

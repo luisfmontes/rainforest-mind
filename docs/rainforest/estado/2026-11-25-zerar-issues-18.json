@@ -1,0 +1,193 @@
+{
+  "slug": "2026-11-25-zerar-issues-18",
+  "titulo": "Rodada 18: segmentador le escape, ANSI-C e comentario como o shell (#736)",
+  "criado_em": "2026-11-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-25-zerar-issues-18.md",
+    "em": "2026-11-26",
+    "emenda": "D4 duas leituras, decidida pelo Luis em 2026-11-26"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-25-zerar-issues-18.md",
+    "tarefas": 10,
+    "paralelas": [],
+    "em": "2026-11-26",
+    "emenda": "tarefa 10 (D4)"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-26",
+    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
+    "saida": "375 ok, 0 falha (propriedade: 360 comandos, base barra 192, violacoes 0) / 108 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 671 ok, 0 falha / ok: 61 falhou: 0 / ok: 164 falhou: 0 / 335 ok, 0 falha / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1,2,3,5,6,7,8,9,10,11,12 vermelho, tarefa 4 pulada (n/a)",
+    "tarefas_ok": 12,
+    "tarefas": 12,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "#736 $'\\' engole o heredoc barra"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "comentario com contrabarra no fim barra"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "(736v) dialeto do wrapper: com o PowerShell por fora, o texto de dentro e sem escape"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "troca de versao e changelog"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "# dentro de crase nao passa da crase barra"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "$$' e PID e aspa simples barra"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "(736t) e (736w): # em $(( )) e em ${} e literal"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "(736w) pilha: o # logo depois do $( dentro de ${} abre comentario"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "PowerShell NBSP antes do # abre comentario barra"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "D4: propriedade, e \\|& manda o git em segundo plano barra"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "PowerShell git commit -m {1,2} -a barra"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "736-ps1 e 736-ps2: PowerShell <# x #>; cd B + quebra + gh pr create --body-file barra"
+      }
+    ],
+    "em": "2026-11-26",
+    "reaberturas": 2
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "b5b955b0828b3b978e40689b9e74348e737ff298",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a89a2fecfbe037cbd",
+        "veredito": "ok",
+        "em": "2026-11-26",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a89a2fecfbe037cbd.jsonl"
+      }
+    ],
+    "achados": 2,
+    "em": "2026-11-26",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7d78bfb41adffa4a",
+            "veredito": "reprovado",
+            "em": "2026-11-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a7d78bfb41adffa4a.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac87a8be9aae90eae",
+            "veredito": "reprovado",
+            "em": "2026-11-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ac87a8be9aae90eae.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "adeb3641f2eb8a090",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-adeb3641f2eb8a090.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ad7bc7d790412f203",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ad7bc7d790412f203.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "e9d2b14e",
+    "head": "9b903f05",
+    "severidade": "baixa",
+    "resumo": "quinta volta ok: conserto da tarefa 12 confirmado; 7200 pares base x head nos gates fora da D4 e 4500 nos da D4 sem regressao; achado 1 [baixa] wrapper sem caso de bateria em subagente-sem-gh e publicacao-destino (nenhum comando dependente encontrado); achado 2 [baixa] 10 falsos positivos de staging no PowerShell, direcao mais estrita"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-corpus-comandos.cjs; grep -c 2.17.4 .claude-plugin/plugin.json .codex-plugin/plugin.json CHANGELOG.md; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
+    "saida": "375 ok, 0 falha (propriedade: 360 comandos, base barra 192, violacoes 0; 5 casos {1,2} ok) / 108 ok, 0 falha (736n-736w ok) / 97 ok, 0 falha / 917 ok, 0 falha / 671 ok, 0 falha (736-ps1 e 736-ps2 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / ok: 61 falhou: 0 / ok: 24 falhou: 0 / 2.17.4: 1 em cada plugin.json e 1 ## 2.17.4 no CHANGELOG / mutacoes: tarefas 1-3 e 5-12 vermelho, 4 pulada (n/a)",
+    "sensor_externo": "bash hooks/testa-gate-staging-total.sh",
+    "em": "2026-11-26",
+    "head": "cc9271ed43510ebf04a8e2ca27a204132b12bba2"
+  },
+  "fechar": {
+    "status": "pendente"
+  },
+  "decididos": [
+    {
+      "pergunta": "O PR fecha a #736?",
+      "escolha": "Nao: PR com Refs #736; a #736 fica aberta com titulo trocado para o resto (gate-bateria-sem-timeout, segmentador proprio) e comentario de balanco",
+      "porque": "a #740 foi fechada como duplicata da #736 e o defeito do gate-bateria-sem-timeout mora nela; esta rodada nao o consertou (CHANGELOG 2.17.4), e fechar enterraria o registro sem abrir Issue nova",
+      "estagio": "fechar",
+      "em": "2026-11-26T22:08:34.204Z"
+    },
+    {
+      "pergunta": "Defeito preexistente cd X #comentario (quarta volta, achado 2): Issue nova?",
+      "escolha": "Nao: vai como comentario na #736, que segue aberta com os restos da familia",
+      "porque": "mesma familia (comentario mal lido na segmentacao); a observacao da sessao pede achado da mesma familia como comentario na Issue aberta, nao Issue nova",
+      "estagio": "fechar",
+      "em": "2026-11-26T22:08:54.963Z"
+    }
+  ]
+}

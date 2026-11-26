@@ -674,6 +674,207 @@ pos_ansi="$(node -e "const h=require(process.argv[1]);const c=process.argv[2];pr
 if [ "$pos_ansi" = "[16]" ]; then ok=$((ok+1)); echo "  ok   R3b lib: \$'...' dentro de \${...} e ANSI-C ($pos_ansi)"
 else falhou=$((falhou+1)); echo "  FALHA R3b lib: \$'...' dentro de \${...} e ANSI-C: esperava [16], veio $pos_ansi"; fi
 
+echo "== rodada 18 (#736): escape, \$'...' e comentario no segmentador =="
+# D1: escape e $'...' do bash. Cada "barra" abaixo sai 0 na base e o bash roda a linha escondida.
+gate "#736 \$'\\' engole o heredoc barra"                2 "$(b "$(hd "echo \$'${BS}' <<'A''" "git add -A" "A")")"
+gate "#736 \$'\\' dentro de \${} barra"                   2 "$(b "$(hd "echo \${x:-\$'${BS}'}<<${BS}'A${BS}''}" "git add -A" "A")")"
+gate "escape fora de aspas: echo \\' ; git add -A barra" 2 "$(b "echo ${BS}' ; git add -A")"
+gate "controle: echo \\\$'a\\'; git add -A barra"         2 "$(b "echo ${BS}\$'a${BS}'; git add -A")"
+gate "controle: echo \"\$'\"; git add -A barra"           2 "$(b "echo \"\$'\"; git add -A")"
+gate "controle: echo 'a; git add -A' passa"              0 "$(b "echo 'a; git add -A'")"
+gate "controle: echo \$'a; git add -A' passa"            0 "$(b "echo \$'a; git add -A'")"
+gate "falso positivo da base, de volta pela D4: echo \$'a\\'; git add -A' barra" 2 "$(b "echo \$'a${BS}'; git add -A'")"
+gate "falso positivo da base, de volta pela D4: echo \"a\\\"; git add -A\" barra" 2 "$(b "echo \"a${BS}\"; git add -A ; echo b\"")"
+# D2: comentario e continuacao de linha.
+gate "comentario com aspa: echo hi # don't barra"        2 "$(b "$(hd "echo hi # don't" "git add -A")")"
+gate "comentario com aspa dupla barra"                   2 "$(b "$(hd 'echo hi # say "x' "git add -A")")"
+gate "comentario com contrabarra no fim barra"           2 "$(b "$(hd "echo hi #x${BS}" "git add -A")")"
+gate "bash -c com comentario e aspa barra"               2 "$(b "$(hd "bash -c \"echo hi # don't" "git add -A\"")")"
+gate "controle: echo a#b'; git add -A' passa"            0 "$(b "echo a#b'; git add -A'")"
+gate "controle: echo \$#'; git add -A' passa"            0 "$(b "echo \$#'; git add -A'")"
+gate "controle: git add a.txt # sem -A barra"            2 "$(b "git add a.txt # sem -A")"
+gate "controle: git status # add -A' x passa"            0 "$(b "git status # add -A' x")"
+# D3: o dialeto chega ao segmentador.
+gate "PowerShell comentario com aspa barra"              2 "$(p "$(hd "echo hi # don't" "git add -A")")"
+gate "PowerShell crase escapa a aspa barra"              2 "$(p "echo \`'; git add -A")"
+gate "PowerShell \$'a\\' nao e aspa barra"                2 "$(p "echo \$'a${BS}'; git add -A")"
+gate "PowerShell bash -c com aspa dobrada barra"         2 "$(p "bash -c 'echo ${BS}''; git add -A'")"
+gate "pwsh -Command com crase pelo bash barra"           2 "$(b "pwsh -Command \"echo ${BS}\`'; git add -A\"")"
+gate "falso positivo da base, de volta pela D4: PowerShell \"a\`\"; ...\" barra" 2 "$(p "echo \"a\`\"; git add -A\"")"
+gate "falso positivo da base, de volta pela D4: cmd /c \"echo a\\\" & ...\" barra" 2 "$(b "cmd /c \"echo a${BS}\" & git add -A\"")"
+# Revisao de seguranca do commit 8ffea4b2 (D2 emendada): # que o shell nao le como comentario.
+gate "PowerShell <# #> fecha no #> barra"                2 "$(p "echo <# x #>; git add -A")"
+gate "PowerShell <# #> em duas linhas barra"             2 "$(p "$(hd "echo hi <# a" "b #>; git add -A")")"
+gate "# dentro de crase nao passa da crase barra"        2 "$(b "echo \`echo #\`; git add -A")"
+gate "# dentro de \${} nao passa da chave barra"          2 "$(b "echo \${x:-a #}; git add -A")"
+gate "PowerShell # dentro de \${} barra"                  2 "$(p "echo \${a #}; git add -A")"
+gate "\$(true)# e meio de palavra barra"                  2 "$(b "echo \$(true)#; git add -A")"
+gate "<(true)# e meio de palavra barra"                  2 "$(b "cat <(true)#; git add -A")"
+gate "continuacao antes do # junta a palavra barra"      2 "$(b "$(hd "echo a${BS}" "#x; git add -A")")"
+gate "controle: PowerShell <# git add -A #> passa"       0 "$(p "echo <# git add -A #> hi")"
+# Revisao de seguranca do commit a0b55385: $$ e o PID, e crase ou ${ incertos deixam o # neutro.
+gate "\$\${ e PID e chave literal: # comenta barra"       2 "$(b "$(hd "echo \$\${ # don't" "git add -A")")"
+gate "\$\$' e PID e aspa simples barra"                  2 "$(b "echo \$\$'a${BS}'; git add -A #'")"
+gate "crase solta no corpo de bash <<EOF barra"          2 "$(b "$(hd "bash <<'EOF'" "\`" "EOF" "echo hi # don't" "git add -A")")"
+gate "falso positivo da base, de volta pela D4: \$\$\$'a\\'; git add -A' barra" 2 "$(b "echo \$\$\$'a${BS}'; git add -A'")"
+# Revisao de seguranca do commit bcd7e602: leitura exata de # em ${} e em crase; neutro so na incerteza.
+gate "# em \${} e literal: aspa depois conta e passa"     0 "$(b "echo \${x:-#}'; git add -A; '")"
+gate "# em crase fecha na crase: aspa depois conta e passa" 0 "$(b "echo \`echo #\`'; git add -A; '")"
+gate "aspa dentro de \${} com # protege a chave barra"    2 "$(b "echo \${x:-# '}'}; git add -A")"
+gate "crase em duas linhas com # barra"                  2 "$(b "$(hd "echo \`echo" "# x \`; git add -A")")"
+gate "aspa no comentario dentro de crase barra"          2 "$(b "echo \`echo # a'\`; git add -A")"
+# Revisao de seguranca do commit 6f2abe19: aninhamento em pilha, crase escapada e aspa aberta no fim.
+gate "crase escapada nao fecha o comentario na crase barra" 2 "$(b "echo \`echo # ${BS}\`'\`; git add -A")"
+gate "crase dentro de \${} manda no # barra"              2 "$(b "echo \${x:-\`echo # '\`}; git add -A")"
+gate "aspa aberta no fim: o texto depois dela e analisado barra" 2 "$(b "echo \"a${BS}${BS}${BS}\"; git add -A")"
+# Revisao de seguranca do commit 8a5bdc2c: a crase fecha o que abriu depois dela.
+gate "crase fecha o \$( aberto dentro dela barra"         2 "$(b "echo \`echo \$(echo # \`; git add -A")"
+gate "crase fecha o \${ aberto dentro dela barra"         2 "$(b "echo \`echo \${x:-# \`; git add -A")"
+# Revisao do fluxo (revisor, rodada 18): redirecionamento antes do comando, espaco do bash, aritmetica, <# no meio.
+gate "<<\\; antes do comando barra"                       2 "$(b "<<${BS}; git add -A")"
+gate "<<EOF\\; antes do comando barra"                    2 "$(b "<<EOF${BS}; git add -A")"
+gate "2>\\; antes do comando barra"                       2 "$(b "2>${BS}; git add -A")"
+gate ">out\\; antes do comando barra"                     2 "$(b ">out${BS}; git add -A")"
+gate "<< \\; com espaco antes do comando barra"           2 "$(b "<< ${BS}; git add -A")"
+gate ">out\\& antes do comando barra"                     2 "$(b ">out${BS}& git add -A")"
+gate "<<\\; antes de git add . barra"                     2 "$(b "<<${BS}; git add .")"
+gate "CR antes do # nao abre comentario barra"           2 "$(b "echo a$(printf '\r')# x; git add -A")"
+gate "NBSP antes do # nao abre comentario barra"         2 "$(b "echo a$(printf '\302\240')# x; git add -A")"
+gate "# em \$(( )) e literal barra"                       2 "$(b "echo \$((1 # x)) | git add -A")"
+gate "# em \$(( )) sem fechar a linha barra"              2 "$(b "echo \$((1 #)) | cat; git add -A")"
+gate "# em (( )) e literal barra"                        2 "$(b "(( 1 # x )); git add -A")"
+gate "PowerShell <# no meio da palavra nao abre barra"   2 "$(p "echo a<#; git add -A")"
+gate "PowerShell x<# no meio da palavra nao abre barra"  2 "$(p "Write-Output x<# ; git add -A")"
+gate "controle: find -exec {} \\; passa"                  0 "$(b "find . -name x -exec echo {} ${BS};")"
+gate "controle: find -exec {} \\; -print passa"           0 "$(b "find . -name x -exec grep -l y {} ${BS}; -print")"
+gate "controle: \$((1+2)); git status passa"              0 "$(b "echo \$((1+2)); git status")"
+gate "controle: (( x = 1 )); git status passa"           0 "$(b "(( x = 1 )); git status")"
+gate "controle: >out\\ b passa"                           0 "$(b "echo a >out${BS} b")"
+# Revisao de seguranca do commit bf7dfb13: alvo de redirecionamento com espaco, espaco do PowerShell.
+gate "> \"a b\"\\; antes do comando barra"                  2 "$(b "> \"a b\"${BS}; git add -A")"
+gate ">\$(echo a b)\\; antes do comando barra"             2 "$(b ">\$(echo a b)${BS}; git add -A")"
+gate "PowerShell NBSP antes do # abre comentario barra"  2 "$(p "$(hd "echo a$(printf '\302\240')# don't" "git add -A" "echo 'x'")")"
+gate "PowerShell FF antes do # abre comentario barra"    2 "$(p "$(hd "echo a$(printf '\f')# don't" "git add -A" "echo 'x'")")"
+# D4 (revisor, segunda volta): duas leituras, uma decisao. Formas que so a leitura antiga barra.
+gate ">o\\( antes do comando barra"                       2 "$(b ">o${BS}( git add -A")"
+gate ">o\\) antes do comando barra"                       2 "$(b ">o${BS}) git add -A")"
+gate ">\\{ antes do comando barra"                        2 "$(b ">${BS}{ git add -A")"
+gate "<<\\{ antes do comando barra"                       2 "$(b "<<${BS}{ git add -A")"
+gate "<<\\( antes do comando barra"                       2 "$(b "<<${BS}( git add -A")"
+gate "\\|& manda o git em segundo plano barra"            2 "$(b "echo a ${BS}|& git add -A")"
+gate "PowerShell crase escapa so o CR do CRLF barra"     2 "$(p "$(printf 'echo a`\r\ngit add -A')")"
+gate "17 escapes depois de > nao estouram a pilha barra" 2 "$(b "$(printf 'echo >a \\; x %.0s' $(seq 17)); git add -A")"
+# D4 (revisor, terceira volta): a leitura antiga chama o segmentador sem o PowerShell,
+# como a base; com ele, {1,2} vira fronteira e o -a fica noutro segmento.
+gate "PowerShell git commit -m {1,2} -a barra"           2 "$(p "git commit -m {1,2} -a")"
+gate "PowerShell git add {1,2} -A barra"                 2 "$(p "git add {1,2} -A")"
+gate "PowerShell & git commit -m {1,2} -a barra"         2 "$(p "& git commit -m {1,2} -a")"
+gate "pwsh -Command com git commit -m {1,2} -a barra"    2 "$(b "pwsh -Command \"git commit -m {1,2} -a\"")"
+gate "powershell -Command com git add {1,2} -u barra"    2 "$(b "powershell -Command 'git add {1,2} -u'")"
+
+# D4, propriedade: o que a base de antes do #736 (e9d2b14e) barra, o head barra, e o
+# head nunca sai 1 (exit 1 nao bloqueia). Amostra com semente fixa, gates
+# gate-staging-total e gate-mensagem-commit, ferramentas Bash e PowerShell. O CI
+# faz checkout com fetch-depth: 0, entao o commit da base existe; sem ele, falha.
+echo
+echo "== D4: propriedade base barra => head barra, contra e9d2b14e =="
+PROP="$RAIZ/propriedade-d4.cjs"
+cat > "$PROP" <<'JS'
+const { execFileSync, spawnSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+const [SRC, RAIZ, REPO, NS] = process.argv.slice(2);
+const BASE = "e9d2b14e";
+const N = Number(NS);
+const dirBase = path.join(RAIZ, "base-d4");
+const arquivos = execFileSync("git", ["-C", SRC, "ls-tree", "-r", "--name-only", BASE, "hooks"], { encoding: "utf8" })
+  .split("\n").filter((f) => f.startsWith("hooks/lib/") || f === "hooks/gate-staging-total.cjs" || f === "hooks/gate-mensagem-commit.cjs");
+if (arquivos.length < 5) { console.log("  FALHA base " + BASE + " ausente (" + arquivos.length + " arquivos)"); process.exit(1); }
+for (const f of arquivos) {
+  const destino = path.join(dirBase, f);
+  fs.mkdirSync(path.dirname(destino), { recursive: true });
+  fs.writeFileSync(destino, execFileSync("git", ["-C", SRC, "show", BASE + ":" + f]));
+}
+const B = String.fromCharCode(92), C = String.fromCharCode(96);
+const FR_BASH = ["echo", "a", " ", " ", B, B, "'", "'", '"', '"', "$'", "$", "#", "#", ";", "&&", "|", "\n", "(", ")", "{", "}", C, "$(", "${", "$((", "))", "<", ">", "<<", B + ";", B + B, B + "'", B + '"', B + "#", "$$", "\r\n", B + "\n", "&", "\t", "2>", "|&", "#x", "'a'", '"b"', B + "(", B + "{", B + "|", "{1,2}", "{a,b}", "x{,y}"];
+const FR_PS = FR_BASH.map((f) => f.split(B).join(C)).concat(["<#", "#>", "@'", "'@", C + "\r\n", C + C, "iex"]);
+const SEPS = [";", "\n", "&&", "|", "&", " ", "\r\n"];
+let semente = 736;
+const rnd = (n) => { semente = (semente * 48271) % 0x7fffffff; return semente % n; };
+// A sonda pode levar um fragmento no meio ({F}): palavra antes do -a no mesmo segmento
+// (terceira volta do revisor: {1,2} no PowerShell separava o -a do git commit).
+function gera(fr, sondas) {
+  const sonda = sondas[rnd(sondas.length)].replace("{F}", () => fr[rnd(fr.length)]);
+  const t = [];
+  const n = 1 + rnd(8);
+  for (let i = 0; i < n; i++) t.push(fr[rnd(fr.length)]);
+  t.splice(rnd(t.length + 1), 0, SEPS[rnd(SEPS.length)] + sonda + " ");
+  return t.join("");
+}
+function roda(dir, gate, ferramenta, cmd) {
+  const ev = JSON.stringify({ hook_event_name: "PreToolUse", tool_name: ferramenta, tool_input: { command: cmd }, cwd: REPO });
+  return spawnSync(process.execPath, [path.join(dir, "hooks", gate)], { input: ev, encoding: "utf8" }).status;
+}
+let total = 0, baseBarra = 0, violacoes = 0;
+for (const [gate, sonda, n] of [["gate-staging-total.cjs", ["git add -A", "git add {F} -A", "git commit -m {F} -a"], N], ["gate-mensagem-commit.cjs", ['git commit -m "x."', 'git commit {F} -m "x."'], Math.ceil(N / 2)]]) {
+  for (const [ferramenta, fr] of [["Bash", FR_BASH], ["PowerShell", FR_PS]]) {
+    for (let k = 0; k < n; k++) {
+      const cmd = gera(fr, sonda);
+      const b = roda(dirBase, gate, ferramenta, cmd);
+      const h = roda(SRC, gate, ferramenta, cmd);
+      total += 1;
+      if (b === 2) baseBarra += 1;
+      if (h === 1 || (b === 2 && h !== 2)) {
+        violacoes += 1;
+        if (violacoes <= 5) console.log("  FALHA " + gate + " " + ferramenta + " base " + b + " head " + h + " " + JSON.stringify(cmd));
+      }
+    }
+  }
+}
+console.log("  propriedade: " + total + " comandos, base barra " + baseBarra + ", violacoes " + violacoes);
+process.exit(violacoes === 0 && baseBarra > total / 4 ? 0 : 1);
+JS
+if node "$PROP" "$SRC" "$RAIZ" "$R" 120; then ok=$((ok+1)); echo "  ok   D4: base barra => head barra, e nunca exit 1"
+else falhou=$((falhou+1)); echo "  FALHA D4: propriedade base barra => head barra"; fi
+
+# D4, excecao nao falha aberto (revisao de seguranca do commit bb6ee442): um main falso
+# reconhece a leitura pelo numero de segmentos de `echo $'a\'; x` (1 na nova, 2 na
+# antiga) e lanca excecao numa delas.
+FALSO="$RAIZ/main-falso.cjs"
+cat > "$FALSO" <<'JS'
+const [LIB, MODO] = process.argv.slice(2);
+const { segmentosComAspas } = require(LIB + "/cwd-efetivo.cjs");
+const B = String.fromCharCode(92);
+const antiga = () => segmentosComAspas("echo $'a" + B + "'; x").length === 2;
+function main() {
+  if (MODO === "segunda-lanca-dentro-de-catch") {
+    // a segunda passada roda de dentro deste process.exit(0)
+    try { process.exit(0); } catch {}
+    process.exit(0);
+  }
+  if (MODO === "primeira-lanca-antiga-barra") {
+    if (!antiga()) throw new Error("leitura nova quebrou");
+    process.exit(2);
+  }
+  if (MODO === "primeira-lanca-antiga-libera") {
+    if (!antiga()) throw new Error("leitura nova quebrou");
+    process.exit(0);
+  }
+}
+const mainReal = MODO === "segunda-lanca-dentro-de-catch"
+  ? () => { if (antiga()) throw new Error("leitura antiga quebrou"); main(); }
+  : main;
+require(LIB + "/duas-leituras.cjs").rodarComDuasLeituras(mainReal);
+JS
+excecao() { # nome, modo, exit esperado
+  local got; printf '%s' '{"tool_input":{"command":"echo a # x"}}' | node "$FALSO" "$SRC/hooks/lib" "$2" >/dev/null 2>&1; got=$?
+  if [ "$got" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1 (exit $got)"
+  else falhou=$((falhou+1)); echo "  FALHA $1: esperava $3, veio $got"; fi
+}
+excecao "D4: excecao na segunda passada dentro de try/catch barra" segunda-lanca-dentro-de-catch 2
+excecao "D4: excecao na primeira passada, a antiga barra"          primeira-lanca-antiga-barra 2
+excecao "D4: excecao na primeira passada, a antiga decide e libera" primeira-lanca-antiga-libera 0
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

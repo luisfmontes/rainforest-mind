@@ -601,6 +601,123 @@ console.log("== (#530) palavra de comando reconstruida: aspas, escape, ANSI-C e 
 }
 
 console.log();
+console.log("== #736: escape, $'...' e comentario no segmentador ==");
+{
+  const { segmentosComAspas, dialetoDoWrapper } = require(process.argv[2]);
+  const B = String.fromCharCode(92);
+  const Q = "'";
+  test("(736a) echo \\' ; git add -A -> o segundo segmento e o git (escape fora de aspas)", () => {
+    const s = segmentosComAspas(`echo ${B}${Q} ; git add -A`);
+    eq(s.length, 2, "dois segmentos");
+    eq(s[1], " git add -A", "o git fica no segundo, com o texto intacto");
+  });
+  test("(736b) echo $'a\\'; git add -A' -> 1 segmento (a contrabarra escapa a aspa ANSI-C)", () => {
+    eq(segmentosComAspas(`echo $${Q}a${B}${Q}; git add -A${Q}`).length, 1, "ANSI-C inteira");
+  });
+  test("(736c) leitura sem-escape mantem a de antes: echo \\' ; x -> 1 segmento", () => {
+    eq(segmentosComAspas(`echo ${B}${Q} ; x`, false, { dialeto: "sem-escape" }).length, 1, "sem escape, a aspa abre");
+  });
+  test("(736d) comentario com aspa fecha na quebra: 2 segmentos", () => {
+    const s = segmentosComAspas(`echo hi # don${Q}t\ngit add -A`);
+    eq(s.length, 2, "dois segmentos");
+    eq(s[1], "git add -A", "o git na linha de baixo");
+  });
+  test("(736e) comentario com contrabarra no fim nao junta as linhas", () => {
+    eq(segmentosComAspas(`echo hi #x${B}\ngit add -A`)[1], "git add -A", "a quebra fecha o comentario");
+  });
+  test("(736f) continuacao fora de comentario continua juntando", () => {
+    eq(segmentosComAspas(`echo a${B}\nb; c`).length, 2, "echo ab ; c");
+  });
+  test("(736g) a#b, $# e ${#x} nao abrem comentario", () => {
+    eq(segmentosComAspas(`echo a#b${Q}; x${Q}`).length, 1, "a#b");
+    eq(segmentosComAspas(`echo $#${Q}; x${Q}`).length, 1, "$#");
+  });
+  test("(736h) PowerShell: crase escapa, contrabarra e $' sao literais", () => {
+    eq(segmentosComAspas("echo `" + Q + "; x", true).length, 2, "crase");
+    eq(segmentosComAspas(`echo $${Q}a${B}${Q}; x`, true).length, 2, "$' nao e aspa");
+  });
+  test("(736i) dialetoDoWrapper: so o bash por fora le escape no interno", () => {
+    eq(dialetoDoWrapper("bash", "bash"), "bash", "bash -c pelo bash");
+    eq(dialetoDoWrapper("/usr/bin/pwsh.exe", "bash"), "powershell", "pwsh pelo bash");
+    eq(dialetoDoWrapper("cmd", "bash"), "sem-escape", "cmd");
+    eq(dialetoDoWrapper("bash", "powershell"), "sem-escape", "bash -c pelo PowerShell");
+  });
+  test("(736j) # dentro de crase, de ${} e colado a ) nao engole o ; (revisao de seguranca)", () => {
+    eq(segmentosComAspas("echo `echo #`; x").length, 2, "crase");
+    // `${` vira fronteira desde a rodada 19 (lote 3); o que importa e o `x` sair sozinho.
+    eq(segmentosComAspas("echo ${x:-a #}; x").filter((s) => s.trim() === "x").length, 1, "${}");
+    eq(segmentosComAspas("echo $(true)#; x").filter((s) => s.trim() === "x").length, 1, "$(true)#");
+  });
+  test("(736l) $$ e o PID: $${ nao abre chave e $$' nao abre ANSI-C", () => {
+    eq(segmentosComAspas(`echo $\${ # don${Q}t\nx`).filter((s) => s.trim() === "x").length, 1, "$${");
+    eq(segmentosComAspas(`echo $$${Q}a${B}${Q}; x #${Q}`).filter((s) => s.trim() === "x #'").length, 1, "$$'");
+  });
+  test("(736m) crase solta deixa o # neutro: a aspa do comentario nao engole a linha de baixo", () => {
+    eq(segmentosComAspas("echo `\necho hi # don" + Q + "t\nx").filter((s) => s.trim() === "x").length, 1, "crase solta");
+  });
+  test("(736n) # em ${} e em crase nao fabrica segmento do texto entre aspas depois", () => {
+    eq(segmentosComAspas("echo ${x:-#}" + Q + "; cd x; " + Q).some((s) => /cd x/.test(s.trim()) && s.trim().startsWith("cd")), false, "${}");
+    eq(segmentosComAspas("echo `echo #`" + Q + "; cd x; " + Q).some((s) => s.trim().startsWith("cd")), false, "crase");
+  });
+  test("(736o) crase aberta na quebra deixa a linha incerta, e o cwd tambem", () => {
+    const s = segmentosComAspas("echo `echo\n# x `; cd hooks");
+    eq(s.incerto, true, "segmentos.incerto");
+    const hooksDir = path.resolve(path.dirname(process.argv[2]), "..");
+    const r = cwdPorSegmento("echo `echo\n# x `; cd lib", hooksDir);
+    eq(r[r.length - 1].incerto, true, "cwd incerto");
+    eq(segmentosComAspas("echo a; cd x").incerto, undefined, "linha comum nao e incerta");
+  });
+  test("(736p) chave de leitura (D4): a antiga e a de antes do #736, e a nova volta depois", () => {
+    const { definirLeituraAntiga } = require(process.argv[2]);
+    const cmd = "echo $" + Q + "a" + B + Q + "; x";
+    eq(segmentosComAspas(cmd).length, 1, "nova: $'...' junta");
+    definirLeituraAntiga(true);
+    try { eq(segmentosComAspas(cmd).length, 2, "antiga: separa no ;"); } finally { definirLeituraAntiga(false); }
+    eq(segmentosComAspas(cmd).length, 1, "nova de novo");
+  });
+  test("(736q) crase dentro de ${} manda no #, e crase escapada nao fecha o comentario", () => {
+    eq(segmentosComAspas("echo ${x:-`echo # " + Q + "`}; x").some((t) => t.trim() === "x"), true, "crase em ${}");
+    eq(segmentosComAspas("echo `echo # " + B + "`" + Q + "`; x").some((t) => t.trim() === "x"), true, "crase escapada");
+  });
+  test("(736r) a crase fecha o $( e o ${ abertos dentro dela", () => {
+    eq(segmentosComAspas("echo `echo $(echo # `; x").some((t) => t.trim() === "x"), true, "$( dentro da crase");
+    eq(segmentosComAspas("echo `echo ${x:-# `; x").some((t) => t.trim() === "x"), true, "${ dentro da crase");
+  });
+  test("(736s) sem remendo na leitura nova: nao fabrica segmento nem marca incerto (D4)", () => {
+    eq(segmentosComAspas("<<" + B + "; cd x").length, 1, "redirecionamento: um segmento so");
+    eq(segmentosComAspas(("echo >a " + B + "; x ").repeat(40)).length, 1, "sem recursao por escape");
+    eq(segmentosComAspas("find . -exec echo {} " + B + "; -print").incerto, undefined, "find -exec nao e incerto");
+    eq(segmentosComAspas(`echo "a${B}${B}${B}"; x`).incerto, undefined, "aspa aberta no fim nao marca incerto");
+  });
+  test("(736t) # em aritmetica e literal; CR e NBSP nao abrem comentario", () => {
+    eq(segmentosComAspas("echo $((1 # x)) | x").some((t) => t.trim() === "x"), true, "$(( ))");
+    eq(segmentosComAspas("echo a\r# y; x").some((t) => t.trim() === "x"), true, "CR");
+    eq(segmentosComAspas("echo a\u00a0# y; x").some((t) => t.trim() === "x"), true, "NBSP");
+    eq(segmentosComAspas("echo a # y; x").length, 1, "espaco comum abre");
+  });
+  test("(736u) PowerShell: <# no meio da palavra nao abre comentario", () => {
+    eq(segmentosComAspas("echo a<#; x", true).some((t) => t.trim() === "x"), true, "meio da palavra");
+    eq(segmentosComAspas("echo a\u00a0# " + Q + "\nx", true).some((t) => t.trim() === "x"), true, "NBSP abre comentario no PowerShell");
+    eq(segmentosComAspas("echo a\ufeff# y; x", true).some((t) => t.trim() === "x"), true, "BOM nao abre no PowerShell");
+  });
+  // (736v) e (736w): na D4 a leitura antiga cobre o gate, entao mutar a leitura
+  // nova nao muda o exit do gate; a mordida das tarefas 3, 7 e 8 mora aqui, na lib.
+  test("(736v) dialeto do wrapper: com o PowerShell por fora, o texto de dentro e sem escape", () => {
+    eq(dialetoDoWrapper("bash", "powershell"), "sem-escape", "bash -c dentro do PowerShell");
+    eq(dialetoDoWrapper("bash", "bash"), "bash", "bash -c dentro do bash");
+    eq(dialetoDoWrapper("pwsh", "bash"), "powershell", "pwsh dentro do bash");
+  });
+  test("(736w) pilha: o # logo depois do $( dentro de ${} abre comentario (o topo e o $()", () => {
+    eq(segmentosComAspas("echo ${x:-$(echo #)}; x").some((t) => t.trim() === "x"), false, "$( dentro de ${}");
+    eq(segmentosComAspas("echo ${x:-a #}; x").some((t) => t.trim() === "x"), true, "# solto em ${} e literal");
+  });
+  test("(736k) PowerShell: <# #> fecha no #>, tambem atravessando a quebra", () => {
+    eq(segmentosComAspas("echo <# a #>; x", true).length, 2, "uma linha");
+    eq(segmentosComAspas("echo <# a\nb #>; x", true).length, 2, "duas linhas: a quebra de dentro nao separa");
+  });
+}
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

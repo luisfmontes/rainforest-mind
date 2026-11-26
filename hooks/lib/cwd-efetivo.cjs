@@ -153,25 +153,255 @@ function fimDaExpansaoDeChaves(cmd, i) {
   return -1;
 }
 
+// Dialeto do texto de dentro de um wrapper de string (#736, D3 da zerar-issues-18).
+// Só quando quem chamou é bash: o desempacotador (`desempacotarWrapperDeString`)
+// tira as aspas pelas regras do bash, então o texto de dentro só é fiel quando a
+// linha de fora é bash. Aí `bash -c`/`eval` seguem o bash, `pwsh -Command`/`iex`/`&`
+// o PowerShell, e o resto (`cmd /c`, nome desconhecido) a leitura sem escape de
+// antes do #736. Com o PowerShell por fora, o texto vem desaspado pelo bash
+// (`'a''b'` vira `ab`, não `a'b`) e ler escape nele esconderia o que a leitura
+// antiga via (`bash -c 'echo \''; git add -A'`): fica a leitura sem escape.
+const WRAPPER_BASH = new Set(["bash", "sh", "zsh", "ksh", "dash", "ash", "eval"]);
+const WRAPPER_POWERSHELL = new Set(["pwsh", "powershell", "iex", "invoke-expression", "&"]);
+function dialetoDoWrapper(nome, dialetoDeFora) {
+  if (dialetoDeFora !== "bash") return "sem-escape";
+  const n = String(nome || "").replace(/^.*[\\/]/, "").toLowerCase().replace(/\.exe$/, "");
+  if (WRAPPER_BASH.has(n)) return "bash";
+  if (WRAPPER_POWERSHELL.has(n)) return "powershell";
+  return "sem-escape";
+}
+
+/**
+ * Continuação de linha como o dialeto lê (#736, D1 e D2 da zerar-issues-18):
+ * no bash, contrabarra ímpar + quebra some fora de aspas e em aspas duplas; no
+ * PowerShell, a crase + quebra. Não junta dentro de aspas simples, de `$'...'`
+ * (bash) nem de comentário: ali a contrabarra é literal e a quebra fecha o
+ * comentário (`echo hi #x\` + quebra + `git add -A` roda o `git`). O texto
+ * fora das continuações sai intacto, para os segmentos continuarem casando por
+ * texto com os de `gate-fechar-issue.cjs`.
+ *
+ * É também o único lugar que decide o que é comentário, trecho neutro e começo
+ * de `$'`: devolve `classe`, uma `CLASSE` por caractere de `texto` (a quebra que
+ * fecha o comentário de linha fica fora), e o segmentador só obedece.
+ * Revisão de segurança do commit 8ffea4b2: `#` dentro de crase ou de `${...}`
+ * não abre comentário que passe do fechamento (`` echo `echo #`; git add -A ``,
+ * `echo ${x:-a #}; git add -A`), `#` colado a `)` está no meio da palavra
+ * (`echo $(true)#; git add -A`), e no PowerShell `<# ... #>` fecha no `#>`, não
+ * na quebra (`echo <# x #>; git add -A`). Nos quatro o shell roda o `git`.
+ */
+// Classe de cada caractere do texto colapsado, para o segmentador.
+const CLASSE = { normal: 0, comentario: 1, neutro: 2, ansi: 3 };
+
+function colapsaContinuacaoDoDialeto(cmd, dialeto) {
+  const esc = dialeto === "powershell" ? "`" : "\\";
+  let saida = "", aspa = null, dolares = 0, incerto = false;
+  // Aninhamento de `${`, crase e `$(` em pilha, na ordem em que abriram: o `#`
+  // obedece ao mais interno (revisão de segurança do commit 6f2abe19).
+  const pilha = [];
+  const topo = () => pilha[pilha.length - 1];
+  // Dentro de crase o bash acha a crase de fechamento antes de olhar `$(` e `${`:
+  // ela fecha tudo o que abriu depois da crase aberta (`` `echo $(echo # `; x ``
+  // roda o `x`; revisão de segurança do commit 8a5bdc2c).
+  const fechaCrase = () => { const k = pilha.lastIndexOf("`"); if (k >= 0) { pilha.length = k; return true; } return false; };
+  const alternaCrase = () => { if (!fechaCrase()) pilha.push("`"); };
+  const classe = [];
+  const emite = (s, k = CLASSE.normal) => {
+    saida += s;
+    for (let j = 0; j < s.length; j += 1) classe.push(k);
+  };
+  for (let i = 0; i < cmd.length; i += 1) {
+    const c = cmd[i];
+    // `$` seguidos sem escape antes deste caractere: `$$` é o PID, então o `$`
+    // de `$${` ou `$$'` fecha o par e não abre `${` nem `$'` (revisão de
+    // segurança do commit a0b55385).
+    const dolaresAntes = dolares;
+    dolares = 0;
+    if (aspa === "#" || aspa === "#?") {
+      if (c === "\n") { aspa = null; emite(c); continue; }
+      if (aspa === "#?" && c === "`" && dialeto === "bash") alternaCrase();
+      if (aspa === "#?" && c === "}" && topo() === "{") pilha.pop();
+      emite(c, aspa === "#" ? CLASSE.comentario : CLASSE.neutro);
+      continue;
+    }
+    if (aspa === "#`") {
+      // comentário dentro de crase: o bash o fecha na crase sem escape, que fecha a
+      // substituição; crase com contrabarra antes é literal ali dentro
+      if (c === "\\" && i + 1 < cmd.length) { emite(c + cmd[i + 1], CLASSE.comentario); i += 1; continue; }
+      if (c === "`") { aspa = null; fechaCrase(); emite(c); continue; }
+      if (c === "\n") { aspa = null; incerto = true; emite(c); continue; }
+      emite(c, CLASSE.comentario);
+      continue;
+    }
+    if (aspa === "<#") {
+      if (c === "#" && cmd[i + 1] === ">") { emite("#>", CLASSE.comentario); i += 1; aspa = null; } else emite(c, CLASSE.comentario);
+      continue;
+    }
+    if (aspa === "'") { if (c === "'") aspa = null; emite(c); continue; }
+    if (aspa === "$'") {
+      if (c === "\\" && i + 1 < cmd.length) { emite(c + cmd[i + 1]); i += 1; continue; }
+      if (c === "'") aspa = null;
+      emite(c);
+      continue;
+    }
+    if (c === esc && i + 1 < cmd.length) {
+      const prox = cmd[i + 1];
+      if (prox === "\n") { i += 1; continue; }
+      if (prox === "\r" && cmd[i + 2] === "\n") { i += 2; continue; }
+      emite(c + prox);
+      i += 1;
+      continue;
+    }
+    if (aspa === '"') { if (c === '"') aspa = null; emite(c); continue; }
+    const dolarLivre = dolaresAntes % 2 === 0;
+    if (c === '"' || c === "'") aspa = c;
+    else if (c === "$" && cmd[i + 1] === "'" && dialeto === "bash" && dolarLivre) {
+      aspa = "$'";
+      emite("$", CLASSE.ansi);
+      emite("'");
+      i += 1;
+      continue;
+    }
+    else if (c === "$" && cmd[i + 1] === "{" && dolarLivre) { pilha.push("{"); emite("${"); i += 1; continue; }
+    // `$((` e `((` são aritmética: o `#` dentro é literal (revisão do fluxo, achado 3).
+    else if (c === "$" && cmd[i + 1] === "(" && cmd[i + 2] === "(" && dolarLivre) { pilha.push("(("); emite("$(("); i += 2; continue; }
+    else if (c === "(" && cmd[i + 1] === "(" && dialeto === "bash" && abreComentario(saida, esc)) { pilha.push("(("); emite("(("); i += 1; continue; }
+    else if (c === ")" && cmd[i + 1] === ")" && topo() === "((") { pilha.pop(); emite("))"); i += 1; continue; }
+    else if (c === "$" && cmd[i + 1] === "(" && dolarLivre) { pilha.push("("); emite("$("); i += 1; continue; }
+    else if (c === "}" && topo() === "{") pilha.pop();
+    else if (c === ")" && topo() === "(") pilha.pop();
+    else if (c === "`" && dialeto === "bash") alternaCrase();
+    // `<#` só abre comentário de bloco no começo de token (revisão do fluxo, achado 4)
+    else if (c === "<" && cmd[i + 1] === "#" && dialeto === "powershell" && abreComentario(saida, esc)) { aspa = "<#"; emite("<#", CLASSE.comentario); i += 1; continue; }
+    else if (c === "#" && !incerto && (topo() === "{" || topo() === "((")) {
+      // dentro de `${...}` o `#` é literal: não abre nada, e a aspa segue contando
+    }
+    else if (c === "#" && abreComentario(saida, esc)) {
+      // Leitura exata enquanto crase e `${` fecham na mesma linha: dentro de crase o
+      // comentário fecha na crase; fora, na quebra. Quando uma quebra chega com
+      // crase ou `${` abertos (construção em várias linhas, ou crase solta num
+      // corpo de heredoc executado), a leitura pode ter errado o fechamento: dali
+      // em diante o `#` deixa o resto da linha NEUTRO (aspa não conta, a fronteira
+      // separa) e o comando sai `incerto`, para quem deduz o cwd não confiar num
+      // `cd` que pode ser texto entre aspas (revisões de segurança dos commits
+      // a0b55385 e bcd7e602).
+      if (incerto) { aspa = "#?"; emite(c, CLASSE.neutro); continue; }
+      // crase em qualquer nível manda: o comentário fecha na próxima crase sem escape
+      aspa = pilha.includes("`") ? "#`" : "#";
+      if (pilha.length > 1) incerto = true;
+      emite(c, CLASSE.comentario);
+      continue;
+    }
+    if (c === "\n" && pilha.length > 0) incerto = true;
+    emite(c);
+    if (c === "$") dolares = dolaresAntes + 1;
+  }
+  return { texto: saida, classe, incerto };
+}
+
+// `#` abre comentário no começo de palavra: começo do texto, ou depois de
+// espaço, `;`, `&`, `|` ou `(` que não foi escapado. `a#b`, `$#`, `${#x}`, `=#`,
+// `$(x)#` e `<(x)#` não abrem. Depois de `<` e `>` também não: o bash recusa a
+// linha (`echo a >#x`), e na dúvida a leitura que separa é a que não esconde.
+function abreComentario(antes, esc) {
+  if (antes === "") return true;
+  // O espaço depende do dialeto (revisão do fluxo, achado 2, medido em 2026-11-25):
+  // no bash é só espaço, tab e quebra (CR, NBSP e BOM são letra); no PowerShell é o
+  // \s do JavaScript mais U+0085, menos o BOM (NBSP, FF, VT, U+2003 e U+3000 contam).
+  const ch = antes[antes.length - 1];
+  const c0 = ch.charCodeAt(0);
+  const psEspaco = (/\s/.test(ch) || c0 === 0x85) && c0 !== 0xfeff;
+  const espaco = esc === "`" ? psEspaco : /[ \t\n]/.test(ch);
+  if (!espaco && !/[;&|(]/.test(ch)) return false;
+  // Corrida ímpar do caractere de escape antes do delimitador: ele foi escapado.
+  let k = antes.length - 2, n = 0;
+  while (k >= 0 && antes[k] === esc) { n += 1; k -= 1; }
+  return n % 2 === 0;
+}
+
 /**
  * Quebra a linha de comando em segmentos respeitando aspas.
  *
  * Similares a `tokensComAspas`, mas opera sobre separadores de comando
  * (`;`, `&&`, `||`, `|`) em vez de espaçamento de tokens.
  * Aspas simples e duplas protegem separadores do inside.
+ *
+ * #736 (zerar-issues-18): lê escape, `$'...'` e comentário como o dialeto
+ * (`opcoes.dialeto`: "bash", "powershell" ou "sem-escape"; sem ele, "powershell" com
+ * `ehPowerShell` e "bash" sem). No bash, contrabarra escapa o caractere seguinte
+ * fora de aspas e em aspas duplas, e `$'...'` é aspa em que a contrabarra escapa
+ * a própria aspa; no PowerShell, a crase faz o papel da contrabarra e `$'` não é
+ * aspa. Nos dois, `#` em começo de palavra abre comentário até a quebra, e aspa
+ * dentro dele não conta. Antes, `echo $'\' <<'A''` + quebra + `git add -A` e
+ * `echo hi # don't` + quebra + `git add -A` liam uma aspa aberta e engoliam a
+ * linha de baixo, que o shell executa. O "sem-escape" mantém a leitura antiga, sem
+ * escape nem comentário. O texto de cada segmento continua um trecho do comando:
+ * só a fronteira muda.
  */
-function segmentosComAspas(cmd, ehPowerShell = false) {
-  // Tarefa 13 (#309, revisao 2): mesmo colapso de continuacao de linha que
-  // `segmentosParaGate` (gate-fechar-issue.cjs) aplica — as duas funcoes
-  // dividem `\n` cru da MESMA forma (fronteira incondicional), entao as
-  // duas precisam do mesmo preprocessamento para os segmentos casarem por
-  // TEXTO (ver docblock de `cwdDoSegmento` em gate-fechar-issue.cjs).
-  cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
+// Leitura forçada (D4): `lib/duas-leituras.cjs` roda o gate de novo com a leitura
+// antiga ("sem-escape" em toda chamada), que é a da base de antes do #736. O gate
+// barra se qualquer das duas barrar.
+let leituraAntiga = false;
+function definirLeituraAntiga(ligada) { leituraAntiga = ligada === true; }
+// Quem chama com o PowerShell ligado onde a base chamava sem ele (os gates de staging
+// e de mensagem de commit, desde a D3) consulta isto para chamar como a base na
+// leitura antiga (terceira volta do revisor do fluxo, achado 1).
+function emLeituraAntiga() { return leituraAntiga; }
+// Roda `fn` com a leitura antiga e devolve o resultado. Para os gates fora da D4
+// (`gate-fechar-issue`, `gate-subagente-sem-gh`, `gate-publicacao-destino`): eles
+// segmentam a linha com o próprio segmentador, o da base, e buscam o cwd de cada
+// segmento no mapa de `cwdPorSegmento`; o mapa tem de sair da mesma leitura. Com a
+// nova, `<# x #>; cd X` no PowerShell lia o `#>` como comentário do bash e perdia o
+// `cd` (quarta volta do revisor do fluxo, achado 1).
+function comLeituraAntiga(fn) {
+  const antes = leituraAntiga;
+  leituraAntiga = true;
+  try { return fn(); } finally { leituraAntiga = antes; }
+}
+
+function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
+  const dialeto = leituraAntiga ? "sem-escape" : (opcoes.dialeto || (ehPowerShell ? "powershell" : "bash"));
+  // "sem-escape": a leitura de antes do #736 (continuação do bash, sem escape nem comentário).
+  const leEscape = dialeto !== "sem-escape";
+  const esc = dialeto === "powershell" ? "`" : "\\";
+  // Tarefa 13 (#309, revisao 2): o colapso de continuacao de linha vem antes da
+  // segmentacao, como em `segmentosParaGate` (gate-fechar-issue.cjs), para os
+  // segmentos casarem por TEXTO (ver docblock de `cwdDoSegmento` la).
+  // O colapso é quem decide o que é comentário, trecho neutro e começo de `$'`;
+  // aqui só se obedece a `classe`, para as duas leituras não divergirem.
+  let classe = [], leituraIncerta = false;
+  if (leEscape) ({ texto: cmd, classe, incerto: leituraIncerta } = colapsaContinuacaoDoDialeto(String(cmd), dialeto));
+  else cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "", aspa = null;
 
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
+
+    if (!leEscape) {
+      // sem leitura de escape: direto para a cadeia de aspas e fronteiras abaixo
+    } else if (classe[i] === CLASSE.comentario) {
+      // comentário: nem aspa nem fronteira
+      atual += c;
+      continue;
+    } else if (classe[i] === CLASSE.neutro && (c === '"' || c === "'" || c === esc || c === "$")) {
+      // trecho neutro: aspa e escape não contam; fronteira segue pela cadeia abaixo
+      atual += c;
+      continue;
+    } else if (aspa === "$'") {
+      if (c === "\\" && i + 1 < cmd.length) { atual += c + cmd[i + 1]; i += 1; continue; }
+      if (c === "'") aspa = null;
+      atual += c;
+      continue;
+    } else if (c === esc && aspa !== "'" && i + 1 < cmd.length) {
+      atual += c + cmd[i + 1];
+      i += 1;
+      continue;
+    } else if (!aspa && classe[i] === CLASSE.ansi) {
+      aspa = "$'";
+      atual += "$'";
+      i += 1;
+      continue;
+    }
 
     if (aspa) {
       // Dentro de aspas: só sair da aspa ou adicionar caractere
@@ -282,6 +512,13 @@ function segmentosComAspas(cmd, ehPowerShell = false) {
     segmentos.push(atual);
   }
 
+  // Aspa aberta no fim, ou separador escapado no alvo de redirecionamento: esta
+  // leitura pode juntar texto que o shell separa. Não há remendo aqui: quem cobre é
+  // a leitura antiga, que o gate roda também (`lib/duas-leituras.cjs`, D4).
+
+  // Leitura incerta de crase ou `${` (ver `colapsaContinuacaoDoDialeto`): quem deduz
+  // cwd pelos segmentos trata a linha como incerta.
+  if (leituraIncerta) segmentos.incerto = true;
   return segmentos;
 }
 
@@ -662,7 +899,7 @@ function cwdPorSegmento(comando, cwdInicial, ehPowerShell = false) {
   // `estouro` (#530, D5): a linha inteira estourou o teto de expansao de chaves
   // em alguma palavra de comando. Fica verdadeiro a partir do segmento que
   // estourou, e quem chama barra.
-  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
+  const estado = { atual: cwdInicial, incerto: segmentos.incerto === true, pilhaPushd: [], estouro: false };
   const resultado = [];
 
   for (const seg of segmentos) {
@@ -767,6 +1004,10 @@ module.exports = {
   toplevelConfinado,
   normalizarMsys,
   segmentosComAspas,
+  definirLeituraAntiga,
+  emLeituraAntiga,
+  comLeituraAntiga,
+  dialetoDoWrapper,
   extrairUltimoDirGit,
   contemSubshellOuGrupo,
   CD,

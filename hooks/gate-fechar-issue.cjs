@@ -39,7 +39,9 @@ const {
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
   colapsaContinuacaoDeLinhaNoTopo, semContrabarra, reduzEscapeAspasDuplas, contemConstrucaoIlegivel,
 } = require("./lib/tokens-comando.cjs");
-const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
+const { cwdPorSegmento: cwdPorSegmentoDaLib, normalizarMsys, comLeituraAntiga } = require("./lib/cwd-efetivo.cjs");
+// #736: o mapa de cwd sai da leitura antiga, a mesma do `segmentosParaGate` deste gate.
+const cwdPorSegmento = (...a) => comLeituraAntiga(() => cwdPorSegmentoDaLib(...a));
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica, restoDepoisDoHeredoc } = require("./lib/heredoc.cjs");
 
 /**
