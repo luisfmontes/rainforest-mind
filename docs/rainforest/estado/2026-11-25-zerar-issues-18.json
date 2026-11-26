@@ -20,12 +20,12 @@
     "emenda": "tarefa 10 (D4)"
   },
   "executar": {
-    "status": "parcial",
-    "catraca_mutacao": "2026-11-25",
+    "status": "ok",
+    "catraca_mutacao": "2026-11-26",
     "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-gate-subagente-sem-gh.cjs; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
-    "saida": "358 ok, 0 falha / 106 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 669 ok, 0 falha / ok: 61 falhou: 0 / ok: 164 falhou: 0 / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1,2,3,5,6,7,8,9 vermelho, tarefa 4 pulada (n/a)",
-    "tarefas_ok": 9,
-    "tarefas": 9,
+    "saida": "370 ok, 0 falha (propriedade: 360 comandos, base barra 238, violacoes 0) / 108 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 669 ok, 0 falha / ok: 61 falhou: 0 / ok: 164 falhou: 0 / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1,2,3,5,6,7,8,9,10 vermelho, tarefa 4 pulada (n/a)",
+    "tarefas_ok": 10,
+    "tarefas": 10,
     "mutacao": [
       {
         "tarefa": 1,
@@ -40,7 +40,7 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "PowerShell bash -c com aspa dobrada barra"
+        "fixture": "(736v) dialeto do wrapper: com o PowerShell por fora, o texto de dentro e sem escape"
       },
       {
         "tarefa": 4,
@@ -60,25 +60,26 @@
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "# dentro de ${} nao passa da chave barra"
+        "fixture": "(736t) e (736w): # em $(( )) e em ${} e literal"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "aspa aberta no fim: o texto depois dela e analisado barra"
+        "fixture": "(736w) pilha: o # logo depois do $( dentro de ${} abre comentario"
       },
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "<<\\; antes do comando barra"
+        "fixture": "PowerShell NBSP antes do # abre comentario barra"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "D4: propriedade, e \\|& manda o git em segundo plano barra"
       }
     ],
-    "em": "2026-11-25",
-    "reaberturas": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-25"
-    }
+    "em": "2026-11-26",
+    "reaberturas": 2
   },
   "revisar": {
     "status": "reprovado",
