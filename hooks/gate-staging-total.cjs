@@ -58,7 +58,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { cwdPorSegmento, segmentosComAspas, dialetoDoWrapper } = require("./lib/cwd-efetivo.cjs");
+const { cwdPorSegmento, segmentosComAspas, dialetoDoWrapper, emLeituraAntiga } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
@@ -182,7 +182,7 @@ function analisaSegmentoGit(segTexto, ferramenta, dialeto = ferramenta === "Powe
   if (ilegivel) return { incerto: true };
   if (interno !== null) {
     const dInterno = dialetoDoWrapper(toks[pos].v, dialeto);
-    for (const sub of segmentosComAspas(interno, dInterno === "powershell", { dialeto: dInterno })) {
+    for (const sub of segmentosComAspas(interno, dInterno === "powershell" && !emLeituraAntiga(), { dialeto: dInterno })) {
       const r = analisaSegmentoGit(sub, ferramenta, dInterno);
       if (r && (r.incerto || motivoDe(r))) return r;
     }
@@ -338,7 +338,8 @@ function main() {
   let ultimoDirC = null;
   // D1 (zerar-issues-4): remover corpos de heredoc nao-interpretador ANTES de segmentar
   const cmdParaAnalise = mascararCorposDeHeredoc(cmd, { scriptNaoShell: true });
-  const ehPowerShell = ev.tool_name === "PowerShell";
+  // Na leitura antiga (D4), chama o segmentador sem o PowerShell, como a base.
+  const ehPowerShell = ev.tool_name === "PowerShell" && !emLeituraAntiga();
   const segs = segmentos(cmdParaAnalise, ehPowerShell);
   for (let idx = 0; idx < segs.length; idx += 1) {
     const g = analisaSegmentoGit(segs[idx], ev.tool_name);

@@ -71,7 +71,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { segmentosComAspas, dialetoDoWrapper } = require("./lib/cwd-efetivo.cjs");
+const { segmentosComAspas, dialetoDoWrapper, emLeituraAntiga } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
@@ -131,7 +131,7 @@ function analisaSegmentoCommit(segTexto, ferramenta, dialeto = ferramenta === "P
   const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos), { ferramenta });
   if (ilegivel || interno === null) return null;
   const dInterno = dialetoDoWrapper(toks[pos].v, dialeto);
-  for (const sub of segmentosComAspas(interno, dInterno === "powershell", { dialeto: dInterno })) {
+  for (const sub of segmentosComAspas(interno, dInterno === "powershell" && !emLeituraAntiga(), { dialeto: dInterno })) {
     const r = analisaSegmentoCommit(sub, ferramenta, dInterno);
     if (r) return r;
   }
@@ -140,7 +140,8 @@ function analisaSegmentoCommit(segTexto, ferramenta, dialeto = ferramenta === "P
 
 /** Acha o primeiro `git commit` em qualquer segmento do comando bruto. */
 function achaGitCommit(cmd, ferramenta) {
-  for (const seg of segmentosComAspas(cmd, ferramenta === "PowerShell")) {
+  // Na leitura antiga (D4), sem o PowerShell, como a base.
+  for (const seg of segmentosComAspas(cmd, ferramenta === "PowerShell" && !emLeituraAntiga())) {
     const g = analisaSegmentoCommit(seg, ferramenta);
     if (g) return g;
   }

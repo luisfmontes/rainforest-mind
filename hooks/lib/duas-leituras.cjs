@@ -10,9 +10,9 @@
  *
  * Mecânica: a entrada (stdin) é lida uma vez e servida às duas passadas, e o
  * `process.exit(0)` da primeira passada dispara a segunda em vez de sair. Exit
- * diferente de 0 sai na hora. A segunda passada só roda quando o comando tem algum
- * caractere em que as leituras podem divergir (contrabarra, crase, `#`, CR, `$'`):
- * sem eles as duas produzem os mesmos segmentos.
+ * diferente de 0 sai na hora. A segunda passada roda em todo comando liberado: um
+ * filtro por caractere em que as leituras divergem já deixou passar `{1,2}` no
+ * PowerShell (terceira volta do revisor do fluxo), e enumerar é o que a D4 evita.
  *
  * Exceção não falha aberto (revisão de segurança do commit bb6ee442). Na primeira
  * passada, quem decide passa a ser a segunda (a leitura antiga, a da base). Na
@@ -22,18 +22,6 @@
  */
 const fs = require("fs");
 const { definirLeituraAntiga } = require("./cwd-efetivo.cjs");
-
-const DIVERGE = /[\\`#\r]|\$'/;
-
-function precisaDaSegunda(entrada) {
-  try {
-    const ev = JSON.parse(entrada || "{}");
-    const cmd = ev && ev.tool_input && ev.tool_input.command;
-    return typeof cmd === "string" && DIVERGE.test(cmd);
-  } catch {
-    return false;
-  }
-}
 
 function rodarComDuasLeituras(main) {
   let entrada = "";
@@ -61,7 +49,7 @@ function rodarComDuasLeituras(main) {
 
   const sair = (codigo) => {
     const c = codigo === undefined ? (process.exitCode || 0) : codigo;
-    if (!segunda && c === 0 && precisaDaSegunda(entrada)) rodaSegunda();
+    if (!segunda && c === 0) rodaSegunda();
     sairOriginal.call(process, c);
   };
   process.exit = sair;
@@ -76,4 +64,4 @@ function rodarComDuasLeituras(main) {
   sair(0);
 }
 
-module.exports = { rodarComDuasLeituras, precisaDaSegunda };
+module.exports = { rodarComDuasLeituras };

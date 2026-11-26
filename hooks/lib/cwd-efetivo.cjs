@@ -342,6 +342,10 @@ function abreComentario(antes, esc) {
 // barra se qualquer das duas barrar.
 let leituraAntiga = false;
 function definirLeituraAntiga(ligada) { leituraAntiga = ligada === true; }
+// Quem chama com o PowerShell ligado onde a base chamava sem ele (os gates de staging
+// e de mensagem de commit, desde a D3) consulta isto para chamar como a base na
+// leitura antiga (terceira volta do revisor do fluxo, achado 1).
+function emLeituraAntiga() { return leituraAntiga; }
 
 function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   const dialeto = leituraAntiga ? "sem-escape" : (opcoes.dialeto || (ehPowerShell ? "powershell" : "bash"));
@@ -990,6 +994,7 @@ module.exports = {
   normalizarMsys,
   segmentosComAspas,
   definirLeituraAntiga,
+  emLeituraAntiga,
   dialetoDoWrapper,
   extrairUltimoDirGit,
   contemSubshellOuGrupo,

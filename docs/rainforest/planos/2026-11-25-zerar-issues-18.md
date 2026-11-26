@@ -203,14 +203,14 @@ busca:
 desfecho: construir
 O que fazer:
 - `hooks/lib/cwd-efetivo.cjs`: `definirLeituraAntiga(ligada)` exportada; com ela ligada, `segmentosComAspas` usa "sem-escape" em toda chamada. Saem os remendos da aspa aberta no fim (tarefa 8) e do separador escapado depois de `<`/`>` (tarefa 9).
-- `hooks/lib/duas-leituras.cjs`: `rodarComDuasLeituras(main)` lê a entrada uma vez, serve-a às duas passadas e troca `process.exit`: exit 0 da primeira passada roda a segunda com a leitura antiga, se o comando tem contrabarra, crase, `#`, CR ou `$'`; exit diferente de 0 sai na hora.
+- `hooks/lib/duas-leituras.cjs`: `rodarComDuasLeituras(main)` lê a entrada uma vez, serve-a às duas passadas e troca `process.exit`: exit 0 da primeira passada roda a segunda com a leitura antiga ~~se o comando tem contrabarra, crase, `#`, CR ou `$'`~~ (o filtro saiu na tarefa 11: a segunda passada roda sempre); exit diferente de 0 sai na hora.
 - Os três gates terminam em `require("./lib/duas-leituras.cjs").rodarComDuasLeituras(main)` no lugar de `main()`.
 - Exceção não falha aberto (revisão de segurança do commit bb6ee442): exceção na primeira passada deixa a segunda decidir; exceção na segunda sai 2, antes de subir para algum `try/catch` do gate. Casos `D4: excecao ...` na bateria do staging, com um `main` falso.
 - `hooks/testa-gate-staging-total.sh`: os cinco falsos positivos da base voltam a esperar exit 2; casos nomeados da segunda volta do revisor (escape de `(`, `)`, `{`, `}` no alvo de redirecionamento, `\|&`, crase + CR + LF no PowerShell, 17 escapes depois de `>`); e a seção "D4: propriedade", que extrai `hooks/lib` e os dois gates da base `e9d2b14e` por `git show` e compara o exit numa amostra com semente fixa (base barra ⇒ head barra, head nunca 1).
 - `hooks/testa-cwd-efetivo.sh`: `(736p)` vira o teste da chave de leitura; `(736s)` confere que a leitura nova não fabrica segmento nem marca incerto.
 mutacao:
   arquivo: `hooks/lib/duas-leituras.cjs`
-  de: `    if (!segunda && c === 0 && precisaDaSegunda(entrada)) rodaSegunda();`
+  de: `    if (!segunda && c === 0) rodaSegunda();`
   para: `    if (false) rodaSegunda();`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, seção "D4: propriedade", e o caso "\\|& manda o git em segundo plano barra"
@@ -218,10 +218,33 @@ mutacao:
 prova-na-base: verde — casos novos; contra o commit 49178bd6 os casos nomeados saem 0 (e 1 no de 17 escapes), medido com `sonda.cjs` em 2026-11-26, e a propriedade com a segunda passada desligada dá 30 violações
 pronto quando: `bash hooks/testa-gate-staging-total.sh` com 0 falhas e a linha `propriedade: ... violacoes 0`; `bash hooks/testa-cwd-efetivo.sh` e `bash hooks/testa-gate-mensagem-commit.sh` com 0 falhas.
 
+### 11. A leitura antiga chama o segmentador como a base, e roda sempre (terceira volta do revisor do fluxo) [tipo: implementar]
+atende: D4
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/lib/duas-leituras.cjs`, `hooks/gate-staging-total.cjs`, `hooks/gate-mensagem-commit.cjs`, `hooks/testa-gate-staging-total.sh`
+depende de: 10
+busca:
+- catalogo | definirLeituraAntiga em hooks/lib/cwd-efetivo.cjs | estendo; é a chave da tarefa 10
+- repo | git show e9d2b14e:hooks/gate-staging-total.cjs e gate-mensagem-commit.cjs, grep segmentosComAspas | a base chamava sem ehPowerShell nos dois; o gate-worktree já passava na base e fica como está
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: `emLeituraAntiga()` exportada.
+- `hooks/gate-staging-total.cjs` e `hooks/gate-mensagem-commit.cjs`: na leitura antiga, o `ehPowerShell` das chamadas a `segmentosComAspas` e `cwdPorSegmento` (topo e texto de wrapper) fica falso, como na base.
+- `hooks/lib/duas-leituras.cjs`: sai o filtro por caractere (`DIVERGE`, `precisaDaSegunda`); a segunda passada roda em todo comando liberado.
+- `hooks/testa-gate-staging-total.sh`: casos do revisor (`git commit -m {1,2} -a` e `git add {1,2} -A` no PowerShell, `& git commit ...`, `pwsh -Command` e `powershell -Command` pelo Bash); a propriedade ganha `{1,2}`, `{a,b}`, `x{,y}` e sondas com fragmento antes do `-a`/`-A`.
+mutacao:
+  arquivo: `hooks/gate-staging-total.cjs`
+  de: `  const ehPowerShell = ev.tool_name === "PowerShell" && !emLeituraAntiga();`
+  para: `  const ehPowerShell = ev.tool_name === "PowerShell";`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: testa-gate-staging-total.sh, caso "PowerShell git commit -m {1,2} -a barra"
+  timeout: `900000`
+prova-na-base: verde — casos novos; contra o commit d6a4098b os sete comandos do revisor saem 0 (base 2), e a propriedade nova dá 1 violação (`prop-contra.cjs`, 2026-11-26)
+pronto quando: `bash hooks/testa-gate-staging-total.sh` com 0 falhas, `ok` nos casos `{1,2}` e a linha `propriedade: ... violacoes 0`; `bash hooks/testa-gate-mensagem-commit.sh` e `bash hooks/testa-cwd-efetivo.sh` com 0 falhas.
+
 ### 4. Versão 2.17.4 [tipo: docs]
 atende: D1, D2, D3, D4
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 10
+depende de: 11
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.

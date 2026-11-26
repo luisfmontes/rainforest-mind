@@ -764,6 +764,13 @@ gate "<<\\( antes do comando barra"                       2 "$(b "<<${BS}( git a
 gate "\\|& manda o git em segundo plano barra"            2 "$(b "echo a ${BS}|& git add -A")"
 gate "PowerShell crase escapa so o CR do CRLF barra"     2 "$(p "$(printf 'echo a`\r\ngit add -A')")"
 gate "17 escapes depois de > nao estouram a pilha barra" 2 "$(b "$(printf 'echo >a \\; x %.0s' $(seq 17)); git add -A")"
+# D4 (revisor, terceira volta): a leitura antiga chama o segmentador sem o PowerShell,
+# como a base; com ele, {1,2} vira fronteira e o -a fica noutro segmento.
+gate "PowerShell git commit -m {1,2} -a barra"           2 "$(p "git commit -m {1,2} -a")"
+gate "PowerShell git add {1,2} -A barra"                 2 "$(p "git add {1,2} -A")"
+gate "PowerShell & git commit -m {1,2} -a barra"         2 "$(p "& git commit -m {1,2} -a")"
+gate "pwsh -Command com git commit -m {1,2} -a barra"    2 "$(b "pwsh -Command \"git commit -m {1,2} -a\"")"
+gate "powershell -Command com git add {1,2} -u barra"    2 "$(b "powershell -Command 'git add {1,2} -u'")"
 
 # D4, propriedade: o que a base de antes do #736 (e9d2b14e) barra, o head barra, e o
 # head nunca sai 1 (exit 1 nao bloqueia). Amostra com semente fixa, gates
@@ -789,12 +796,15 @@ for (const f of arquivos) {
   fs.writeFileSync(destino, execFileSync("git", ["-C", SRC, "show", BASE + ":" + f]));
 }
 const B = String.fromCharCode(92), C = String.fromCharCode(96);
-const FR_BASH = ["echo", "a", " ", " ", B, B, "'", "'", '"', '"', "$'", "$", "#", "#", ";", "&&", "|", "\n", "(", ")", "{", "}", C, "$(", "${", "$((", "))", "<", ">", "<<", B + ";", B + B, B + "'", B + '"', B + "#", "$$", "\r\n", B + "\n", "&", "\t", "2>", "|&", "#x", "'a'", '"b"', B + "(", B + "{", B + "|"];
+const FR_BASH = ["echo", "a", " ", " ", B, B, "'", "'", '"', '"', "$'", "$", "#", "#", ";", "&&", "|", "\n", "(", ")", "{", "}", C, "$(", "${", "$((", "))", "<", ">", "<<", B + ";", B + B, B + "'", B + '"', B + "#", "$$", "\r\n", B + "\n", "&", "\t", "2>", "|&", "#x", "'a'", '"b"', B + "(", B + "{", B + "|", "{1,2}", "{a,b}", "x{,y}"];
 const FR_PS = FR_BASH.map((f) => f.split(B).join(C)).concat(["<#", "#>", "@'", "'@", C + "\r\n", C + C, "iex"]);
 const SEPS = [";", "\n", "&&", "|", "&", " ", "\r\n"];
 let semente = 736;
 const rnd = (n) => { semente = (semente * 48271) % 0x7fffffff; return semente % n; };
-function gera(fr, sonda) {
+// A sonda pode levar um fragmento no meio ({F}): palavra antes do -a no mesmo segmento
+// (terceira volta do revisor: {1,2} no PowerShell separava o -a do git commit).
+function gera(fr, sondas) {
+  const sonda = sondas[rnd(sondas.length)].replace("{F}", () => fr[rnd(fr.length)]);
   const t = [];
   const n = 1 + rnd(8);
   for (let i = 0; i < n; i++) t.push(fr[rnd(fr.length)]);
@@ -806,7 +816,7 @@ function roda(dir, gate, ferramenta, cmd) {
   return spawnSync(process.execPath, [path.join(dir, "hooks", gate)], { input: ev, encoding: "utf8" }).status;
 }
 let total = 0, baseBarra = 0, violacoes = 0;
-for (const [gate, sonda, n] of [["gate-staging-total.cjs", "git add -A", N], ["gate-mensagem-commit.cjs", 'git commit -m "x."', Math.ceil(N / 2)]]) {
+for (const [gate, sonda, n] of [["gate-staging-total.cjs", ["git add -A", "git add {F} -A", "git commit -m {F} -a"], N], ["gate-mensagem-commit.cjs", ['git commit -m "x."', 'git commit {F} -m "x."'], Math.ceil(N / 2)]]) {
   for (const [ferramenta, fr] of [["Bash", FR_BASH], ["PowerShell", FR_PS]]) {
     for (let k = 0; k < n; k++) {
       const cmd = gera(fr, sonda);
