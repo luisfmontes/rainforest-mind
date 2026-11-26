@@ -22,10 +22,10 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-11-26",
-    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-gate-subagente-sem-gh.cjs; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
-    "saida": "375 ok, 0 falha (propriedade: 360 comandos, base barra 192, violacoes 0) / 108 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 669 ok, 0 falha / ok: 61 falhou: 0 / ok: 164 falhou: 0 / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1,2,3,5,6,7,8,9,10,11 vermelho, tarefa 4 pulada (n/a)",
-    "tarefas_ok": 11,
-    "tarefas": 11,
+    "comando": "bash hooks/testa-gate-staging-total.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-25-zerar-issues-18",
+    "saida": "375 ok, 0 falha (propriedade: 360 comandos, base barra 192, violacoes 0) / 108 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 671 ok, 0 falha / ok: 61 falhou: 0 / ok: 164 falhou: 0 / 335 ok, 0 falha / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1,2,3,5,6,7,8,9,10,11,12 vermelho, tarefa 4 pulada (n/a)",
+    "tarefas_ok": 12,
+    "tarefas": 12,
     "mutacao": [
       {
         "tarefa": 1,
@@ -81,6 +81,11 @@
         "tarefa": 11,
         "resultado": "vermelho",
         "fixture": "PowerShell git commit -m {1,2} -a barra"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "736-ps1 e 736-ps2: PowerShell <# x #>; cd B + quebra + gh pr create --body-file barra"
       }
     ],
     "em": "2026-11-26",
