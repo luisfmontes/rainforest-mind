@@ -4951,6 +4951,28 @@ pm "cd ~ && gh pr merge 5 --repo dono/repo --squash barra (cd fora da lista mesm
 # CI do PR 725: `~` no meio do caminho (nome 8.3 RUNNER~1) e literal no bash e passa.
 pm "cd C:/Users/RUNNER~1/x && gh pr merge 5 --repo dono/repo --squash passa (~ no meio e literal)" 0 'cd C:/Users/RUNNER~1/x && gh pr merge 5 --repo dono/repo --squash'
 
+# #736, quarta volta do revisor do fluxo: o mapa de cwd sai da leitura antiga, a do
+# segmentador deste gate. Com a leitura nova, `<# x #>` no PowerShell virava comentario
+# do bash, o `cd <B>` sumia do mapa e o gh lia o corpo.txt de A (sem closes): exit 0.
+caso_cwd_ps() { # $1 rotulo, $2 comando (ferramenta PowerShell, cwd em A)
+  local rot="$1" cmd="$2" ex
+  echo
+  echo "== ($rot) PowerShell, cwd A: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_COM_MARCADOR=""
+    PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN_DIRA" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  if [ $ex -eq 2 ] && grep -q "#999" "$SBP/err-$rot"; then test_ok "$rot exit 2 citando #999"
+  else test_fail "$rot exit 2 citando #999 (foi $ex: $(cat "$SBP/err-$rot"))"; fi
+}
+caso_cwd_ps 736-ps1 "<# x #>; cd $SBP_WIN_DIRB
+gh pr create -t x --body-file corpo.txt"
+caso_cwd_ps 736-ps2 "echo a <# x #>; Set-Location $SBP_WIN_DIRB
+gh pr create -t x --body-file corpo.txt"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

@@ -346,6 +346,17 @@ function definirLeituraAntiga(ligada) { leituraAntiga = ligada === true; }
 // e de mensagem de commit, desde a D3) consulta isto para chamar como a base na
 // leitura antiga (terceira volta do revisor do fluxo, achado 1).
 function emLeituraAntiga() { return leituraAntiga; }
+// Roda `fn` com a leitura antiga e devolve o resultado. Para os gates fora da D4
+// (`gate-fechar-issue`, `gate-subagente-sem-gh`, `gate-publicacao-destino`): eles
+// segmentam a linha com o próprio segmentador, o da base, e buscam o cwd de cada
+// segmento no mapa de `cwdPorSegmento`; o mapa tem de sair da mesma leitura. Com a
+// nova, `<# x #>; cd X` no PowerShell lia o `#>` como comentário do bash e perdia o
+// `cd` (quarta volta do revisor do fluxo, achado 1).
+function comLeituraAntiga(fn) {
+  const antes = leituraAntiga;
+  leituraAntiga = true;
+  try { return fn(); } finally { leituraAntiga = antes; }
+}
 
 function segmentosComAspas(cmd, ehPowerShell = false, opcoes = {}) {
   const dialeto = leituraAntiga ? "sem-escape" : (opcoes.dialeto || (ehPowerShell ? "powershell" : "bash"));
@@ -995,6 +1006,7 @@ module.exports = {
   segmentosComAspas,
   definirLeituraAntiga,
   emLeituraAntiga,
+  comLeituraAntiga,
   dialetoDoWrapper,
   extrairUltimoDirGit,
   contemSubshellOuGrupo,

@@ -89,16 +89,16 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "3b678f86b68e47ebadde3b55fc71826e4dbe8489",
+      "head": "dda08240fc06ceb4cebf410e07d209792e95e54c",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "adeb3641f2eb8a090",
+        "agente_id": "ad7bc7d790412f203",
         "veredito": "reprovado",
         "em": "2026-11-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-adeb3641f2eb8a090.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ad7bc7d790412f203.jsonl"
       }
     ],
     "achados": 4,
@@ -126,6 +126,18 @@
             "veredito": "reprovado",
             "em": "2026-11-25",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ac87a8be9aae90eae.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "adeb3641f2eb8a090",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-adeb3641f2eb8a090.jsonl"
           }
         ]
       }

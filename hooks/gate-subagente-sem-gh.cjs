@@ -39,7 +39,9 @@ const {
   OPERADORES_DE_DOIS, colapsaContinuacaoDeLinhaNoTopo, semContrabarra,
 } = require("./lib/tokens-comando.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica, restoDepoisDoHeredoc } = require("./lib/heredoc.cjs");
-const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
+const { cwdPorSegmento: cwdPorSegmentoDaLib, normalizarMsys, comLeituraAntiga } = require("./lib/cwd-efetivo.cjs");
+// #736: o mapa de cwd sai da leitura antiga, a mesma da base (ver comLeituraAntiga).
+const cwdPorSegmento = (...a) => comLeituraAntiga(() => cwdPorSegmentoDaLib(...a));
 
 /**
  * D2 — tabela de VERBOS DE ESCRITA por família de subcomando `gh`. A linha

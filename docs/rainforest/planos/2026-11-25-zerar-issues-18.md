@@ -241,10 +241,32 @@ mutacao:
 prova-na-base: verde — casos novos; contra o commit d6a4098b os sete comandos do revisor saem 0 (base 2), e a propriedade nova dá 1 violação (`prop-contra.cjs`, 2026-11-26)
 pronto quando: `bash hooks/testa-gate-staging-total.sh` com 0 falhas, `ok` nos casos `{1,2}` e a linha `propriedade: ... violacoes 0`; `bash hooks/testa-gate-mensagem-commit.sh` e `bash hooks/testa-cwd-efetivo.sh` com 0 falhas.
 
+### 12. Gates fora da D4 montam o mapa de cwd na leitura antiga (quarta volta do revisor do fluxo) [tipo: implementar]
+atende: D4
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/gate-subagente-sem-gh.cjs`, `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 11
+busca:
+- catalogo | emLeituraAntiga e definirLeituraAntiga em hooks/lib/cwd-efetivo.cjs | estendo; é a chave das tarefas 10 e 11
+- repo | grep -n "cwdPorSegmento(" hooks/gate-fechar-issue.cjs hooks/gate-subagente-sem-gh.cjs hooks/gate-publicacao-destino.cjs | quatro chamadas, todas iguais à base; os três gates não mudaram no diff, a diferença vinha só da lib
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: `comLeituraAntiga(fn)` exportada; roda `fn` com a leitura antiga e restaura a anterior.
+- `hooks/gate-fechar-issue.cjs`, `hooks/gate-subagente-sem-gh.cjs` e `hooks/gate-publicacao-destino.cjs`: `cwdPorSegmento` local que chama o da lib dentro de `comLeituraAntiga`.
+- `hooks/testa-gate-fechar-issue.sh`: `<# x #>; cd <B>` e `echo a <# x #>; Set-Location <B>` + quebra + `gh pr create --body-file corpo.txt` na ferramenta PowerShell, cwd em A, barram citando o `Closes #999` de B.
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const cwdPorSegmento = (...a) => comLeituraAntiga(() => cwdPorSegmentoDaLib(...a));`
+  para: `const cwdPorSegmento = (...a) => cwdPorSegmentoDaLib(...a);`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, casos "736-ps1" e "736-ps2"
+  timeout: `1200000`
+prova-na-base: verde — casos novos; contra o commit 1a4c2190 os sete comandos do revisor (`min4.cjs`) saem 0 em cinco, com a base em 2, conferido em 2026-11-26
+pronto quando: `bash hooks/testa-gate-fechar-issue.sh` com 0 falhas e `ok` nos casos `736-ps1` e `736-ps2`; `node hooks/testa-gate-subagente-sem-gh.cjs` e `bash hooks/testa-gate-publicacao-destino.sh` com 0 falhas.
+
 ### 4. Versão 2.17.4 [tipo: docs]
 atende: D1, D2, D3, D4
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 11
+depende de: 12
 O que fazer:
 - Versão 2.17.4 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.4 no `CHANGELOG.md`: o segmentador dos gates lê escape, `$'...'` e comentário como o bash e o PowerShell (#736); o texto de wrapper chamado pelo PowerShell segue na leitura antiga.
