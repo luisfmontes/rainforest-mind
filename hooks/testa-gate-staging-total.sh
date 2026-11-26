@@ -827,6 +827,44 @@ JS
 if node "$PROP" "$SRC" "$RAIZ" "$R" 120; then ok=$((ok+1)); echo "  ok   D4: base barra => head barra, e nunca exit 1"
 else falhou=$((falhou+1)); echo "  FALHA D4: propriedade base barra => head barra"; fi
 
+# D4, excecao nao falha aberto (revisao de seguranca do commit bb6ee442): um main falso
+# reconhece a leitura pelo numero de segmentos de `echo $'a\'; x` (1 na nova, 2 na
+# antiga) e lanca excecao numa delas.
+FALSO="$RAIZ/main-falso.cjs"
+cat > "$FALSO" <<'JS'
+const [LIB, MODO] = process.argv.slice(2);
+const { segmentosComAspas } = require(LIB + "/cwd-efetivo.cjs");
+const B = String.fromCharCode(92);
+const antiga = () => segmentosComAspas("echo $'a" + B + "'; x").length === 2;
+function main() {
+  if (MODO === "segunda-lanca-dentro-de-catch") {
+    // a segunda passada roda de dentro deste process.exit(0)
+    try { process.exit(0); } catch {}
+    process.exit(0);
+  }
+  if (MODO === "primeira-lanca-antiga-barra") {
+    if (!antiga()) throw new Error("leitura nova quebrou");
+    process.exit(2);
+  }
+  if (MODO === "primeira-lanca-antiga-libera") {
+    if (!antiga()) throw new Error("leitura nova quebrou");
+    process.exit(0);
+  }
+}
+const mainReal = MODO === "segunda-lanca-dentro-de-catch"
+  ? () => { if (antiga()) throw new Error("leitura antiga quebrou"); main(); }
+  : main;
+require(LIB + "/duas-leituras.cjs").rodarComDuasLeituras(mainReal);
+JS
+excecao() { # nome, modo, exit esperado
+  local got; printf '%s' '{"tool_input":{"command":"echo a # x"}}' | node "$FALSO" "$SRC/hooks/lib" "$2" >/dev/null 2>&1; got=$?
+  if [ "$got" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1 (exit $got)"
+  else falhou=$((falhou+1)); echo "  FALHA $1: esperava $3, veio $got"; fi
+}
+excecao "D4: excecao na segunda passada dentro de try/catch barra" segunda-lanca-dentro-de-catch 2
+excecao "D4: excecao na primeira passada, a antiga barra"          primeira-lanca-antiga-barra 2
+excecao "D4: excecao na primeira passada, a antiga decide e libera" primeira-lanca-antiga-libera 0
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

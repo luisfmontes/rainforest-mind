@@ -13,6 +13,12 @@
  * diferente de 0 sai na hora. A segunda passada só roda quando o comando tem algum
  * caractere em que as leituras podem divergir (contrabarra, crase, `#`, CR, `$'`):
  * sem eles as duas produzem os mesmos segmentos.
+ *
+ * Exceção não falha aberto (revisão de segurança do commit bb6ee442). Na primeira
+ * passada, quem decide passa a ser a segunda (a leitura antiga, a da base). Na
+ * segunda, o gate barra: ela roda de dentro do `process.exit` da primeira, e uma
+ * exceção ali subiria para um `try/catch` do gate, que seguiria com a leitura antiga
+ * ligada até sair 0.
  */
 const fs = require("fs");
 const { definirLeituraAntiga } = require("./cwd-efetivo.cjs");
@@ -39,18 +45,34 @@ function rodarComDuasLeituras(main) {
   };
   const sairOriginal = process.exit;
   let segunda = false;
+
+  const rodaSegunda = () => {
+    segunda = true;
+    definirLeituraAntiga(true);
+    let codigo = 0;
+    try {
+      main();
+    } catch (e) {
+      process.stderr.write("[duas-leituras] a leitura antiga falhou (" + (e && e.message) + ") — bloqueado por precaução.\n");
+      codigo = 2;
+    }
+    sairOriginal.call(process, codigo);
+  };
+
   const sair = (codigo) => {
     const c = codigo === undefined ? (process.exitCode || 0) : codigo;
-    if (!segunda && c === 0 && precisaDaSegunda(entrada)) {
-      segunda = true;
-      definirLeituraAntiga(true);
-      main();
-      sairOriginal.call(process, 0);
-    }
+    if (!segunda && c === 0 && precisaDaSegunda(entrada)) rodaSegunda();
     sairOriginal.call(process, c);
   };
   process.exit = sair;
-  main();
+
+  try {
+    main();
+  } catch (e) {
+    if (segunda) throw e;
+    process.stderr.write("[duas-leituras] a leitura nova falhou (" + (e && e.message) + ") — decide a antiga.\n");
+    rodaSegunda();
+  }
   sair(0);
 }
 

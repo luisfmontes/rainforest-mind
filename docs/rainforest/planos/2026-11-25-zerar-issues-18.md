@@ -207,6 +207,7 @@ O que fazer:
 - `hooks/lib/cwd-efetivo.cjs`: `definirLeituraAntiga(ligada)` exportada; com ela ligada, `segmentosComAspas` usa "sem-escape" em toda chamada. Saem os remendos da aspa aberta no fim (tarefa 8) e do separador escapado depois de `<`/`>` (tarefa 9).
 - `hooks/lib/duas-leituras.cjs`: `rodarComDuasLeituras(main)` lê a entrada uma vez, serve-a às duas passadas e troca `process.exit`: exit 0 da primeira passada roda a segunda com a leitura antiga, se o comando tem contrabarra, crase, `#`, CR ou `$'`; exit diferente de 0 sai na hora.
 - Os três gates terminam em `require("./lib/duas-leituras.cjs").rodarComDuasLeituras(main)` no lugar de `main()`.
+- Exceção não falha aberto (revisão de segurança do commit bb6ee442): exceção na primeira passada deixa a segunda decidir; exceção na segunda sai 2, antes de subir para algum `try/catch` do gate. Casos `D4: excecao ...` na bateria do staging, com um `main` falso.
 - `hooks/testa-gate-staging-total.sh`: os cinco falsos positivos da base voltam a esperar exit 2; casos nomeados da segunda volta do revisor (escape de `(`, `)`, `{`, `}` no alvo de redirecionamento, `\|&`, crase + CR + LF no PowerShell, 17 escapes depois de `>`); e a seção "D4: propriedade", que extrai `hooks/lib` e os dois gates da base `e9d2b14e` por `git show` e compara o exit numa amostra com semente fixa (base barra ⇒ head barra, head nunca 1).
 - `hooks/testa-cwd-efetivo.sh`: `(736p)` vira o teste da chave de leitura; `(736s)` confere que a leitura nova não fabrica segmento nem marca incerto.
 mutacao:
