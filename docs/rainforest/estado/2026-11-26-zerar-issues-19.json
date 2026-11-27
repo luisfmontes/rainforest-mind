@@ -1,0 +1,183 @@
+{
+  "slug": "2026-11-26-zerar-issues-19",
+  "titulo": "2026-11-26-zerar-issues-19",
+  "criado_em": "2026-11-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "design": "docs/rainforest/design/2026-11-26-zerar-issues-19.md",
+    "decisoes": 3,
+    "em": "2026-11-26"
+  },
+  "plano": {
+    "status": "ok",
+    "plano": "docs/rainforest/planos/2026-11-26-zerar-issues-19.md",
+    "tarefas": 5,
+    "em": "2026-11-26"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-26",
+    "comando": "bash hooks/testa-cwd-efetivo.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-staging-total.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-26-zerar-issues-19",
+    "saida": "114 ok, 0 falha (736x, 736x3, 736y, 736z, 736w2, 736y2 ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 674 ok, 0 falha (736-cd1 a cd3 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 385 ok, 0 falha (736-cd1 a cd10 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 e 6-13 vermelho, tarefa 5 pulada (n/a)",
+    "tarefas_ok": 13,
+    "tarefas": 13,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "(736x) cd/pushd/popd com # no fim movem como sem ele, nas duas leituras"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "736-cd1: do worktree, cd <principal> #c + quebra + git add -A barra"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "736-cd2: Set-Location <B> #c + gh pr create --body-file barra citando #999"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "736-b2: aspa dentro de comentario nao esconde a bateria de baixo"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "troca de versao e changelog"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "(736w2) # depois de espaco escapado ou de branco que o bash nao conta nao e comentario"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "(736y2) PowerShell: a contrabarra e literal e o # depois dela abre comentario"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "736-cd3 exit 2, cwd incerto"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "(736x3) parentese, chave e ; no comentario do movedor"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "(736x3) pushd A #! ; popd na leitura antiga fica incerto"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "(736x3) command cd A # (x), cd A 2>&1 # (x)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "(736x3) cd A + # nota (importante) + x"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "(736x3) cd A # a 2>x (b)"
+      }
+    ],
+    "em": "2026-11-27",
+    "reaberturas": 3
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "bd07a6445d124ff07e5b9a622f63b5bc2fb8414e",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-11-26-zerar-issues-19.json",
+        "docs/rainforest/portoes/2026-11-26-zerar-issues-19-impasse.md"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae19bf94ad903b92c",
+        "veredito": "ok",
+        "em": "2026-11-27",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae19bf94ad903b92c.jsonl"
+      }
+    ],
+    "achados": 3,
+    "base": "b76d80f8",
+    "head": "bd07a644",
+    "resumo": "quarta volta (rodada extra liberada pelo usuario, opcao A) aprovou b76d80f8..bd07a644; tres [baixa]: linha so de comentario neutra tira incerto acidental sem mudar exit; cd -P/-L e pushd -- nao seguidos (furo anterior, outro mecanismo, Issue propria no fechar); falsos positivos D3 ja declarados",
+    "em": "2026-11-27",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "af862fecc9ae399f6",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-af862fecc9ae399f6.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a6e74c1590953a247",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a6e74c1590953a247.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a5250d3ce2013aeaf",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a5250d3ce2013aeaf.jsonl"
+          },
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae19bf94ad903b92c",
+            "veredito": "ok",
+            "em": "2026-11-27",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae19bf94ad903b92c.jsonl"
+          }
+        ]
+      }
+    ],
+    "rodadas_extra": [
+      {
+        "texto": "usuario escolheu A (recomendado) em 2026-11-27: liberar a quarta volta, que ja aprovou em bd07a644",
+        "em": "2026-11-27"
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash hooks/testa-cwd-efetivo.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-staging-total.sh; node hooks/testa-corpus-comandos.cjs; grep version .claude-plugin/plugin.json .codex-plugin/plugin.json; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-26-zerar-issues-19",
+    "saida": "114 ok, 0 falha / ok: 66 falhou: 0 / 674 ok, 0 falha / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 385 ok, 0 falha (propriedade violacoes 0) / ok: 24 falhou: 0 / 2.17.5 nas duas plugin.json e ## 2.17.5 no CHANGELOG / tarefas 1-4 e 6-13 vermelho, 5 pulada (n/a)",
+    "sensor_externo": "bash hooks/testa-gate-staging-total.sh",
+    "em": "2026-11-27",
+    "head": "226659dba7ccd7658c088bd09eebf8f7b06127e0"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

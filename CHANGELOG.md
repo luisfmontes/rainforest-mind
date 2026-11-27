@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.17.5 — 2026-11-26
+
+O resto da #736: um comentário no fim do `cd` e o gate de bateria sem timeout.
+
+- **`cd X #comentário` move o diretório (#736).** Os gates seguiam o `cd`, `pushd`, `popd`, `Set-Location`, `Push-Location` e `Pop-Location` só quando o comando terminava no destino. Com um comentário depois, o `cd` não contava e o comando de baixo era julgado no diretório de antes. A partir de um worktree, `cd <checkout principal> #c` seguido de `git add -A` passava no gate de staging em massa, e o `git add -A` rodava no principal. O de fechar Issue lia o `--body-file` no diretório errado. Agora o comentário faz parte do `cd` quando o `#` vem depois de espaço ou tab sem escape, como o bash o lê (no bash, `cd X\ #c` e `cd X<NBSP>#c` não abrem comentário, o `cd` falha no shell e seguem sem mover; no PowerShell a contrabarra é literal, e `Set-Location C:\p\ #c` move), e o `cd` para o principal com comentário barra como o sem comentário, também com parêntese no comentário. Do principal, `cd <worktree> #c` segue barrando, como antes: a leitura antiga dos gates, que não sabe de comentário, fica incerta e vale a mais estrita. Os gates de fechar Issue, de `gh` em subagente e de destino de publicação passam a barrar o `--body-file` relativo depois de um `cd` com comentário, em vez de lê-lo no diretório errado.
+- **O gate de bateria sem timeout não perde a linha de baixo (#736).** Em subagente, `echo hi # don't`, `echo $'\' <<'A''` ou um comentário terminado em contrabarra, seguidos de uma bateria na linha de baixo, deixavam a bateria rodar sem `timeout`. O gate passa a ler o comando duas vezes, do jeito de antes e do jeito dos outros gates, e barra se qualquer uma achar bateria.
+- **O preço:** `cat <<EOF` com o delimitador sem aspas e uma bateria no corpo passa a barrar no gate de bateria, porque esse corpo expande `$(...)` e conta como comando. Com aspas (`cat <<'EOF'`) segue passando.
+- **Limites conhecidos.** O gate de bateria continua só para a ferramenta Bash. `cd X <# c #>` no PowerShell (comentário de bloco depois do destino) segue sem mover.
+
 ## 2.17.4 — 2026-11-25
 
 Os gates passam a separar os comandos de uma linha como o shell separa.

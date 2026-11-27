@@ -876,5 +876,40 @@ excecao "D4: excecao na primeira passada, a antiga barra"          primeira-lanc
 excecao "D4: excecao na primeira passada, a antiga decide e libera" primeira-lanca-antiga-libera 0
 
 echo
+echo "== rodada 19 (#736, D1): comentario no fim do cd =="
+# O `#c` fazia a regex do movedor nao casar: o cd nao movia e o git add -A era
+# julgado no cwd do evento. Mao dupla: com o comentario, o exit e o de sem ele.
+gate "736-cd1: do worktree, cd <principal> #c + quebra + git add -A barra" 2 "$(bml "cd $R #c
+git add -A" "$WT")"
+gate "736-cd2: do worktree, cd <principal> + quebra + git add -A barra (referencia)" 2 "$(bml "cd $R
+git add -A" "$WT")"
+# Na D4 a leitura antiga (que nao sabe de comentario) fica incerta e usa o cwd do evento:
+# a forma com comentario segue barrando, como na base (a mais estrita das duas vale).
+gate "736-cd3: do principal, cd <worktree> #c + quebra + git add -A barra (como na base)" 2 "$(bml "cd $WT #c
+git add -A")"
+gate "736-cd8: do worktree, cd <principal> # (x) + quebra + git add -A barra" 2 "$(bml "cd $R # (x)
+git add -A" "$WT")"
+# Terceira volta do revisor do fluxo: prefixo/redirecionamento antes do comentario, e
+# comentario em linha propria com parentese.
+gate "736-cd9: do worktree, command cd <principal> 2>&1 # (x) + quebra + git add -A barra" 2 "$(bml "command cd $R 2>&1 # (x)
+git add -A" "$WT")"
+gate "736-cd10: do worktree, cd <principal> + quebra + # nota (x) + quebra + git add -A barra" 2 "$(bml "cd $R
+# nota (importante)
+git add -A" "$WT")"
+gate "736-cd4: do worktree, Set-Location <principal> #c + quebra + git add -A barra (PowerShell)" 2 "$(pml "Set-Location $R #c
+git add -A" "$WT")"
+# Revisor do fluxo, primeira volta: `\ #` e NBSP antes do `#` nao abrem comentario
+# no bash; o `cd` falha e o `git add -A` roda no principal.
+gate "736-cd5: do principal, cd <worktree>\\ #c + quebra + git add -A barra" 2 "$(bml "cd $WT\\ #c
+git add -A")"
+# Revisao de seguranca automatica do commit de313a38: no PowerShell a contrabarra e
+# literal, e `Set-Location <principal>\ #c` move para o principal.
+gate "736-cd7: do worktree, Set-Location <principal>\\ #c + quebra + git add -A barra (PowerShell)" 2 "$(pml "Set-Location $R\\ #c
+git add -A" "$WT")"
+NBSP736=$(printf '\302\240')
+gate "736-cd6: do principal, cd <worktree><NBSP>#c + quebra + git add -A barra" 2 "$(bml "cd $WT$NBSP736#c
+git add -A")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

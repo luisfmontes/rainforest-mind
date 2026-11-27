@@ -718,6 +718,85 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
 }
 
 console.log();
+console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
+{
+  const { comLeituraAntiga } = require(process.argv[2]);
+  const mapa = (cmd, ps = false) => cwdPorSegmento(cmd, testDir, ps).map((e) => [e.cwd, e.incerto]);
+  const igual = (a, b, msg) => eq(JSON.stringify(a), JSON.stringify(b), msg);
+  test("(736x) cd/pushd/popd com # no fim movem como sem ele, nas duas leituras", () => {
+    igual(mapa(`cd '${testA}' #c\nx`), mapa(`cd '${testA}'\nx`), "cd com aspas");
+    igual(mapa(`cd ${testA.split(path.sep).join("/")} #c\nx`), mapa(`cd ${testA.split(path.sep).join("/")}\nx`), "cd sem aspas");
+    eq(mapa(`cd '${testA}' #c\nx`)[1][0], testA, "o x roda em A");
+    igual(mapa(`pushd '${testA}' #c\npopd #c\nx`), mapa(`pushd '${testA}'\npopd\nx`), "pushd e popd");
+    // A leitura antiga nao sabe de comentario (corta no `;` de dentro dele): incerto.
+    eq(comLeituraAntiga(() => mapa(`cd '${testA}' #c\nx`))[1][1], true, "leitura antiga: incerto");
+  });
+  test("(736x3) parentese, chave e ; no comentario do movedor (segunda volta do revisor do fluxo)", () => {
+    const A = testA.split(path.sep).join("/");
+    for (const c of ["# (x)", "# x)", "# $(x)", "# ((x))", "# () { :; }", "# ${x}", "# {"]) {
+      igual(mapa(`cd ${A} ${c}\nx`), mapa(`cd ${A}\nx`), `cd A ${c}`);
+    }
+    igual(mapa(`Set-Location ${A} # (x)\nx`, true), mapa(`Set-Location ${A}\nx`, true), "Set-Location A # (x)");
+    // Terceira volta: prefixo e redirecionamento antes do comentario, e comentario em
+    // linha propria. O mapa do x (ultimo segmento) e o da forma sem comentario.
+    const ult = (r) => JSON.stringify(r[r.length - 1]);
+    for (const [com, sem] of [
+      [`command cd ${A} # (x)\nx`, `command cd ${A}\nx`],
+      [`builtin cd ${A} # $(x)\nx`, `builtin cd ${A}\nx`],
+      [`\\cd ${A} # (x)\nx`, `\\cd ${A}\nx`],
+      [`cd ${A} 2>&1 # (x)\nx`, `cd ${A} 2>&1\nx`],
+      [`cd ${A} >/dev/null # (x)\nx`, `cd ${A} >/dev/null\nx`],
+      [`cd ${A}\n# nota (importante)\nx`, `cd ${A}\nx`],
+      // Revisao de seguranca automatica do commit 28ae02cd: a normalizacao mexe no texto
+      // do comentario (redirecionamento dentro dele); o corte e achado no cru.
+      [`cd ${A} # a 2>x (b)\nx`, `cd ${A}\nx`],
+      [`command cd ${A} # a >f $(b)\nx`, `command cd ${A}\nx`],
+    ]) eq(ult(mapa(com)), ult(mapa(sem)), JSON.stringify(com));
+    eq(ult(mapa(`Set-Location ${A} 2>&1 # (x)\nx`, true)), ult(mapa(`Set-Location ${A} 2>&1\nx`, true)), "PowerShell Set-Location A 2>&1 # (x)");
+    eq(ult(mapa(`Set-Location ${A}\n# nota (x)\nx`, true)), ult(mapa(`Set-Location ${A}\nx`, true)), "PowerShell comentario em linha propria");
+    // Leitura antiga: linha so de comentario com ( segue incerta (o ; pode ter cortado ali).
+    eq(comLeituraAntiga(() => mapa(`# (a); cd ${A}\nx`))[2][1], true, "leitura antiga: # (a); cd A fica incerto");
+    // Na leitura antiga o `;` do comentario corta a linha: `pushd b #! ; popd` nao pode
+    // sair com o cwd de antes como certeza (o bash fica em b).
+    const r = comLeituraAntiga(() => mapa(`pushd ${A} #! ; popd\nx`));
+    eq(r[r.length - 1][1], true, "leitura antiga: pushd b #! ; popd fica incerto");
+  });
+  test("(736y) PowerShell: Set-Location, Push-Location e Pop-Location com # no fim", () => {
+    igual(mapa(`Set-Location '${testA}' #c\nx`, true), mapa(`Set-Location '${testA}'\nx`, true), "Set-Location");
+    igual(mapa(`Push-Location '${testA}' #c\nPop-Location #c\nx`, true), mapa(`Push-Location '${testA}'\nPop-Location\nx`, true), "Push/Pop-Location");
+  });
+  test("(736z) controles: # no meio da palavra e entre aspas segue no destino", () => {
+    eq(mapa("cd a#b\nx")[1][0], path.join(testDir, "a#b"), "cd a#b");
+    eq(mapa("cd 'a #b'\nx")[1][0], path.join(testDir, "a #b"), "cd 'a #b'");
+    eq(mapa("cd #c\nx")[1][1], true, "cd #c segue incerto");
+  });
+  test("(736w2) # depois de espaco escapado ou de branco que o bash nao conta nao e comentario", () => {
+    // Revisor do fluxo, primeira volta: o `cd` falha no shell e o cwd fica.
+    const BS = String.fromCharCode(92);
+    const A = testA.split(path.sep).join("/");
+    for (const [rot, sep] of [["contrabarra", BS + " "], ["NBSP", " "], ["FF", "\f"], ["VT", "\v"], ["U+2003", " "], ["crase", "` "]]) {
+      eq(mapa(`cd ${A}${sep}#c\nx`)[1][0], testDir, `cd A${rot}#c nao move`);
+      eq(mapa(`pushd ${A}${sep}#c\nx`)[1][0], testDir, `pushd A${rot}#c nao move`);
+    }
+    eq(mapa(`cd ${A}\t#c\nx`)[1][0], testA, "tab abre comentario e move");
+  });
+  test("(736y2) PowerShell: a contrabarra e literal e o # depois dela abre comentario; a crase escapa", () => {
+    // Revisao de seguranca automatica do commit de313a38. `C:\\p\\ #c` e caminho comum no Windows.
+    const BS = String.fromCharCode(92);
+    const A = testA.split(path.sep).join("/");
+    for (const mov of ["cd", "Set-Location", "Push-Location", "pushd"]) {
+      eq(mapa(`${mov} ${A}${BS} #c\nx`, true)[1][0], path.resolve(testA + BS), `PowerShell ${mov} A\\ #c move`);
+      eq(mapa(`${mov} ${A}${BS} #c\nx`)[1][0], testDir, `bash ${mov} A\\ #c nao move`);
+      eq(mapa(`${mov} ${A}\` #c\nx`, true)[1][0], testDir, `PowerShell ${mov} A crase #c nao move`);
+    }
+    // Sem o dialeto (o gate-fechar-issue chama assim tambem pelo PowerShell), so a leitura
+    // do PowerShell casa: incerto, nunca o cwd de antes com certeza.
+    eq(mapa(`Set-Location ${A}${BS} #c\nx`)[1][1], true, "sem dialeto, Set-Location A\\\\ #c fica incerto");
+    eq(mapa(`cd ${A}${BS} #c\nx`)[1][1], true, "sem dialeto, cd A\\\\ #c fica incerto");
+  });
+}
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

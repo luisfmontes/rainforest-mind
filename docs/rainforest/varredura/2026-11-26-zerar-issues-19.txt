@@ -1,0 +1,72 @@
+Data: 2026-11-26
+Termos: gate-bateria-sem-timeout, segmentosComAspasESubcomandos, resolverMovedor, cd com comentario
+
+$ gh issue list --state all --search "gate-bateria-sem-timeout" --limit 200 --json number,title,state
+[{"number":736,"state":"OPEN","title":"Segmentação: gate-bateria-sem-timeout e cd X #comentário ainda perdem a linha (resto da #736 após #741)"},{"number":740,"state":"CLOSED","title":"gate-bateria-sem-timeout: segmentador proprio esconde a linha de baixo (familia #736)"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":689,"state":"CLOSED","title":"gate-fechar-issue: here-string com palavra nua e aspa escapada escondem gh issue close"},{"number":606,"state":"CLOSED","title":"Catraca de mutação repete o baseline da mesma bateria a cada tarefa"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":362,"state":"CLOSED","title":"gate-fechar-issue barra laco sem gh quando a variavel esta sem aspas"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"}]
+
+
+$ gh issue list --state all --search "segmentosComAspasESubcomandos" --limit 200 --json number,title,state
+[{"number":736,"state":"OPEN","title":"Segmentação: gate-bateria-sem-timeout e cd X #comentário ainda perdem a linha (resto da #736 após #741)"},{"number":740,"state":"CLOSED","title":"gate-bateria-sem-timeout: segmentador proprio esconde a linha de baixo (familia #736)"}]
+
+
+$ gh issue list --state all --search "resolverMovedor" --limit 200 --json number,title,state
+[{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"}]
+
+
+$ gh issue list --state all --search "cd com comentario" --limit 200 --json number,title,state
+[{"number":736,"state":"OPEN","title":"Segmentação: gate-bateria-sem-timeout e cd X #comentário ainda perdem a linha (resto da #736 após #741)"},{"number":594,"state":"CLOSED","title":"gate-fechar-issue: temMarcadorEvidencia consulta a Issue no cwd do hook e lê erro como falta de evidência"},{"number":685,"state":"CLOSED","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":707,"state":"CLOSED","title":"gate-publicacao não confere gh api, gh release e gh gist"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh pr list --state all --search "gate-bateria-sem-timeout" --limit 200 --json number,title,state
+[{"number":741,"state":"MERGED","title":"Segmentador lê escape, $'...' e comentário como o shell; duas leituras nos gates (2.17.4)"},{"number":674,"state":"MERGED","title":"Gate barra subagente quando o git não responde (2.10.1)"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":630,"state":"MERGED","title":"Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0)"},{"number":568,"state":"MERGED","title":"Lote 2026-10-19: #523 #531 #553 #559 #543 (1.69.1)"},{"number":348,"state":"MERGED","title":"zerar-issues-10: #346 #344 #342 #341 #340 #339 (1.27.0)"},{"number":532,"state":"MERGED","title":"conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2)"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"}]
+
+
+$ gh pr list --state all --search "segmentosComAspasESubcomandos" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "resolverMovedor" --limit 200 --json number,title,state
+[{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"}]
+
+
+$ gh pr list --state all --search "cd com comentario" --limit 200 --json number,title,state
+[{"number":741,"state":"MERGED","title":"Segmentador lê escape, $'...' e comentário como o shell; duas leituras nos gates (2.17.4)"},{"number":586,"state":"MERGED","title":"gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1)"},{"number":715,"state":"MERGED","title":"Gate de publicação confere o texto de gh issue e gh pr (2.14.1)"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"}]
+
+
+$ git ls-remote --heads origin | grep -F "gate-bateria-sem-timeout"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "segmentosComAspasESubcomandos"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "resolverMovedor"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "cd com comentario"
+(vazio)
+
+$ git log --all --grep="gate-bateria-sem-timeout" --oneline
+3bb5396d Segmentador lê escape, $'...' e comentário como o shell; duas leituras nos gates (2.17.4) (#741)
+90fe5f40 Estado: verificar ok da zerar-issues-18 e duas decisoes de fechamento
+91dce397 gate-bateria-sem-timeout: --listar nao roda bateria
+1509f27b I5 + I6 rodada 2: controle positivo nos 10 gates e caso --max 1
+4d3c9283 Tarefa 13: replay de corpus comandos contra 10 gates
+02d5d99a gate-subagente-sem-gh: nega gh de escrita em subagente (tarefa 1)
+c630a3e5 Merge pull request #347 from luisfmontes/fluxo/agente-sem-background
+e48caf5d gate-bateria-sem-timeout: stdbuf e checagem de sintaxe (revisao 3)
+e75eb2c8 agente-sem-background: gate nega bateria sem timeout em subagente
+1ae9f1fb Tarefa 3 (agente-sem-background): texto acompanha mecanismo, versão e changelog
+
+$ git log --all --grep="segmentosComAspasESubcomandos" --oneline
+(vazio)
+
+$ git log --all --grep="resolverMovedor" --oneline
+bf1e32b4 gate-worktree: normaliza cd em forma MSYS e corrige mensagem de incerto
+63bc4b8a Lote 3 rodada 5: alvosBash e alvosBashEscrita usam o mesmo movedor de diretorio (pushd, popd, env -C)
+
+$ git log --all --grep="cd com comentario" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
