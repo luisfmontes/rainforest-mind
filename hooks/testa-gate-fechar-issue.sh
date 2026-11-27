@@ -4993,9 +4993,25 @@ caso_cwd_bash 736-cd1 "cd $SBP_WIN_DIRB #c
 gh pr create -t x --body-file corpo.txt"
 caso_cwd_ps 736-cd2 "Set-Location $SBP_WIN_DIRB #c
 gh pr create -t x --body-file corpo.txt"
-# PowerShell: a contrabarra e literal, `B\ #c` e B com comentario.
-caso_cwd_ps 736-cd3 "Set-Location $SBP_WIN_DIRB\\ #c
-gh pr create -t x --body-file corpo.txt"
+# PowerShell: a contrabarra e literal, `B\ #c` e B com comentario. O gate chama a lib
+# sem o dialeto, e no bash `B\ #c` nao move: so a leitura do PowerShell casa, o cwd fica
+# incerto e o corpo relativo barra (antes era lido em A e passava).
+(
+  rot=736-cd3
+  echo
+  echo "== ($rot) PowerShell, cwd A: Set-Location B\\ #c + gh pr create --body-file corpo.txt =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_COM_MARCADOR=""
+    PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN_DIRA" "Set-Location $SBP_WIN_DIRB\\ #c
+gh pr create -t x --body-file corpo.txt")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  if [ $ex -eq 2 ] && grep -q "não pôde ser determinado" "$SBP/err-$rot"; then echo ok; else echo "falha ($ex: $(cat "$SBP/err-$rot"))"; fi
+) > "$SBP/res-736-cd3"
+if grep -q "^ok$" "$SBP/res-736-cd3"; then test_ok "736-cd3 exit 2, cwd incerto"
+else test_fail "736-cd3 exit 2, cwd incerto: $(cat "$SBP/res-736-cd3")"; fi
 
 # Resultado final
 echo

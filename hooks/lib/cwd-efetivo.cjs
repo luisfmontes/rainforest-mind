@@ -844,6 +844,18 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
 
+  // #736 (zerar-issues-19): sem o dialeto (`ehPowerShell` falso por omissao, como o
+  // `gate-fechar-issue` chama tambem pela ferramenta PowerShell), `X\ #c` move no
+  // PowerShell e nao no bash. So a leitura do PowerShell casar e sinal de que nao da
+  // para saber qual vale: INCERTO, nunca o cwd de antes com certeza.
+  if (!ehPowerShell) {
+    const P = MOVEDORES_POWERSHELL;
+    if ([P.CD, P.PUSHD, P.SET_LOCATION, P.PUSH_LOCATION].some((re) => re.test(segMovedor))) {
+      estado.incerto = true;
+      return { cwd: estado.atual, incerto: true, soMovedor: true };
+    }
+  }
+
   // `env -C <dir> <cmd>` / `env --chdir=<dir> <cmd>` (GNU coreutils) — muda
   // o cwd SO deste comando, nunca do shell: nao mexe em `estado.atual`, que
   // continua valendo para os segmentos seguintes. NAO e `soMovedor`: o

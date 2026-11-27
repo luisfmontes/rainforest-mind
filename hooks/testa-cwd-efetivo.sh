@@ -758,6 +758,10 @@ console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
       eq(mapa(`${mov} ${A}${BS} #c\nx`)[1][0], testDir, `bash ${mov} A\\ #c nao move`);
       eq(mapa(`${mov} ${A}\` #c\nx`, true)[1][0], testDir, `PowerShell ${mov} A crase #c nao move`);
     }
+    // Sem o dialeto (o gate-fechar-issue chama assim tambem pelo PowerShell), so a leitura
+    // do PowerShell casa: incerto, nunca o cwd de antes com certeza.
+    eq(mapa(`Set-Location ${A}${BS} #c\nx`)[1][1], true, "sem dialeto, Set-Location A\\\\ #c fica incerto");
+    eq(mapa(`cd ${A}${BS} #c\nx`)[1][1], true, "sem dialeto, cd A\\\\ #c fica incerto");
   });
 }
 
