@@ -18,12 +18,12 @@
     "em": "2026-11-26"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-26",
     "comando": "bash hooks/testa-cwd-efetivo.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-staging-total.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-26-zerar-issues-19",
-    "saida": "114 ok, 0 falha (736x, 736x3, 736y, 736z, 736w2, 736y2 ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 674 ok, 0 falha (736-cd1 a cd3 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 383 ok, 0 falha (736-cd1 a cd8 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 e 6-10 vermelho, tarefa 5 pulada (n/a)",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "saida": "114 ok, 0 falha (736x, 736x3, 736y, 736z, 736w2, 736y2 ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 674 ok, 0 falha (736-cd1 a cd3 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 385 ok, 0 falha (736-cd1 a cd10 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 e 6-13 vermelho, tarefa 5 pulada (n/a)",
+    "tarefas_ok": 13,
+    "tarefas": 13,
     "mutacao": [
       {
         "tarefa": 1,
@@ -74,36 +74,49 @@
         "tarefa": 10,
         "resultado": "vermelho",
         "fixture": "(736x3) pushd A #! ; popd na leitura antiga fica incerto"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "(736x3) command cd A # (x), cd A 2>&1 # (x)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "(736x3) cd A + # nota (importante) + x"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "(736x3) cd A # a 2>x (b)"
       }
     ],
     "em": "2026-11-27",
-    "reaberturas": 3,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-27"
-    }
+    "reaberturas": 3
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "ac4ef74748609a17e0bd462e8704d6efcd51ecc0",
-      "caminhos_sujos": []
+      "head": "bd07a6445d124ff07e5b9a622f63b5bc2fb8414e",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-11-26-zerar-issues-19.json",
+        "docs/rainforest/portoes/2026-11-26-zerar-issues-19-impasse.md"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a5250d3ce2013aeaf",
-        "veredito": "reprovado",
-        "em": "2026-11-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a5250d3ce2013aeaf.jsonl"
+        "agente_id": "ae19bf94ad903b92c",
+        "veredito": "ok",
+        "em": "2026-11-27",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae19bf94ad903b92c.jsonl"
       }
     ],
-    "achados": 2,
+    "achados": 3,
     "base": "b76d80f8",
-    "head": "7dee683c",
-    "resumo": "[media] comentario com parentese depois de movedor com prefixo/redirecionamento, ou em linha propria, marcava incerto e o staging liberava git add -A no principal (0 na base e no head); [baixa] residuo D3 no padrao Verificado das mensagens",
+    "head": "bd07a644",
+    "resumo": "quarta volta (rodada extra liberada pelo usuario, opcao A) aprovou b76d80f8..bd07a644; tres [baixa]: linha so de comentario neutra tira incerto acidental sem mudar exit; cd -P/-L e pushd -- nao seguidos (furo anterior, outro mecanismo, Issue propria no fechar); falsos positivos D3 ja declarados",
     "em": "2026-11-27",
-    "tentativas": 3,
     "voltas": [
       {
         "volta": 1,
@@ -128,6 +141,31 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a6e74c1590953a247.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a5250d3ce2013aeaf",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a5250d3ce2013aeaf.jsonl"
+          },
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae19bf94ad903b92c",
+            "veredito": "ok",
+            "em": "2026-11-27",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-ae19bf94ad903b92c.jsonl"
+          }
+        ]
+      }
+    ],
+    "rodadas_extra": [
+      {
+        "texto": "usuario escolheu A (recomendado) em 2026-11-27: liberar a quarta volta, que ja aprovou em bd07a644",
+        "em": "2026-11-27"
       }
     ]
   },
