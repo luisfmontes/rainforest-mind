@@ -256,6 +256,24 @@ caso("echo '$(bash hooks/testa-x.sh)' → 0", r.status, 0);
 r = rodar("bash -c \"bash hooks/testa-x.sh\"", { timeout: 600000 });
 caso("bash -c \"bash hooks/testa-x.sh\" com timeout 600000 → 0", r.status, 0);
 
+// === #736 (zerar-issues-19, D2): a linha de baixo nao some ===
+// Cada uma morria num passo da leitura antiga (mascara por linha, segmentador,
+// colapso de continuacao); o bash roda a bateria nas tres. A contrabarra sai de
+// fromCharCode para o texto do caso ser o comando medido.
+const BS736 = String.fromCharCode(92);
+r = rodar("echo $'" + BS736 + "' <<'A''\nbash hooks/testa-x.sh");
+caso("736-b1: $' com aspa escapada e <<'A'' nao escondem a bateria de baixo → 2", r.status, 2);
+r = rodar("echo hi # don't\nbash hooks/testa-x.sh");
+caso("736-b2: aspa dentro de comentario nao esconde a bateria de baixo → 2", r.status, 2);
+r = rodar("echo hi #x" + BS736 + "\nbash hooks/testa-x.sh");
+caso("736-b3: comentario terminado em contrabarra nao junta a bateria de baixo → 2", r.status, 2);
+// D3: heredoc sem aspas no delimitador expande $(...); a mascara da lib nao o
+// isenta, e a linha do corpo passa a contar. Com aspas (caso 6) segue 0.
+r = rodar("cat <<EOF\nbash hooks/testa-gate-worktree.sh\nEOF");
+caso("736-b4: cat <<EOF sem aspas com bateria no corpo → 2 (D3)", r.status, 2);
+r = rodar("echo hi # don't\nls");
+caso("736-b5: controle, comentario com aspa e linha sem bateria → 0", r.status, 0);
+
 // Caso 7: payload sem agent_id com bateria sem timeout → 0 (janela principal)
 r = rodar("bash hooks/testa-gate-worktree.sh", { subagente: false });
 caso("bash hooks/testa-gate-worktree.sh sem timeout, sem agent_id (janela) → 0", r.status, 0);

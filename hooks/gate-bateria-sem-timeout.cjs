@@ -26,6 +26,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { colapsaContinuacaoDeLinha, tokensComAspas, posicaoDeComando, textoAPartir, desempacotarWrapperDeString, pularFlagsDoWrapper } = require("./lib/tokens-comando.cjs");
+const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
+const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
 
 // Corpo de heredoc é texto, não comando
 function semCorpoDeHeredoc(comando) {
@@ -323,9 +325,25 @@ function main() {
   // Divide em segmentos respeitando aspas e crases/$(...)
   const segmentos = segmentosComAspasESubcomandos(cmdLimpo);
 
+  // #736 (zerar-issues-19, D2): segunda leitura, sobre o comando CRU. A de cima
+  // perde a linha de baixo em tres passos diferentes: o colapso junta `#x\` com a
+  // quebra, a mascara por linha acha `<<'A'` dentro de `$'\' <<'A''`, e o
+  // segmentador abre aspa no `'` de `# don't`. A lib le os tres como o bash. Cada
+  // segmento dela passa pelo segmentador daqui, que separa `$(...)` e crase (a lib
+  // os deixa dentro do segmento). Barra se qualquer leitura achar bateria: o que a
+  // de cima barrava continua barrando. Excecao na segunda: decide a primeira.
+  const segmentosNovos = [];
+  try {
+    for (const s of segmentosComAspas(mascararCorposDeHeredoc(comando), false)) {
+      segmentosNovos.push(...segmentosComAspasESubcomandos(s));
+    }
+  } catch {
+    segmentosNovos.length = 0;
+  }
+
   // Coleta análises de todos os segmentos
   const analises = [];
-  for (const segmento of segmentos) {
+  for (const segmento of segmentos.concat(segmentosNovos)) {
     const analise = analisaSegmento(segmento);
     if (analise.ehBateria) {
       analises.push(analise);

@@ -1,0 +1,32 @@
+{
+  "slug": "2026-11-26-zerar-issues-19",
+  "titulo": "2026-11-26-zerar-issues-19",
+  "criado_em": "2026-11-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "design": "docs/rainforest/design/2026-11-26-zerar-issues-19.md",
+    "decisoes": 3,
+    "em": "2026-11-26"
+  },
+  "plano": {
+    "status": "ok",
+    "plano": "docs/rainforest/planos/2026-11-26-zerar-issues-19.md",
+    "tarefas": 5,
+    "em": "2026-11-26"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

@@ -4973,6 +4973,27 @@ gh pr create -t x --body-file corpo.txt"
 caso_cwd_ps 736-ps2 "echo a <# x #>; Set-Location $SBP_WIN_DIRB
 gh pr create -t x --body-file corpo.txt"
 
+# #736 (zerar-issues-19, D1): `cd B #c` move para B. Sem isto a regex do movedor
+# nao casava e o corpo era lido em A.
+caso_cwd_bash() { # $1 rotulo, $2 comando (ferramenta Bash, cwd em A)
+  local rot="$1" cmd="$2" ex
+  echo
+  echo "== ($rot) Bash, cwd A: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_COM_MARCADOR=""
+    PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN_DIRA" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  if [ $ex -eq 2 ] && grep -q "#999" "$SBP/err-$rot"; then test_ok "$rot exit 2 citando #999"
+  else test_fail "$rot exit 2 citando #999 (foi $ex: $(cat "$SBP/err-$rot"))"; fi
+}
+caso_cwd_bash 736-cd1 "cd $SBP_WIN_DIRB #c
+gh pr create -t x --body-file corpo.txt"
+caso_cwd_ps 736-cd2 "Set-Location $SBP_WIN_DIRB #c
+gh pr create -t x --body-file corpo.txt"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

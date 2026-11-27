@@ -718,6 +718,30 @@ console.log("== #736: escape, $'...' e comentario no segmentador ==");
 }
 
 console.log();
+console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
+{
+  const { comLeituraAntiga } = require(process.argv[2]);
+  const mapa = (cmd, ps = false) => cwdPorSegmento(cmd, testDir, ps).map((e) => [e.cwd, e.incerto]);
+  const igual = (a, b, msg) => eq(JSON.stringify(a), JSON.stringify(b), msg);
+  test("(736x) cd/pushd/popd com # no fim movem como sem ele, nas duas leituras", () => {
+    igual(mapa(`cd '${testA}' #c\nx`), mapa(`cd '${testA}'\nx`), "cd com aspas");
+    igual(mapa(`cd ${testA.split(path.sep).join("/")} #c\nx`), mapa(`cd ${testA.split(path.sep).join("/")}\nx`), "cd sem aspas");
+    eq(mapa(`cd '${testA}' #c\nx`)[1][0], testA, "o x roda em A");
+    igual(mapa(`pushd '${testA}' #c\npopd #c\nx`), mapa(`pushd '${testA}'\npopd\nx`), "pushd e popd");
+    igual(comLeituraAntiga(() => mapa(`cd '${testA}' #c\nx`)), comLeituraAntiga(() => mapa(`cd '${testA}'\nx`)), "leitura antiga");
+  });
+  test("(736y) PowerShell: Set-Location, Push-Location e Pop-Location com # no fim", () => {
+    igual(mapa(`Set-Location '${testA}' #c\nx`, true), mapa(`Set-Location '${testA}'\nx`, true), "Set-Location");
+    igual(mapa(`Push-Location '${testA}' #c\nPop-Location #c\nx`, true), mapa(`Push-Location '${testA}'\nPop-Location\nx`, true), "Push/Pop-Location");
+  });
+  test("(736z) controles: # no meio da palavra e entre aspas segue no destino", () => {
+    eq(mapa("cd a#b\nx")[1][0], path.join(testDir, "a#b"), "cd a#b");
+    eq(mapa("cd 'a #b'\nx")[1][0], path.join(testDir, "a #b"), "cd 'a #b'");
+    eq(mapa("cd #c\nx")[1][1], true, "cd #c segue incerto");
+  });
+}
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

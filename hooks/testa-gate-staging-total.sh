@@ -876,5 +876,18 @@ excecao "D4: excecao na primeira passada, a antiga barra"          primeira-lanc
 excecao "D4: excecao na primeira passada, a antiga decide e libera" primeira-lanca-antiga-libera 0
 
 echo
+echo "== rodada 19 (#736, D1): comentario no fim do cd =="
+# O `#c` fazia a regex do movedor nao casar: o cd nao movia e o git add -A era
+# julgado no cwd do evento. Mao dupla: com o comentario, o exit e o de sem ele.
+gate "736-cd1: do worktree, cd <principal> #c + quebra + git add -A barra" 2 "$(bml "cd $R #c
+git add -A" "$WT")"
+gate "736-cd2: do worktree, cd <principal> + quebra + git add -A barra (referencia)" 2 "$(bml "cd $R
+git add -A" "$WT")"
+gate "736-cd3: do principal, cd <worktree> #c + quebra + git add -A passa" 0 "$(bml "cd $WT #c
+git add -A")"
+gate "736-cd4: do worktree, Set-Location <principal> #c + quebra + git add -A barra (PowerShell)" 2 "$(pml "Set-Location $R #c
+git add -A" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
