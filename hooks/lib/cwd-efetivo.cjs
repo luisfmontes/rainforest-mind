@@ -78,6 +78,24 @@ const POP_LOCATION = /^\s*Pop-Location((?<![\\`])[ \t]+#.*)?\s*$/i;
 // literal (`Set-Location C:\p\ #c` move para `C:\p\`, caminho comum no Windows) e so a
 // crase escapa. As constantes acima recusam as duas, o lado seguro para o bash e para
 // dialeto desconhecido; estas sao a leitura do PowerShell, escolhida em `resolverMovedor`.
+// #736 (zerar-issues-19, revisao de seguranca automatica do commit 28ae02cd): onde o
+// comentario comeca no segmento CRU. Primeiro `#` fora de aspas, sem escape, depois de
+// espaco ou tab (as mesmas condicoes das regex dos movedores). Mapear o texto
+// normalizado de volta por `lastIndexOf` falhava quando a normalizacao mexia no
+// comentario (`cd M # a 2>x (b)`). -1 quando nao ha.
+function inicioDoComentarioCru(seg, ehPowerShell) {
+  const esc = ehPowerShell ? "`" : "\\";
+  let aspa = null;
+  for (let i = 0; i < seg.length; i++) {
+    const c = seg[i];
+    if (aspa === "'") { if (c === "'") aspa = null; continue; }
+    if (c === esc) { i++; continue; }
+    if (aspa === '"') { if (c === '"') aspa = null; continue; }
+    if (c === "'" || c === '"') { aspa = c; continue; }
+    if (c === "#" && i > 0 && (seg[i - 1] === " " || seg[i - 1] === "\t")) return i;
+  }
+  return -1;
+}
 const paraPowerShell = (re) => new RegExp(re.source.split("(?<![\\\\`])").join("(?<!`)"), re.flags);
 const MOVEDORES_BASH = { CD, PUSHD, POPD, SET_LOCATION, PUSH_LOCATION, POP_LOCATION };
 const MOVEDORES_POWERSHELL = Object.fromEntries(Object.entries(MOVEDORES_BASH).map(([k, re]) => [k, paraPowerShell(re)]));
@@ -786,7 +804,9 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
     const coment = m && m[m.length - 1];
     if (coment) {
       movedorComComentario = true;
-      const i = seg.lastIndexOf(coment.trim());
+      // Sem o inicio no cru, o segmento fica inteiro: o incerto de hoje, nunca um corte
+      // que esconda codigo.
+      const i = inicioDoComentarioCru(seg, ehPowerShell);
       if (i >= 0) segSemComentario = seg.slice(0, i);
       break;
     }

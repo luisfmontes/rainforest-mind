@@ -234,10 +234,30 @@ mutacao:
 prova-na-base: verde — casos novos; no head `7dee683c`, do worktree, `cd <principal>` + quebra + `# nota (importante)` + quebra + `git add -A` sai 0 no `gate-staging-total` (0 na base, 2 sem a linha de comentário), `sonda5.cjs` em 2026-11-26
 pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736x3) e 0 falhas; `bash hooks/testa-gate-staging-total.sh` com `ok` em 736-cd10 e 0 falhas.
 
+### 13. O início do comentário é achado no segmento cru (revisão de segurança automática do commit 28ae02cd) [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`
+depende de: 12
+busca:
+- repo | grep -n "seg.lastIndexOf(coment.trim())" hooks/lib/cwd-efetivo.cjs | o corte mapeava o texto normalizado de volta, e falhava quando a normalização mexia no comentário
+- catalogo | pulado: varredura de aspas própria, com as mesmas condições das regex dos movedores
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: `inicioDoComentarioCru(seg, ehPowerShell)`, o primeiro `#` fora de aspas, sem escape do dialeto, depois de espaço ou tab; o corte usa ela. Sem início no cru, o segmento fica inteiro (o incerto de hoje).
+- `hooks/testa-cwd-efetivo.sh`: (736x3) `cd A # a 2>x (b)` e `command cd A # a >f $(b)` dão o mapa de sem comentário.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `      const i = inicioDoComentarioCru(seg, ehPowerShell);`
+  para: `      const i = seg.lastIndexOf(coment.trim());`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736x3) parentese, chave e ; no comentario do movedor (segunda volta do revisor do fluxo)"
+prova-na-base: verde — casos novos; no head `28ae02cd`, `cd A # a 2>x (b)` + quebra + `x` dá o segundo segmento incerto (revisão de segurança automática do commit, 2026-11-27)
+pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736x3) e 0 falhas.
+
 ### 5. Versão 2.17.5 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 3, 4, 12
+depende de: 3, 4, 13
 O que fazer:
 - Versão 2.17.5 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.5 no `CHANGELOG.md`: `cd X #comentário` move o diretório nos gates (mão dupla), e o gate de bateria lê o comando duas vezes; `cat <<EOF` sem aspas com bateria no corpo passa a barrar.

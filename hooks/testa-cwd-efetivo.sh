@@ -747,6 +747,10 @@ console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
       [`cd ${A} 2>&1 # (x)\nx`, `cd ${A} 2>&1\nx`],
       [`cd ${A} >/dev/null # (x)\nx`, `cd ${A} >/dev/null\nx`],
       [`cd ${A}\n# nota (importante)\nx`, `cd ${A}\nx`],
+      // Revisao de seguranca automatica do commit 28ae02cd: a normalizacao mexe no texto
+      // do comentario (redirecionamento dentro dele); o corte e achado no cru.
+      [`cd ${A} # a 2>x (b)\nx`, `cd ${A}\nx`],
+      [`command cd ${A} # a >f $(b)\nx`, `command cd ${A}\nx`],
     ]) eq(ult(mapa(com)), ult(mapa(sem)), JSON.stringify(com));
     eq(ult(mapa(`Set-Location ${A} 2>&1 # (x)\nx`, true)), ult(mapa(`Set-Location ${A} 2>&1\nx`, true)), "PowerShell Set-Location A 2>&1 # (x)");
     eq(ult(mapa(`Set-Location ${A}\n# nota (x)\nx`, true)), ult(mapa(`Set-Location ${A}\nx`, true)), "PowerShell comentario em linha propria");
