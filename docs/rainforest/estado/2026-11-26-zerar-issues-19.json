@@ -18,7 +18,40 @@
     "em": "2026-11-26"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-11-26",
+    "comando": "bash hooks/testa-cwd-efetivo.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-staging-total.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-26-zerar-issues-19",
+    "saida": "111 ok, 0 falha (736x, 736y, 736z ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 673 ok, 0 falha (736-cd1, 736-cd2 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 379 ok, 0 falha (736-cd1 a cd4 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 vermelho, tarefa 5 pulada (n/a)",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "(736x) cd/pushd/popd com # no fim movem como sem ele, nas duas leituras"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "736-cd1: do worktree, cd <principal> #c + quebra + git add -A barra"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "736-cd2: Set-Location <B> #c + gh pr create --body-file barra citando #999"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "736-b2: aspa dentro de comentario nao esconde a bateria de baixo"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "troca de versao e changelog"
+      }
+    ],
+    "em": "2026-11-26"
   },
   "revisar": {
     "status": "pendente"
