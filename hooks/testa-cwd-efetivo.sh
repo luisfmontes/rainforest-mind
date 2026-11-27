@@ -737,6 +737,21 @@ console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
       igual(mapa(`cd ${A} ${c}\nx`), mapa(`cd ${A}\nx`), `cd A ${c}`);
     }
     igual(mapa(`Set-Location ${A} # (x)\nx`, true), mapa(`Set-Location ${A}\nx`, true), "Set-Location A # (x)");
+    // Terceira volta: prefixo e redirecionamento antes do comentario, e comentario em
+    // linha propria. O mapa do x (ultimo segmento) e o da forma sem comentario.
+    const ult = (r) => JSON.stringify(r[r.length - 1]);
+    for (const [com, sem] of [
+      [`command cd ${A} # (x)\nx`, `command cd ${A}\nx`],
+      [`builtin cd ${A} # $(x)\nx`, `builtin cd ${A}\nx`],
+      [`\\cd ${A} # (x)\nx`, `\\cd ${A}\nx`],
+      [`cd ${A} 2>&1 # (x)\nx`, `cd ${A} 2>&1\nx`],
+      [`cd ${A} >/dev/null # (x)\nx`, `cd ${A} >/dev/null\nx`],
+      [`cd ${A}\n# nota (importante)\nx`, `cd ${A}\nx`],
+    ]) eq(ult(mapa(com)), ult(mapa(sem)), JSON.stringify(com));
+    eq(ult(mapa(`Set-Location ${A} 2>&1 # (x)\nx`, true)), ult(mapa(`Set-Location ${A} 2>&1\nx`, true)), "PowerShell Set-Location A 2>&1 # (x)");
+    eq(ult(mapa(`Set-Location ${A}\n# nota (x)\nx`, true)), ult(mapa(`Set-Location ${A}\nx`, true)), "PowerShell comentario em linha propria");
+    // Leitura antiga: linha so de comentario com ( segue incerta (o ; pode ter cortado ali).
+    eq(comLeituraAntiga(() => mapa(`# (a); cd ${A}\nx`))[2][1], true, "leitura antiga: # (a); cd A fica incerto");
     // Na leitura antiga o `;` do comentario corta a linha: `pushd b #! ; popd` nao pode
     // sair com o cwd de antes como certeza (o bash fica em b).
     const r = comLeituraAntiga(() => mapa(`pushd ${A} #! ; popd\nx`));

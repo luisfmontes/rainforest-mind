@@ -758,22 +758,6 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   const exp = expandeChavesDeComandoNoSegmento(segCru, ehPowerShell);
   const seg = exp ? exp.texto : segCru;
   const MOV = ehPowerShell ? MOVEDORES_POWERSHELL : MOVEDORES_BASH;
-  // #736 (zerar-issues-19, segunda volta do revisor do fluxo): o comentario que a regex
-  // do movedor aceitou nao e codigo. `cd X # (x)` movia e marcava INCERTO pelo `(` do
-  // comentario; o staging usa o cwd do evento no incerto, e o `git add -A` de baixo era
-  // julgado onde o shell nao esta.
-  let segSemComentario = seg;
-  let movedorComComentario = false;
-  for (const re of Object.values(MOV)) {
-    const m = seg.match(re);
-    const coment = m && m[m.length - 1];
-    if (coment) { segSemComentario = seg.slice(0, seg.lastIndexOf(coment)); movedorComComentario = true; break; }
-  }
-  // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
-  // para os comandos dentro — a unica leitura segura e marcar INCERTO,
-  // sem tentar decidir o resto deste segmento por ele.
-  if (contemSubshellOuGrupo(segSemComentario)) estado.incerto = true;
-
   // `command cd X`, `builtin cd X`, `\cd X` (P5): o comando de verdade que
   // MUDA o cwd do shell continua sendo `cd`/`pushd`/`popd` — so casa contra
   // o segmento NORMALIZADO (prefixo sintatico removido, barra do nome
@@ -785,6 +769,32 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   const normalizado = normalizarComando(semPrefixoSintaticoDeBuiltin(semRedirecionamentos(seg)));
   if (normalizado.estouro) estado.estouro = true;
   const segMovedor = normalizado.seg;
+  // #736 (zerar-issues-19, terceira volta do revisor do fluxo): linha so de comentario
+  // nao e codigo. Na leitura nova o segmentador sabe onde o comentario comeca, entao o
+  // segmento que abre com `#` e a linha inteira: `# nota (x)` nao marca subshell. Na
+  // antiga o `;` pode ter cortado ali (`# (a); cd W`), e ela segue como antes.
+  if (!leituraAntiga && /^\s*#/.test(seg)) return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
+  // #736 (zerar-issues-19, segunda e terceira voltas do revisor do fluxo): o comentario
+  // que a regex do movedor aceitou nao e codigo. `cd X # (x)` movia e marcava INCERTO
+  // pelo `(` do comentario; o staging usa o cwd do evento no incerto, e o `git add -A`
+  // de baixo era julgado onde o shell nao esta. O comentario sai do segmento NORMALIZADO
+  // (`command cd X # (x)`, `cd X 2>&1 # (x)`) e e cortado do cru pelo texto dele.
+  let segSemComentario = seg;
+  let movedorComComentario = false;
+  for (const re of Object.values(MOV)) {
+    const m = segMovedor.match(re);
+    const coment = m && m[m.length - 1];
+    if (coment) {
+      movedorComComentario = true;
+      const i = seg.lastIndexOf(coment.trim());
+      if (i >= 0) segSemComentario = seg.slice(0, i);
+      break;
+    }
+  }
+  // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
+  // para os comandos dentro — a unica leitura segura e marcar INCERTO,
+  // sem tentar decidir o resto deste segmento por ele.
+  if (contemSubshellOuGrupo(segSemComentario)) estado.incerto = true;
   const { CD, PUSHD, POPD, SET_LOCATION, PUSH_LOCATION, POP_LOCATION } = MOV;
   // #736 (zerar-issues-19, segunda volta do revisor do fluxo): a leitura antiga nao sabe
   // de comentario e corta no `;` de dentro dele (`pushd b #! ; popd` vira dois movedores,

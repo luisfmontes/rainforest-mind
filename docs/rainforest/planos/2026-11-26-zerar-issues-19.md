@@ -192,10 +192,52 @@ mutacao:
 prova-na-base: verde — casos novos; no head `245d9e37`, na leitura antiga, `pushd b #! ; popd` + `pwd` sai com o cwd de antes e `incerto:false` (achado 3 da segunda volta do revisor do fluxo)
 pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736x) e (736x3) e 0 falhas.
 
+### 11. O comentário do movedor sai do segmento normalizado (terceira volta do revisor do fluxo) [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: 10
+busca:
+- repo | grep -n "const normalizado = normalizarComando" hooks/lib/cwd-efetivo.cjs | a normalização (prefixo, redirecionamento) já existe em `resolverMovedor`; passa a vir antes da checagem de subshell
+- catalogo | pulado: reordena e estende o que a tarefa 9 escreveu
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: a normalização vem antes da checagem de subshell, e o comentário é lido no segmento normalizado e cortado do cru pelo texto dele: `command cd X # (x)`, `\cd X # (x)`, `cd X 2>&1 # (x)` e `Set-Location X >$null # (x)` dão o mapa de sem comentário.
+- `hooks/testa-cwd-efetivo.sh`: (736x3) ganha as formas com prefixo e redirecionamento, no bash e no PowerShell.
+- `hooks/testa-gate-staging-total.sh`: do worktree, `command cd <principal> 2>&1 # (x)` + quebra + `git add -A` barra (736-cd9).
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `    const m = segMovedor.match(re);`
+  para: `    const m = seg.match(re);`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736x3) parentese, chave e ; no comentario do movedor (segunda volta do revisor do fluxo)"
+prova-na-base: verde — casos novos; no head `7dee683c`, do worktree, `command cd <principal> # (x)` + quebra + `git add -A` sai 0 no `gate-staging-total` (0 na base `b76d80f8`, 2 sem o comentário), terceira volta do revisor do fluxo e `sonda5.cjs` em 2026-11-26
+pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736x3) e 0 falhas; `bash hooks/testa-gate-staging-total.sh` com `ok` em 736-cd9 e 0 falhas.
+
+### 12. Na leitura nova, linha só de comentário é neutra (terceira volta do revisor do fluxo) [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: 11
+busca:
+- repo | grep -n "const normalizado = normalizarComando" hooks/lib/cwd-efetivo.cjs | a normalização (prefixo, redirecionamento) já existe em `resolverMovedor`; passa a vir antes da checagem de subshell
+- catalogo | pulado: reordena e estende o que a tarefa 9 escreveu
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: na leitura nova, segmento que abre com `#` é a linha de comentário inteira e não marca subshell; na antiga segue como antes (o `;` pode ter cortado ali: `# (a); cd W`).
+- `hooks/testa-cwd-efetivo.sh`: (736x3) `cd A` + quebra + `# nota (importante)` + quebra + `x` dá o mapa de sem a linha, no bash e no PowerShell; na leitura antiga, `# (a); cd A` segue incerto.
+- `hooks/testa-gate-staging-total.sh`: do worktree, `cd <principal>` + quebra + `# nota (importante)` + quebra + `git add -A` barra (736-cd10).
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `  if (!leituraAntiga && /^\s*#/.test(seg)) return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };`
+  para: `  if (false) return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736x3) parentese, chave e ; no comentario do movedor (segunda volta do revisor do fluxo)"
+prova-na-base: verde — casos novos; no head `7dee683c`, do worktree, `cd <principal>` + quebra + `# nota (importante)` + quebra + `git add -A` sai 0 no `gate-staging-total` (0 na base, 2 sem a linha de comentário), `sonda5.cjs` em 2026-11-26
+pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736x3) e 0 falhas; `bash hooks/testa-gate-staging-total.sh` com `ok` em 736-cd10 e 0 falhas.
+
 ### 5. Versão 2.17.5 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 3, 4, 10
+depende de: 3, 4, 12
 O que fazer:
 - Versão 2.17.5 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.5 no `CHANGELOG.md`: `cd X #comentário` move o diretório nos gates (mão dupla), e o gate de bateria lê o comando duas vezes; `cat <<EOF` sem aspas com bateria no corpo passa a barrar.

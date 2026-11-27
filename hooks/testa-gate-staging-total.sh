@@ -889,6 +889,13 @@ gate "736-cd3: do principal, cd <worktree> #c + quebra + git add -A barra (como 
 git add -A")"
 gate "736-cd8: do worktree, cd <principal> # (x) + quebra + git add -A barra" 2 "$(bml "cd $R # (x)
 git add -A" "$WT")"
+# Terceira volta do revisor do fluxo: prefixo/redirecionamento antes do comentario, e
+# comentario em linha propria com parentese.
+gate "736-cd9: do worktree, command cd <principal> 2>&1 # (x) + quebra + git add -A barra" 2 "$(bml "command cd $R 2>&1 # (x)
+git add -A" "$WT")"
+gate "736-cd10: do worktree, cd <principal> + quebra + # nota (x) + quebra + git add -A barra" 2 "$(bml "cd $R
+# nota (importante)
+git add -A" "$WT")"
 gate "736-cd4: do worktree, Set-Location <principal> #c + quebra + git add -A barra (PowerShell)" 2 "$(pml "Set-Location $R #c
 git add -A" "$WT")"
 # Revisor do fluxo, primeira volta: `\ #` e NBSP antes do `#` nao abrem comentario

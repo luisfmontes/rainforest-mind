@@ -18,7 +18,7 @@
     "em": "2026-11-26"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-26",
     "comando": "bash hooks/testa-cwd-efetivo.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-staging-total.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-26-zerar-issues-19",
     "saida": "114 ok, 0 falha (736x, 736x3, 736y, 736z, 736w2, 736y2 ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 674 ok, 0 falha (736-cd1 a cd3 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 383 ok, 0 falha (736-cd1 a cd8 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 e 6-10 vermelho, tarefa 5 pulada (n/a)",
@@ -76,30 +76,34 @@
         "fixture": "(736x3) pushd A #! ; popd na leitura antiga fica incerto"
       }
     ],
-    "em": "2026-11-26",
-    "reaberturas": 2
+    "em": "2026-11-27",
+    "reaberturas": 3,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-27"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "7d2c533208d03eeae21cf9cfbcf6da5f28abe691",
+      "head": "ac4ef74748609a17e0bd462e8704d6efcd51ecc0",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a6e74c1590953a247",
+        "agente_id": "a5250d3ce2013aeaf",
         "veredito": "reprovado",
         "em": "2026-11-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a6e74c1590953a247.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a5250d3ce2013aeaf.jsonl"
       }
     ],
-    "achados": 3,
+    "achados": 2,
     "base": "b76d80f8",
-    "head": "245d9e37",
-    "resumo": "[media] comentario com parentese apos o movedor marcava incerto e o staging liberava git add -A no principal; [baixa] pushd b #! ; popd na leitura antiga dava cwd certo e errado; [baixa] heredoc com aspas dentro de $(...) com linha de bateria passa a barrar (residuo D3)",
-    "em": "2026-11-26",
-    "tentativas": 2,
+    "head": "7dee683c",
+    "resumo": "[media] comentario com parentese depois de movedor com prefixo/redirecionamento, ou em linha propria, marcava incerto e o staging liberava git add -A no principal (0 na base e no head); [baixa] residuo D3 no padrao Verificado das mensagens",
+    "em": "2026-11-27",
+    "tentativas": 3,
     "voltas": [
       {
         "volta": 1,
@@ -110,6 +114,18 @@
             "veredito": "reprovado",
             "em": "2026-11-26",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-af862fecc9ae399f6.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a6e74c1590953a247",
+            "veredito": "reprovado",
+            "em": "2026-11-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-a6e74c1590953a247.jsonl"
           }
         ]
       }
