@@ -70,6 +70,14 @@ const POPD = /^\s*popd(?:\s+-n)?(?:(?<![\\`])[ \t]+#.*)?\s*$/;
 const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
 const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
 const POP_LOCATION = /^\s*Pop-Location(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
+// #736 (zerar-issues-19, revisao de seguranca automatica do commit de313a38): o escape
+// que impede o `#` de abrir comentario depende do dialeto. No PowerShell a contrabarra e
+// literal (`Set-Location C:\p\ #c` move para `C:\p\`, caminho comum no Windows) e so a
+// crase escapa. As constantes acima recusam as duas, o lado seguro para o bash e para
+// dialeto desconhecido; estas sao a leitura do PowerShell, escolhida em `resolverMovedor`.
+const paraPowerShell = (re) => new RegExp(re.source.split("(?<![\\\\`])").join("(?<!`)"), re.flags);
+const MOVEDORES_BASH = { CD, PUSHD, POPD, SET_LOCATION, PUSH_LOCATION, POP_LOCATION };
+const MOVEDORES_POWERSHELL = Object.fromEntries(Object.entries(MOVEDORES_BASH).map(([k, re]) => [k, paraPowerShell(re)]));
 
 // Expansao de chaves no INICIO do segmento (#530, D1): `{cd,X} && ...` roda
 // `cd X` no bash — a chave expande antes de o comando rodar. So vale sem espaco,
@@ -762,6 +770,7 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   const normalizado = normalizarComando(semPrefixoSintaticoDeBuiltin(semRedirecionamentos(seg)));
   if (normalizado.estouro) estado.estouro = true;
   const segMovedor = normalizado.seg;
+  const { CD, PUSHD, POPD, SET_LOCATION, PUSH_LOCATION, POP_LOCATION } = ehPowerShell ? MOVEDORES_POWERSHELL : MOVEDORES_BASH;
   // `then cd X`, `else cd X`, `do cd X`: o `cd` esta num ramo/corpo que pode nao
   // rodar (`if false; then cd <wt>; fi; echo x > f` no principal escreve no
   // principal). Movedor sim, mas INCERTO — nunca certeza (security review do #530).

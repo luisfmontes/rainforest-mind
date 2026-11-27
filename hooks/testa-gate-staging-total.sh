@@ -891,6 +891,10 @@ git add -A" "$WT")"
 # no bash; o `cd` falha e o `git add -A` roda no principal.
 gate "736-cd5: do principal, cd <worktree>\\ #c + quebra + git add -A barra" 2 "$(bml "cd $WT\\ #c
 git add -A")"
+# Revisao de seguranca automatica do commit de313a38: no PowerShell a contrabarra e
+# literal, e `Set-Location <principal>\ #c` move para o principal.
+gate "736-cd7: do worktree, Set-Location <principal>\\ #c + quebra + git add -A barra (PowerShell)" 2 "$(pml "Set-Location $R\\ #c
+git add -A" "$WT")"
 NBSP736=$(printf '\302\240')
 gate "736-cd6: do principal, cd <worktree><NBSP>#c + quebra + git add -A barra" 2 "$(bml "cd $WT$NBSP736#c
 git add -A")"

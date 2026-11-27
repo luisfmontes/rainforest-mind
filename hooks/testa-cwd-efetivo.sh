@@ -749,6 +749,16 @@ console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
     }
     eq(mapa(`cd ${A}\t#c\nx`)[1][0], testA, "tab abre comentario e move");
   });
+  test("(736y2) PowerShell: a contrabarra e literal e o # depois dela abre comentario; a crase escapa", () => {
+    // Revisao de seguranca automatica do commit de313a38. `C:\\p\\ #c` e caminho comum no Windows.
+    const BS = String.fromCharCode(92);
+    const A = testA.split(path.sep).join("/");
+    for (const mov of ["cd", "Set-Location", "Push-Location", "pushd"]) {
+      eq(mapa(`${mov} ${A}${BS} #c\nx`, true)[1][0], path.resolve(testA + BS), `PowerShell ${mov} A\\ #c move`);
+      eq(mapa(`${mov} ${A}${BS} #c\nx`)[1][0], testDir, `bash ${mov} A\\ #c nao move`);
+      eq(mapa(`${mov} ${A}\` #c\nx`, true)[1][0], testDir, `PowerShell ${mov} A crase #c nao move`);
+    }
+  });
 }
 
 console.log();

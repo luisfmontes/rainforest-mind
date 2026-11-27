@@ -108,10 +108,32 @@ mutacao:
 prova-na-base: verde — casos novos; no head `47d10d60` da primeira volta, do principal, `cd <worktree>\ #c` e `cd <worktree><NBSP>#c` + quebra + `git add -A` saem 0 no `gate-staging-total` (base 2), medido pelo revisor do fluxo e por `sonda3.cjs` em 2026-11-26
 pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736w2) e 0 falhas; `bash hooks/testa-gate-staging-total.sh` com `ok` em 736-cd5 e 736-cd6 e 0 falhas.
 
+### 7. O escape antes do `#` depende do dialeto (revisão de segurança automática do commit de313a38) [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 6
+busca:
+- repo | grep -n "resolverMovedor(segCru, estado, ehPowerShell" hooks/lib/cwd-efetivo.cjs | o dialeto já chega a `resolverMovedor`; a escolha das regex mora lá
+- catalogo | pulado: variante das seis regex da tarefa 6, derivada delas por `source`
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: `paraPowerShell(re)` troca o lookbehind `(?<![\\`])` por `(?<!`)`; `MOVEDORES_BASH` e `MOVEDORES_POWERSHELL`; `resolverMovedor` usa o conjunto do dialeto. No PowerShell a contrabarra é literal (`Set-Location C:\p\ #c` move) e só a crase escapa.
+- `hooks/testa-cwd-efetivo.sh`: (736y2) `cd`, `Set-Location`, `Push-Location` e `pushd` com `A\ #c` movem no PowerShell e não no bash; com crase antes do espaço não movem no PowerShell.
+- `hooks/testa-gate-staging-total.sh`: do worktree, `Set-Location <principal>\ #c` + quebra + `git add -A` pela ferramenta PowerShell barra (736-cd7).
+- `hooks/testa-gate-fechar-issue.sh`: `Set-Location <B>\ #c` + quebra + `gh pr create --body-file corpo.txt` pela ferramenta PowerShell barra citando `#999` (736-cd3).
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `const paraPowerShell = (re) => new RegExp(re.source.split("(?<![\\\\`])").join("(?<!`)"), re.flags);`
+  para: `const paraPowerShell = (re) => re;`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736y2) PowerShell: a contrabarra e literal e o # depois dela abre comentario; a crase escapa"
+prova-na-base: verde — casos novos; no head `de313a38`, do worktree, `Set-Location <principal>\ #c` + quebra + `git add -A` pela ferramenta PowerShell sai 0 no `gate-staging-total` (e 0 na base), `sonda4.cjs` em 2026-11-26
+pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736y2) e 0 falhas; `bash hooks/testa-gate-staging-total.sh` com `ok` em 736-cd7 e 0 falhas; `bash hooks/testa-gate-fechar-issue.sh` com `ok` em 736-cd3 e 0 falhas.
+
 ### 5. Versão 2.17.5 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 3, 4, 6
+depende de: 3, 4, 7
 O que fazer:
 - Versão 2.17.5 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.5 no `CHANGELOG.md`: `cd X #comentário` move o diretório nos gates (mão dupla), e o gate de bateria lê o comando duas vezes; `cat <<EOF` sem aspas com bateria no corpo passa a barrar.

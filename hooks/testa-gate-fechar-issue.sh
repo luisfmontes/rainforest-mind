@@ -4993,6 +4993,9 @@ caso_cwd_bash 736-cd1 "cd $SBP_WIN_DIRB #c
 gh pr create -t x --body-file corpo.txt"
 caso_cwd_ps 736-cd2 "Set-Location $SBP_WIN_DIRB #c
 gh pr create -t x --body-file corpo.txt"
+# PowerShell: a contrabarra e literal, `B\ #c` e B com comentario.
+caso_cwd_ps 736-cd3 "Set-Location $SBP_WIN_DIRB\\ #c
+gh pr create -t x --body-file corpo.txt"
 
 # Resultado final
 echo
