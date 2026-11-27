@@ -178,6 +178,9 @@
     "head": "226659dba7ccd7658c088bd09eebf8f7b06127e0"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "pr": 744,
+    "em": "2026-11-27"
   }
 }
