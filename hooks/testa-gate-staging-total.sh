@@ -887,6 +887,13 @@ gate "736-cd3: do principal, cd <worktree> #c + quebra + git add -A passa" 0 "$(
 git add -A")"
 gate "736-cd4: do worktree, Set-Location <principal> #c + quebra + git add -A barra (PowerShell)" 2 "$(pml "Set-Location $R #c
 git add -A" "$WT")"
+# Revisor do fluxo, primeira volta: `\ #` e NBSP antes do `#` nao abrem comentario
+# no bash; o `cd` falha e o `git add -A` roda no principal.
+gate "736-cd5: do principal, cd <worktree>\\ #c + quebra + git add -A barra" 2 "$(bml "cd $WT\\ #c
+git add -A")"
+NBSP736=$(printf '\302\240')
+gate "736-cd6: do principal, cd <worktree><NBSP>#c + quebra + git add -A barra" 2 "$(bml "cd $WT$NBSP736#c
+git add -A")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

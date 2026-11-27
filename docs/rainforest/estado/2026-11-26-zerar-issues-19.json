@@ -18,7 +18,7 @@
     "em": "2026-11-26"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-26",
     "comando": "bash hooks/testa-cwd-efetivo.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-staging-total.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-26-zerar-issues-19",
     "saida": "111 ok, 0 falha (736x, 736y, 736z ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 673 ok, 0 falha (736-cd1, 736-cd2 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 379 ok, 0 falha (736-cd1 a cd4 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 vermelho, tarefa 5 pulada (n/a)",
@@ -51,10 +51,34 @@
         "motivo": "troca de versao e changelog"
       }
     ],
-    "em": "2026-11-26"
+    "em": "2026-11-26",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-26"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "521602a323a4c90075be142e4978087d48a8a9ff",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "af862fecc9ae399f6",
+        "veredito": "reprovado",
+        "em": "2026-11-26",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/285d3173-22aa-41e8-8529-320e13ff133f/subagents/agent-af862fecc9ae399f6.jsonl"
+      }
+    ],
+    "achados": 3,
+    "base": "b76d80f8",
+    "head": "47d10d60",
+    "resumo": "[media] o espaco-mais-# da regex aceitava espaco escapado e NBSP/FF/VT como abertura de comentario: do principal, cd <worktree> com contrabarra-espaco-#c + git add -A ia de 2 para 0; [baixa] ; dentro do comentario apos cd vira falso positivo; [baixa] D3 aceita",
+    "em": "2026-11-26",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

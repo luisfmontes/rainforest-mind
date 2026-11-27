@@ -19,11 +19,11 @@ busca:
 - catalogo | pulado: a mudança é dentro das seis regex que já existem, sem função nova a procurar
 desfecho: estender
 O que fazer:
-- `hooks/lib/cwd-efetivo.cjs`: `(?:\s+#.*)?` antes do `\s*$` final em `CD`, `PUSHD`, `POPD`, `SET_LOCATION`, `PUSH_LOCATION` e `POP_LOCATION`, com o comentário de porquê sobre `CD`.
+- `hooks/lib/cwd-efetivo.cjs`: `(?:(?<![\\`])[ \t]+#.*)?` antes do `\s*$` final em `CD`, `PUSHD`, `POPD`, `SET_LOCATION`, `PUSH_LOCATION` e `POP_LOCATION`, com o comentário de porquê sobre `CD`.
 - `hooks/testa-cwd-efetivo.sh`: (736x) `cd`/`pushd`/`popd` com `#c` dão o mesmo mapa de sem ele, também na leitura antiga (`comLeituraAntiga`); (736y) `Set-Location`, `Push-Location`/`Pop-Location` no PowerShell; (736z) controles `cd a#b`, `cd 'a #b'` e `cd #c`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `const POPD = /^\s*popd(?:\s+-n)?(?:\s+#.*)?\s*$/;`
+  de: `const POPD = /^\s*popd(?:\s+-n)?(?:(?<![\\`])[ \t]+#.*)?\s*$/;`
   para: `const POPD = /^\s*popd(?:\s+-n)?\s*$/;`
   bateria: `bash hooks/testa-cwd-efetivo.sh`
   fixture: testa-cwd-efetivo.sh, caso "(736x) cd/pushd/popd com # no fim movem como sem ele, nas duas leituras"
@@ -41,7 +41,7 @@ O que fazer:
 - Seção "rodada 19 (#736, D1)": do worktree, `cd <principal> #c` + quebra + `git add -A` barra (736-cd1); a mesma linha sem `#c` barra (736-cd2, referência); do principal, `cd <worktree> #c` + quebra + `git add -A` passa (736-cd3); do worktree, `Set-Location <principal> #c` + quebra + `git add -A` pela ferramenta PowerShell barra (736-cd4).
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/;`
+  de: `const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;`
   para: `const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, caso "736-cd1: do worktree, cd <principal> #c + quebra + git add -A barra"
@@ -60,7 +60,7 @@ O que fazer:
 - `caso_cwd_bash`, irmão de `caso_cwd_ps` com `tool_name` Bash. Casos: `cd <B> #c` + quebra + `gh pr create --body-file corpo.txt` pela ferramenta Bash (736-cd1) e `Set-Location <B> #c` + quebra + o mesmo `gh` pela ferramenta PowerShell (736-cd2), os dois barrando citando `#999`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/i;`
+  de: `const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;`
   para: `const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, caso "736-cd2"
@@ -87,10 +87,31 @@ mutacao:
 prova-na-base: verde — casos novos; no `main` `b76d80f8` as três linhas saem 0 (comentário da #736, medido de novo em `sonda2.cjs` contra a base `e9d2b14e`, 2026-11-26)
 pronto quando: `node hooks/testa-gate-bateria-sem-timeout.cjs` com `ok` em 736-b1 a 736-b5, no caso 6 (`cat <<'EOF'`) e 0 falhas.
 
+### 6. Só espaço e tab, sem escape, abrem o comentário do movedor (primeira volta do revisor do fluxo) [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: 2
+busca:
+- repo | grep -n "function abreComentario" hooks/lib/cwd-efetivo.cjs | a leitura nova ja distingue branco de bash e de PowerShell (736t); a regex do movedor fica com o subconjunto seguro dos dois
+- catalogo | pulado: troca dentro das seis regex da tarefa 1
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: nas seis regex, `(?:(?<![\\`])[ \t]+#.*)?` no lugar de `(?:\s+#.*)?`: só espaço e tab antes do `#`, e nunca depois de contrabarra ou crase.
+- `hooks/testa-cwd-efetivo.sh`: (736w2) `cd A\ #c`, `cd A<NBSP>#c`, FF, VT, U+2003 e crase não movem; tab move.
+- `hooks/testa-gate-staging-total.sh`: do principal, `cd <worktree>\ #c` (736-cd5) e `cd <worktree><NBSP>#c` (736-cd6) + quebra + `git add -A` barram.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;`
+  para: `const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/;`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736w2) # depois de espaco escapado ou de branco que o bash nao conta nao e comentario"
+prova-na-base: verde — casos novos; no head `47d10d60` da primeira volta, do principal, `cd <worktree>\ #c` e `cd <worktree><NBSP>#c` + quebra + `git add -A` saem 0 no `gate-staging-total` (base 2), medido pelo revisor do fluxo e por `sonda3.cjs` em 2026-11-26
+pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736w2) e 0 falhas; `bash hooks/testa-gate-staging-total.sh` com `ok` em 736-cd5 e 736-cd6 e 0 falhas.
+
 ### 5. Versão 2.17.5 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 2, 3, 4
+depende de: 3, 4, 6
 O que fazer:
 - Versão 2.17.5 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.5 no `CHANGELOG.md`: `cd X #comentário` move o diretório nos gates (mão dupla), e o gate de bateria lê o comando duas vezes; `cat <<EOF` sem aspas com bateria no corpo passa a barrar.

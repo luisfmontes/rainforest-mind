@@ -21,7 +21,10 @@ const { normalizarComando } = require("./palavra-bash.cjs");
 // depois de espaco abre comentario no bash e no PowerShell, e sem isto a regex nao
 // casava, o `cd` nao movia e o comando de baixo era julgado no cwd de antes.
 // `cd a#b` segue com destino `a#b`: o destino sem aspas nao tem espaco.
-const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/;
+// So espaco e tab antes do `#`, e nunca escapado (primeira volta do revisor do fluxo):
+// `cd W\ #c` e `cd W<NBSP>#c` nao abrem comentario no bash, o `cd` falha e o cwd
+// fica. Na duvida a regex nao casa, e o segmento segue nao-movedor, como antes.
+const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;
 // `command`/`builtin` na frente do nome (`command cd X`, `builtin cd X`) e
 // uma barra invertida colada no proprio nome (`\cd X`, escapa alias/funcao)
 // so mudam COMO o comando seguinte e resolvido — nao criam processo novo, o
@@ -49,10 +52,10 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
 const SEPARADORES = /&&|\|\||;|\n|\||(?<![><|])&(?!&|>)/;
 // `pushd X`: muda o cwd corrente igual `cd X`, mas empilha o cwd de antes
 // para o `popd` desfazer (H2, rodada 5 do lote 3).
-const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/;
+const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;
 // `popd`: volta ao cwd de antes do ultimo `pushd`. Aceita o `-n` ("nao
 // re-imprime a pilha"), que nao muda o alvo.
-const POPD = /^\s*popd(?:\s+-n)?(?:\s+#.*)?\s*$/;
+const POPD = /^\s*popd(?:\s+-n)?(?:(?<![\\`])[ \t]+#.*)?\s*$/;
 // Equivalentes do PowerShell a `cd`/`pushd`/`popd` (R3, rodada 9, lote 3,
 // 2026-09-04): `Set-Location` (e os alias `sl`, `chdir` — `cd` ja casa no
 // `CD` acima, mesma sintaxe) aceita `-Path`/`-LiteralPath` explicito ou o
@@ -64,9 +67,9 @@ const POPD = /^\s*popd(?:\s+-n)?(?:\s+#.*)?\s*$/;
 // inteiro `-Path:X` cai na alternativa posicional e vira o "destino"
 // literal (comeca com `-`, nunca existe em disco), fabricando um cwd
 // inexistente com incerto:false.
-const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/i;
-const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/i;
-const POP_LOCATION = /^\s*Pop-Location(?:\s+#.*)?\s*$/i;
+const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
+const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
+const POP_LOCATION = /^\s*Pop-Location(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
 
 // Expansao de chaves no INICIO do segmento (#530, D1): `{cd,X} && ...` roda
 // `cd X` no bash — a chave expande antes de o comando rodar. So vale sem espaco,

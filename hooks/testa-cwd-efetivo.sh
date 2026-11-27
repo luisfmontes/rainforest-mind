@@ -739,6 +739,16 @@ console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
     eq(mapa("cd 'a #b'\nx")[1][0], path.join(testDir, "a #b"), "cd 'a #b'");
     eq(mapa("cd #c\nx")[1][1], true, "cd #c segue incerto");
   });
+  test("(736w2) # depois de espaco escapado ou de branco que o bash nao conta nao e comentario", () => {
+    // Revisor do fluxo, primeira volta: o `cd` falha no shell e o cwd fica.
+    const BS = String.fromCharCode(92);
+    const A = testA.split(path.sep).join("/");
+    for (const [rot, sep] of [["contrabarra", BS + " "], ["NBSP", " "], ["FF", "\f"], ["VT", "\v"], ["U+2003", " "], ["crase", "` "]]) {
+      eq(mapa(`cd ${A}${sep}#c\nx`)[1][0], testDir, `cd A${rot}#c nao move`);
+      eq(mapa(`pushd ${A}${sep}#c\nx`)[1][0], testDir, `pushd A${rot}#c nao move`);
+    }
+    eq(mapa(`cd ${A}\t#c\nx`)[1][0], testA, "tab abre comentario e move");
+  });
 }
 
 console.log();
