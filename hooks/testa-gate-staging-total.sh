@@ -883,8 +883,12 @@ gate "736-cd1: do worktree, cd <principal> #c + quebra + git add -A barra" 2 "$(
 git add -A" "$WT")"
 gate "736-cd2: do worktree, cd <principal> + quebra + git add -A barra (referencia)" 2 "$(bml "cd $R
 git add -A" "$WT")"
-gate "736-cd3: do principal, cd <worktree> #c + quebra + git add -A passa" 0 "$(bml "cd $WT #c
+# Na D4 a leitura antiga (que nao sabe de comentario) fica incerta e usa o cwd do evento:
+# a forma com comentario segue barrando, como na base (a mais estrita das duas vale).
+gate "736-cd3: do principal, cd <worktree> #c + quebra + git add -A barra (como na base)" 2 "$(bml "cd $WT #c
 git add -A")"
+gate "736-cd8: do worktree, cd <principal> # (x) + quebra + git add -A barra" 2 "$(bml "cd $R # (x)
+git add -A" "$WT")"
 gate "736-cd4: do worktree, Set-Location <principal> #c + quebra + git add -A barra (PowerShell)" 2 "$(pml "Set-Location $R #c
 git add -A" "$WT")"
 # Revisor do fluxo, primeira volta: `\ #` e NBSP antes do `#` nao abrem comentario

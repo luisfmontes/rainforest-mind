@@ -24,7 +24,10 @@ const { normalizarComando } = require("./palavra-bash.cjs");
 // So espaco e tab antes do `#`, e nunca escapado (primeira volta do revisor do fluxo):
 // `cd W\ #c` e `cd W<NBSP>#c` nao abrem comentario no bash, o `cd` falha e o cwd
 // fica. Na duvida a regex nao casa, e o segmento segue nao-movedor, como antes.
-const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;
+// O comentario e o ULTIMO grupo de captura das seis (segunda volta do revisor do
+// fluxo): `resolverMovedor` o tira antes de procurar subshell (`cd X # (x)`) e, na
+// leitura antiga, marca o movedor com comentario como incerto.
+const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))((?<![\\`])[ \t]+#.*)?\s*$/;
 // `command`/`builtin` na frente do nome (`command cd X`, `builtin cd X`) e
 // uma barra invertida colada no proprio nome (`\cd X`, escapa alias/funcao)
 // so mudam COMO o comando seguinte e resolvido — nao criam processo novo, o
@@ -52,10 +55,10 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
 const SEPARADORES = /&&|\|\||;|\n|\||(?<![><|])&(?!&|>)/;
 // `pushd X`: muda o cwd corrente igual `cd X`, mas empilha o cwd de antes
 // para o `popd` desfazer (H2, rodada 5 do lote 3).
-const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;
+const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))((?<![\\`])[ \t]+#.*)?\s*$/;
 // `popd`: volta ao cwd de antes do ultimo `pushd`. Aceita o `-n` ("nao
 // re-imprime a pilha"), que nao muda o alvo.
-const POPD = /^\s*popd(?:\s+-n)?(?:(?<![\\`])[ \t]+#.*)?\s*$/;
+const POPD = /^\s*popd(?:\s+-n)?((?<![\\`])[ \t]+#.*)?\s*$/;
 // Equivalentes do PowerShell a `cd`/`pushd`/`popd` (R3, rodada 9, lote 3,
 // 2026-09-04): `Set-Location` (e os alias `sl`, `chdir` — `cd` ja casa no
 // `CD` acima, mesma sintaxe) aceita `-Path`/`-LiteralPath` explicito ou o
@@ -67,9 +70,9 @@ const POPD = /^\s*popd(?:\s+-n)?(?:(?<![\\`])[ \t]+#.*)?\s*$/;
 // inteiro `-Path:X` cai na alternativa posicional e vira o "destino"
 // literal (comeca com `-`, nunca existe em disco), fabricando um cwd
 // inexistente com incerto:false.
-const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
-const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
-const POP_LOCATION = /^\s*Pop-Location(?:(?<![\\`])[ \t]+#.*)?\s*$/i;
+const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))((?<![\\`])[ \t]+#.*)?\s*$/i;
+const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))((?<![\\`])[ \t]+#.*)?\s*$/i;
+const POP_LOCATION = /^\s*Pop-Location((?<![\\`])[ \t]+#.*)?\s*$/i;
 // #736 (zerar-issues-19, revisao de seguranca automatica do commit de313a38): o escape
 // que impede o `#` de abrir comentario depende do dialeto. No PowerShell a contrabarra e
 // literal (`Set-Location C:\p\ #c` move para `C:\p\`, caminho comum no Windows) e so a
@@ -754,10 +757,22 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   // Os regex de movedor e `contemSubshellOuGrupo` veem o comando que o bash roda.
   const exp = expandeChavesDeComandoNoSegmento(segCru, ehPowerShell);
   const seg = exp ? exp.texto : segCru;
+  const MOV = ehPowerShell ? MOVEDORES_POWERSHELL : MOVEDORES_BASH;
+  // #736 (zerar-issues-19, segunda volta do revisor do fluxo): o comentario que a regex
+  // do movedor aceitou nao e codigo. `cd X # (x)` movia e marcava INCERTO pelo `(` do
+  // comentario; o staging usa o cwd do evento no incerto, e o `git add -A` de baixo era
+  // julgado onde o shell nao esta.
+  let segSemComentario = seg;
+  let movedorComComentario = false;
+  for (const re of Object.values(MOV)) {
+    const m = seg.match(re);
+    const coment = m && m[m.length - 1];
+    if (coment) { segSemComentario = seg.slice(0, seg.lastIndexOf(coment)); movedorComComentario = true; break; }
+  }
   // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
   // para os comandos dentro — a unica leitura segura e marcar INCERTO,
   // sem tentar decidir o resto deste segmento por ele.
-  if (contemSubshellOuGrupo(seg)) estado.incerto = true;
+  if (contemSubshellOuGrupo(segSemComentario)) estado.incerto = true;
 
   // `command cd X`, `builtin cd X`, `\cd X` (P5): o comando de verdade que
   // MUDA o cwd do shell continua sendo `cd`/`pushd`/`popd` — so casa contra
@@ -770,7 +785,13 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   const normalizado = normalizarComando(semPrefixoSintaticoDeBuiltin(semRedirecionamentos(seg)));
   if (normalizado.estouro) estado.estouro = true;
   const segMovedor = normalizado.seg;
-  const { CD, PUSHD, POPD, SET_LOCATION, PUSH_LOCATION, POP_LOCATION } = ehPowerShell ? MOVEDORES_POWERSHELL : MOVEDORES_BASH;
+  const { CD, PUSHD, POPD, SET_LOCATION, PUSH_LOCATION, POP_LOCATION } = MOV;
+  // #736 (zerar-issues-19, segunda volta do revisor do fluxo): a leitura antiga nao sabe
+  // de comentario e corta no `;` de dentro dele (`pushd b #! ; popd` vira dois movedores,
+  // e o cwd saia certo e errado). Movedor com comentario, nela, e INCERTO.
+  const comentarioNaLeituraAntiga = leituraAntiga && (movedorComComentario ||
+    Object.values(MOV).some((re) => { const m = segMovedor.match(re); return Boolean(m && m[m.length - 1]); }));
+  if (comentarioNaLeituraAntiga) estado.incerto = true;
   // `then cd X`, `else cd X`, `do cd X`: o `cd` esta num ramo/corpo que pode nao
   // rodar (`if false; then cd <wt>; fi; echo x > f` no principal escreve no
   // principal). Movedor sim, mas INCERTO — nunca certeza (security review do #530).

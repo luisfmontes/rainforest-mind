@@ -23,7 +23,7 @@ O que fazer:
 - `hooks/testa-cwd-efetivo.sh`: (736x) `cd`/`pushd`/`popd` com `#c` dão o mesmo mapa de sem ele, também na leitura antiga (`comLeituraAntiga`); (736y) `Set-Location`, `Push-Location`/`Pop-Location` no PowerShell; (736z) controles `cd a#b`, `cd 'a #b'` e `cd #c`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `const POPD = /^\s*popd(?:\s+-n)?(?:(?<![\\`])[ \t]+#.*)?\s*$/;`
+  de: `const POPD = /^\s*popd(?:\s+-n)?((?<![\\`])[ \t]+#.*)?\s*$/;`
   para: `const POPD = /^\s*popd(?:\s+-n)?\s*$/;`
   bateria: `bash hooks/testa-cwd-efetivo.sh`
   fixture: testa-cwd-efetivo.sh, caso "(736x) cd/pushd/popd com # no fim movem como sem ele, nas duas leituras"
@@ -41,7 +41,7 @@ O que fazer:
 - Seção "rodada 19 (#736, D1)": do worktree, `cd <principal> #c` + quebra + `git add -A` barra (736-cd1); a mesma linha sem `#c` barra (736-cd2, referência); do principal, `cd <worktree> #c` + quebra + `git add -A` passa (736-cd3); do worktree, `Set-Location <principal> #c` + quebra + `git add -A` pela ferramenta PowerShell barra (736-cd4).
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;`
+  de: `const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))((?<![\\`])[ \t]+#.*)?\s*$/;`
   para: `const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;`
   bateria: `bash hooks/testa-gate-staging-total.sh`
   fixture: testa-gate-staging-total.sh, caso "736-cd1: do worktree, cd <principal> #c + quebra + git add -A barra"
@@ -60,7 +60,7 @@ O que fazer:
 - `caso_cwd_bash`, irmão de `caso_cwd_ps` com `tool_name` Bash. Casos: `cd <B> #c` + quebra + `gh pr create --body-file corpo.txt` pela ferramenta Bash (736-cd1) e `Set-Location <B> #c` + quebra + o mesmo `gh` pela ferramenta PowerShell (736-cd2), os dois barrando citando `#999`.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/i;`
+  de: `const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))((?<![\\`])[ \t]+#.*)?\s*$/i;`
   para: `const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, caso "736-cd2"
@@ -101,7 +101,7 @@ O que fazer:
 - `hooks/testa-gate-staging-total.sh`: do principal, `cd <worktree>\ #c` (736-cd5) e `cd <worktree><NBSP>#c` (736-cd6) + quebra + `git add -A` barram.
 mutacao:
   arquivo: `hooks/lib/cwd-efetivo.cjs`
-  de: `const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:(?<![\\`])[ \t]+#.*)?\s*$/;`
+  de: `const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))((?<![\\`])[ \t]+#.*)?\s*$/;`
   para: `const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))(?:\s+#.*)?\s*$/;`
   bateria: `bash hooks/testa-cwd-efetivo.sh`
   fixture: testa-cwd-efetivo.sh, caso "(736w2) # depois de espaco escapado ou de branco que o bash nao conta nao e comentario"
@@ -151,10 +151,51 @@ mutacao:
 prova-na-base: verde — caso novo; no head `a0fc1b32` o 736-cd3 saiu 0 ("FALHA 736-cd3 ... foi 0", bateria de 2026-11-26), e a base faz o mesmo
 pronto quando: `bash hooks/testa-gate-fechar-issue.sh` com `ok` em 736-cd3 e 0 falhas; `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736y2) e 0 falhas.
 
+### 9. O comentário do movedor não conta como subshell, e na leitura antiga fica incerto (segunda volta do revisor do fluxo) [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 8
+busca:
+- repo | grep -n "contemSubshellOuGrupo(seg)" hooks/lib/cwd-efetivo.cjs | rodava sobre o segmento inteiro, com o comentário que a regex do movedor aceitou
+- catalogo | pulado: o comentário vira o último grupo de captura das seis regex da tarefa 6
+desfecho: estender
+O que fazer:
+- `hooks/lib/cwd-efetivo.cjs`: o comentário das seis regex vira grupo de captura (o último). `resolverMovedor` tira o comentário antes de `contemSubshellOuGrupo`, e na leitura antiga (que corta no `;` de dentro do comentário) marca o movedor com comentário como incerto.
+- `hooks/testa-cwd-efetivo.sh`: (736x3) `cd A # (x)`, `# x)`, `# $(x)`, `# ((x))`, `# () { :; }`, `# ${x}` e `# {` dão o mapa de sem comentário, e `Set-Location A # (x)` no PowerShell; na leitura antiga, `pushd A #! ; popd` fica incerto. (736x) passa a afirmar o incerto da leitura antiga.
+- `hooks/testa-gate-staging-total.sh`: do worktree, `cd <principal> # (x)` + quebra + `git add -A` barra (736-cd8); do principal, `cd <worktree> #c` segue barrando, como na base (736-cd3, a leitura antiga incerta usa o cwd do evento).
+- `hooks/testa-gate-fechar-issue.sh`: 736-cd1 e 736-cd2 barram pelo cwd incerto ("não pôde ser determinado"), não mais lendo o corpo de B.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `  if (contemSubshellOuGrupo(segSemComentario)) estado.incerto = true;`
+  para: `  if (contemSubshellOuGrupo(seg)) estado.incerto = true;`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736x3) parentese, chave e ; no comentario do movedor (segunda volta do revisor do fluxo)"
+prova-na-base: verde — casos novos; no head `245d9e37`, do worktree, `cd <principal> # (x)` + quebra + `git add -A` sai 0 no `gate-staging-total` (e 0 na base `b76d80f8`), `c1.cjs` do revisor em 2026-11-26
+pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736x) e (736x3) e 0 falhas; `bash hooks/testa-gate-staging-total.sh` com `ok` em 736-cd3 e 736-cd8 e 0 falhas; `bash hooks/testa-gate-fechar-issue.sh` com `ok` em 736-cd1 e 736-cd2 e 0 falhas.
+
+### 10. Na leitura antiga, movedor com comentário é incerto [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`
+depende de: 9
+busca:
+- repo | grep -n "function emLeituraAntiga" hooks/lib/cwd-efetivo.cjs | a chave da leitura antiga da D4 da rodada 18; a variável `leituraAntiga` já mora no módulo
+- catalogo | pulado: uma linha sobre o grupo de comentário da tarefa 9
+desfecho: estender
+O que fazer:
+- Separada da 9 para a catraca medir cada uma: a linha `if (comentarioNaLeituraAntiga) estado.incerto = true;` é a que faz `pushd b #! ; popd` não sair com cwd certo e errado nos gates fora da D4.
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `  if (comentarioNaLeituraAntiga) estado.incerto = true;`
+  para: `  if (false) estado.incerto = true;`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, caso "(736x3)" (pushd A #! ; popd na leitura antiga) e "(736x)" (leitura antiga: incerto)
+prova-na-base: verde — casos novos; no head `245d9e37`, na leitura antiga, `pushd b #! ; popd` + `pwd` sai com o cwd de antes e `incerto:false` (achado 3 da segunda volta do revisor do fluxo)
+pronto quando: `bash hooks/testa-cwd-efetivo.sh` com `ok` em (736x) e (736x3) e 0 falhas.
+
 ### 5. Versão 2.17.5 [tipo: docs]
 atende: D1, D2, D3
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 3, 4, 8
+depende de: 3, 4, 10
 O que fazer:
 - Versão 2.17.5 nos dois `plugin.json` e no selo do `README.md`.
 - Entrada 2.17.5 no `CHANGELOG.md`: `cd X #comentário` move o diretório nos gates (mão dupla), e o gate de bateria lê o comando duas vezes; `cat <<EOF` sem aspas com bateria no corpo passa a barrar.

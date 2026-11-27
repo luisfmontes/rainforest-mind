@@ -728,7 +728,19 @@ console.log("== #736 (zerar-issues-19, D1): comentario no fim do movedor ==");
     igual(mapa(`cd ${testA.split(path.sep).join("/")} #c\nx`), mapa(`cd ${testA.split(path.sep).join("/")}\nx`), "cd sem aspas");
     eq(mapa(`cd '${testA}' #c\nx`)[1][0], testA, "o x roda em A");
     igual(mapa(`pushd '${testA}' #c\npopd #c\nx`), mapa(`pushd '${testA}'\npopd\nx`), "pushd e popd");
-    igual(comLeituraAntiga(() => mapa(`cd '${testA}' #c\nx`)), comLeituraAntiga(() => mapa(`cd '${testA}'\nx`)), "leitura antiga");
+    // A leitura antiga nao sabe de comentario (corta no `;` de dentro dele): incerto.
+    eq(comLeituraAntiga(() => mapa(`cd '${testA}' #c\nx`))[1][1], true, "leitura antiga: incerto");
+  });
+  test("(736x3) parentese, chave e ; no comentario do movedor (segunda volta do revisor do fluxo)", () => {
+    const A = testA.split(path.sep).join("/");
+    for (const c of ["# (x)", "# x)", "# $(x)", "# ((x))", "# () { :; }", "# ${x}", "# {"]) {
+      igual(mapa(`cd ${A} ${c}\nx`), mapa(`cd ${A}\nx`), `cd A ${c}`);
+    }
+    igual(mapa(`Set-Location ${A} # (x)\nx`, true), mapa(`Set-Location ${A}\nx`, true), "Set-Location A # (x)");
+    // Na leitura antiga o `;` do comentario corta a linha: `pushd b #! ; popd` nao pode
+    // sair com o cwd de antes como certeza (o bash fica em b).
+    const r = comLeituraAntiga(() => mapa(`pushd ${A} #! ; popd\nx`));
+    eq(r[r.length - 1][1], true, "leitura antiga: pushd b #! ; popd fica incerto");
   });
   test("(736y) PowerShell: Set-Location, Push-Location e Pop-Location com # no fim", () => {
     igual(mapa(`Set-Location '${testA}' #c\nx`, true), mapa(`Set-Location '${testA}'\nx`, true), "Set-Location");

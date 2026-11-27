@@ -4954,8 +4954,8 @@ pm "cd C:/Users/RUNNER~1/x && gh pr merge 5 --repo dono/repo --squash passa (~ n
 # #736, quarta volta do revisor do fluxo: o mapa de cwd sai da leitura antiga, a do
 # segmentador deste gate. Com a leitura nova, `<# x #>` no PowerShell virava comentario
 # do bash, o `cd <B>` sumia do mapa e o gh lia o corpo.txt de A (sem closes): exit 0.
-caso_cwd_ps() { # $1 rotulo, $2 comando (ferramenta PowerShell, cwd em A)
-  local rot="$1" cmd="$2" ex
+caso_cwd_ps() { # $1 rotulo, $2 comando (ferramenta PowerShell, cwd em A), $3 trecho do stderr (padrao #999)
+  local rot="$1" cmd="$2" pad="${3:-#999}" ex
   echo
   echo "== ($rot) PowerShell, cwd A: $cmd =="
   (
@@ -4965,18 +4965,20 @@ caso_cwd_ps() { # $1 rotulo, $2 comando (ferramenta PowerShell, cwd em A)
     echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
   ) 2>"$SBP/err-$rot"
   ex=$?
-  if [ $ex -eq 2 ] && grep -q "#999" "$SBP/err-$rot"; then test_ok "$rot exit 2 citando #999"
-  else test_fail "$rot exit 2 citando #999 (foi $ex: $(cat "$SBP/err-$rot"))"; fi
+  if [ $ex -eq 2 ] && grep -q "$pad" "$SBP/err-$rot"; then test_ok "$rot exit 2 citando $pad"
+  else test_fail "$rot exit 2 citando $pad (foi $ex: $(cat "$SBP/err-$rot"))"; fi
 }
 caso_cwd_ps 736-ps1 "<# x #>; cd $SBP_WIN_DIRB
 gh pr create -t x --body-file corpo.txt"
 caso_cwd_ps 736-ps2 "echo a <# x #>; Set-Location $SBP_WIN_DIRB
 gh pr create -t x --body-file corpo.txt"
 
-# #736 (zerar-issues-19, D1): `cd B #c` move para B. Sem isto a regex do movedor
-# nao casava e o corpo era lido em A.
-caso_cwd_bash() { # $1 rotulo, $2 comando (ferramenta Bash, cwd em A)
-  local rot="$1" cmd="$2" ex
+# #736 (zerar-issues-19, D1): `cd B #c` nao pode deixar o corpo ser lido em A (antes a
+# regex do movedor nao casava, e o cwd ficava em A com certeza). Este gate segmenta na
+# leitura antiga, que nao sabe de comentario: o movedor com comentario fica incerto e o
+# corpo relativo barra.
+caso_cwd_bash() { # $1 rotulo, $2 comando (ferramenta Bash, cwd em A), $3 trecho do stderr
+  local rot="$1" cmd="$2" pad="$3" ex
   echo
   echo "== ($rot) Bash, cwd A: $cmd =="
   (
@@ -4986,13 +4988,13 @@ caso_cwd_bash() { # $1 rotulo, $2 comando (ferramenta Bash, cwd em A)
     echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
   ) 2>"$SBP/err-$rot"
   ex=$?
-  if [ $ex -eq 2 ] && grep -q "#999" "$SBP/err-$rot"; then test_ok "$rot exit 2 citando #999"
-  else test_fail "$rot exit 2 citando #999 (foi $ex: $(cat "$SBP/err-$rot"))"; fi
+  if [ $ex -eq 2 ] && grep -q "$pad" "$SBP/err-$rot"; then test_ok "$rot exit 2 citando $pad"
+  else test_fail "$rot exit 2 citando $pad (foi $ex: $(cat "$SBP/err-$rot"))"; fi
 }
 caso_cwd_bash 736-cd1 "cd $SBP_WIN_DIRB #c
-gh pr create -t x --body-file corpo.txt"
+gh pr create -t x --body-file corpo.txt" "não pôde ser determinado"
 caso_cwd_ps 736-cd2 "Set-Location $SBP_WIN_DIRB #c
-gh pr create -t x --body-file corpo.txt"
+gh pr create -t x --body-file corpo.txt" "não pôde ser determinado"
 # PowerShell: a contrabarra e literal, `B\ #c` e B com comentario. O gate chama a lib
 # sem o dialeto, e no bash `B\ #c` nao move: so a leitura do PowerShell casa, o cwd fica
 # incerto e o corpo relativo barra (antes era lido em A e passava).
