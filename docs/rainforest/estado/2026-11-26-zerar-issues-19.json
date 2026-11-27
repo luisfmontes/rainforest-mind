@@ -18,12 +18,12 @@
     "em": "2026-11-26"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-26",
     "comando": "bash hooks/testa-cwd-efetivo.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; bash hooks/testa-gate-publicacao-destino.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-staging-total.sh; node hooks/testa-corpus-comandos.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-26-zerar-issues-19",
-    "saida": "113 ok, 0 falha (736x, 736y, 736z, 736w2, 736y2 ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 674 ok, 0 falha (736-cd1 a cd3 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 382 ok, 0 falha (736-cd1 a cd7 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 e 6-8 vermelho, tarefa 5 pulada (n/a)",
-    "tarefas_ok": 8,
-    "tarefas": 8,
+    "saida": "114 ok, 0 falha (736x, 736x3, 736y, 736z, 736w2, 736y2 ok) / ok: 66 falhou: 0 (736-b1 a b5 ok) / 674 ok, 0 falha (736-cd1 a cd3 ok) / ok: 164 falhou: 0 / 335 ok, 0 falha / 97 ok, 0 falha / 917 ok, 0 falha / 383 ok, 0 falha (736-cd1 a cd8 ok; propriedade: 360 comandos, base barra 192, violacoes 0) / ok: 24 falhou: 0 / mutacoes rc=0: tarefas 1-4 e 6-10 vermelho, tarefa 5 pulada (n/a)",
+    "tarefas_ok": 10,
+    "tarefas": 10,
     "mutacao": [
       {
         "tarefa": 1,
@@ -64,14 +64,20 @@
         "tarefa": 8,
         "resultado": "vermelho",
         "fixture": "736-cd3 exit 2, cwd incerto"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "(736x3) parentese, chave e ; no comentario do movedor"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "(736x3) pushd A #! ; popd na leitura antiga fica incerto"
       }
     ],
     "em": "2026-11-26",
-    "reaberturas": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-26"
-    }
+    "reaberturas": 2
   },
   "revisar": {
     "status": "reprovado",
